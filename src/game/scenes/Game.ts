@@ -4,9 +4,19 @@ import { Scene } from 'phaser';
 const walkCloudPeriod = 300;
 const antSpawnPeriod = 100;
 const antSpeed = 50;
+const antHealth = 40;
+const antDisplaySize = 40;
+const antCollisionSize = 30;
 const mechDimensions = [15, 15];
-const antBloodColor = 0x001000;
+const gunPositions = {
+    a: [-4, 4],
+    b: [4, 4],
+    c: [],
+    d: []
+};
+const antBloodColor = 0x00AA00;
 const deadAntColor = 0x001000;
+const fireballColor = 0xC25811;
 const maxWalkVel = 75;
 const maxBoostVel = 200;
 const deceleration = 70;
@@ -22,6 +32,53 @@ const depths = {
     projectile: 8000,
     antblood: 1
 }
+const weapons = [
+    {
+        fireDelay: 50,
+        image: 'bullet1',
+        initialSpeed: 800,
+        baseSpread: 0.1,
+        roundHeight: 10,
+        roundWidth: 2,
+        damage: 5,
+        explodeRadius: 0,
+        explodeDamage: 0,
+        penetration: 4
+    }, {
+        fireDelay: 75,
+        image: 'bullet1',
+        initialSpeed: 1200,
+        baseSpread: 0.05,
+        roundHeight: 15,
+        roundWidth: 3,
+        damage: 5,
+        explodeRadius: 0,
+        explodeDamage: 0,
+        penetration: 4
+    }, {
+        fireDelay: 1000,
+        image: 'bullet1',
+        initialSpeed: 1500,
+        baseSpread: 0.05,
+        roundHeight: 40,
+        roundWidth: 10,
+        damage: 20,
+        explodeRadius: 150,
+        explodeDamage: 50,
+        penetration: 10
+    }, {
+        fireDelay: 9999,
+        image: 'bullet1',
+        initialSpeed: 3000,
+        baseSpread: 0.05,
+        roundHeight: 30,
+        roundWidth: 7,
+        damage: 30,
+        explodeRadius: 0,
+        explodeDamage: 0,
+        penetration: 20
+    }
+]
 
 const MouseButtons = {
     LEFT: 0,
@@ -32,19 +89,25 @@ const MouseButtons = {
 interface WeaponSpec {
     fireDelay: number,
     image: string,
-    speed: number,
+    initialSpeed: number,
     baseSpread: number,
     roundHeight: number,
     roundWidth: number,
-    damage: number
+    damage: number,
+    explodeRadius: number,
+    explodeDamage: number,
+    penetration: number
 }
 
 interface AntSprite extends Phaser.Physics.Arcade.Sprite {
-    health: number
+    health: number,
+    armor: number
 }
 
 interface Projectile extends Phaser.Physics.Arcade.Sprite {
-    damage: number
+    damage: number,
+    penetration: number,
+    weaponIndex: number
 }
 
 // move to util functions file later
@@ -79,6 +142,7 @@ export class Game extends Scene {
     weapons: [WeaponSpec, WeaponSpec, WeaponSpec, WeaponSpec];
     lastWeaponFireTime: [number, number, number, number];
     bulletSparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
+    explosionEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
     lastAntSpawnTime: number;
     ants: Phaser.GameObjects.Group;
     bullets: Phaser.GameObjects.Group;
@@ -98,27 +162,41 @@ export class Game extends Scene {
         this.load.image('mech', 'mech.png');
         this.load.image('dust', 'dust.png');
         this.load.image('bullet1', 'bullet1.png');
+        this.load.image('background', 'darksand.jpg');
         this.load.spritesheet('ant', 'antwalk.png', { frameWidth: 202, frameHeight: 248 });
         this.load.spritesheet('boostflame', 'boostflame.png', { frameWidth: 214, frameHeight: 96 });
         this.load.spritesheet('blood', 'greyblood.png', { frameWidth: 100, frameHeight: 100 });
+
+        // Placeholder explosion particle
+        var graphics = this.add.graphics();
+        graphics.fillStyle(0xFFFFFF, 1);
+        graphics.fillCircle(0, 0, 20);
+
+        // Create a texture from the graphics object
+        graphics.generateTexture('whiteParticle', 20, 20);
+        graphics.destroy();
     }
 
     create() {
-        // Placeholder explosion particle
-        var graphics = this.add.graphics();
-        graphics.fillStyle(antBloodColor, 1);
-        graphics.fillCircle(0, 0, 10);
-
-        // Create a texture from the graphics object
-        graphics.generateTexture('explosionParticle', 20, 20);
-        graphics.destroy();
-
-        this.bulletSparkEmitter = this.add.particles(0, 0, 'explosionParticle', {
+        this.bulletSparkEmitter = this.add.particles(0, 0, 'whiteParticle', {
             lifespan: 200,
             speed: { min: 200, max: 350 },
             scale: { start: 0.4, end: 0 },
             rotate: { start: 0, end: 360 },
-            emitting: false
+            emitting: false,
+            tint: { onEmit: () => Phaser.Math.RND.pick([0xffffff, antBloodColor]) }
+        });
+
+        this.explosionEmitter = this.add.particles(0, 0, 'whiteParticle', {
+            x: 400,
+            y: 300,
+            speed: 200,
+            angle: { min: 0, max: 360 },
+            scale: { start: 1, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 500,
+            emitting: false,
+            tint: fireballColor
         });
 
         this.anims.create({
@@ -147,6 +225,16 @@ export class Game extends Scene {
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x333333);
 
+        // Set world bounds
+        this.physics.world.setBounds(0, 0, 5000, 5000);
+        this.camera.setBounds(0, 0, 5000, 5000);
+        let background = this.add.tileSprite(0, 0, 10000, 10000, 'background');
+        background.setScale(0.5)
+        background.setDepth(-1)
+
+        // Set camera size
+        this.camera.setSize(window.innerWidth - 300, window.innerHeight);
+
         this.playerMech = this.physics.add.sprite(0, 0, 'mech');
         this.playerMech.displayWidth = mechDimensions[0];
         this.playerMech.width = mechDimensions[0];
@@ -170,11 +258,6 @@ export class Game extends Scene {
         this.boostFlames.front.setRotation(-Math.PI / 2)
         this.boostFlames.back.setRotation(Math.PI / 2)
 
-        this.gunPositions = {
-            left: [-4, 4],
-            right: [4, 4]
-        };
-
         this.mechContainer = this.add.container(startPosition.x, startPosition.y, [
             this.playerMech,
             this.boostFlames.front,
@@ -183,10 +266,13 @@ export class Game extends Scene {
             this.boostFlames.right
         ]);
         this.physics.world.enable(this.mechContainer);
-        (this.mechContainer.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
         this.mechContainer.setDepth(depths.player);
-        
-        this.wasNotBoosting = true
+        (this.mechContainer.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
+
+        // Set the camera to follow the mech container, with an offset of 300 pixels to the back
+        this.camera.startFollow(this.mechContainer, true, 0.03, 0.03);
+
+        this.wasNotBoosting = true;
 
         // WASD bindings
         this.inputs = {
@@ -199,41 +285,6 @@ export class Game extends Scene {
 
         this.lastWalkCloudTime = 0;
         this.lastWeaponFireTime = [0, 0, 0, 0];
-        this.weapons = [
-            {
-                fireDelay: 50,
-                image: 'bullet1',
-                speed: 800,
-                baseSpread: 0.1,
-                roundHeight: 10,
-                roundWidth: 2,
-                damage: 5
-            }, {
-                fireDelay: 40,
-                image: 'bullet1',
-                speed: 1200,
-                baseSpread: 0.05,
-                roundHeight: 15,
-                roundWidth: 3,
-                damage: 5
-            }, {
-                fireDelay: 3000,
-                image: 'bullet1',
-                speed: 1500,
-                baseSpread: 0.05,
-                roundHeight: 40,
-                roundWidth: 10,
-                damage: 20
-            }, {
-                fireDelay: 4000,
-                image: 'bullet1',
-                speed: 3000,
-                baseSpread: 0.05,
-                roundHeight: 30,
-                roundWidth: 7,
-                damage: 30
-            }
-        ];
         EventBus.emit('current-scene-ready', this);
 
         this.mouseStates = {
@@ -272,6 +323,7 @@ export class Game extends Scene {
         this.lastAntSpawnTime = 0;
         this.ants = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite });
         this.bullets = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite });
+        this.physics.add.collider(this.ants, this.ants);
 
         this.physics.add.collider(
             this.bullets,
@@ -294,6 +346,12 @@ export class Game extends Scene {
         const pointer = this.input.activePointer;
         this.mechContainer.rotation = Phaser.Math.Angle.Between(this.mechContainer.x, this.mechContainer.y, pointer.worldX, pointer.worldY) + Math.PI / 2;
 
+
+        // Update camera offset based on player's rotation
+        const offsetX = 200 * Math.cos(this.mechContainer.rotation + Math.PI / 2);
+        const offsetY = 200 * Math.sin(this.mechContainer.rotation + Math.PI / 2);
+        this.camera.setFollowOffset(offsetX, offsetY);
+
         // Control acceleration and velocity
         const isBoosting = this.inputs.boost.isDown;
         const firing = this.mouseStates.leftDown;
@@ -308,6 +366,7 @@ export class Game extends Scene {
         const currentVelY = this.mechContainer.body!.velocity.y;
         const velocMag = getVectMag(currentVelX, currentVelY);
 
+        // reset boostflames visiblity, updateControlledAccelAndBoost will add the visible flames again
         for (const position of Object.keys(this.boostFlames) as FourPositions[]) {
             this.boostFlames[position].setVisible(false)
         }
@@ -335,7 +394,7 @@ export class Game extends Scene {
         }
 
         if (firing) {
-            this.weapons.forEach((weapon, index) => {
+            weapons.forEach((weapon, index) => {
                 if (time - this.lastWeaponFireTime[index] > weapon.fireDelay) {
                     this.playerWeaponFire(index, isBoosting);
                     this.lastWeaponFireTime[index] = time;
@@ -390,7 +449,6 @@ export class Game extends Scene {
     updateControlledAccelAndBoost(accel: number, isBoosting: boolean) {
         const rotation = this.mechContainer.rotation;
         let angle: number = 0;
-        let boosts: [boolean, boolean, boolean, boolean] = [false, false, false, false] // front, back, left, right
 
         if (this.inputs.up.isDown && this.inputs.right.isDown) {
             angle = rotation - Math.PI / 4;
@@ -491,21 +549,22 @@ export class Game extends Scene {
     }
 
     createProjectile(x: number, y: number, angle: number, weaponIndex: number, isUnstable: boolean): void {
-        const gun = this.weapons[weaponIndex];
-        const projectile = this.bullets.create(x, y, gun.image);
+        const gun = weapons[weaponIndex];
+        const projectile = this.bullets.create(x, y, gun.image) as Projectile;
         projectile.setName('projectile');
         const facing = angle - Math.PI / 2;
         const spread = isUnstable ? gun.baseSpread * 1.5 : gun.baseSpread;
         const forwardAngle = Phaser.Math.FloatBetween(facing + spread, facing - spread);
         projectile.setDisplaySize(gun.roundHeight, gun.roundWidth);
-        projectile.setDepth(depths.projectile)
+        projectile.setDepth(depths.projectile);
         projectile.setRotation(forwardAngle);
-        projectile.setVelocity(gun.speed * Math.cos(forwardAngle), gun.speed * Math.sin(forwardAngle));
+        projectile.setVelocity(gun.initialSpeed * Math.cos(forwardAngle), gun.initialSpeed * Math.sin(forwardAngle));
         projectile.damage = gun.damage;
+        projectile.penetration = gun.penetration;
+        projectile.weaponIndex = weaponIndex
 
         // Enable collision with world bounds
         projectile.setCollideWorldBounds(true);
-        projectile.body.onWorldBounds = true;
     }
 
     bulletSpark(x: number, y: number): void {
@@ -515,9 +574,11 @@ export class Game extends Scene {
     createAnt(x: number, y: number): void {
         const ant = this.ants.create(x, y, 'ant');
         this.chasePlayer(ant, antSpeed);
-        ant.health = 20;
-        ant.displayHeight = 20;
-        ant.displayWidth = 20;
+        ant.health = antHealth;
+        ant.armor = 5;
+        ant.displayHeight = antDisplaySize;
+        ant.displayWidth = antDisplaySize;
+        ant.setSize(antCollisionSize);
         ant.setDepth(depths.ant);
         ant.play('antwalk');
     }
@@ -531,22 +592,92 @@ export class Game extends Scene {
     }
 
     projectileHitsAnt(projectile: Projectile, ant: AntSprite): void {
-        projectile.destroy();
-        ant.health -= projectile.damage;
-        this.bulletSpark((projectile.x + ant.x) / 2, (projectile.y + ant.y) / 2);
+        const weapon = weapons[projectile.weaponIndex]
+        console.log(weapon)
+
+        // Handle explosion
+        if (weapon?.explodeRadius) {
+            this.createExplosion(projectile.x, projectile.y, weapon.explodeRadius, weapon.explodeDamage);
+            projectile.destroy();
+            return;
+        }
+
+        // Helper function to handle damage and effects
+        const applyDamageAndEffects = () => {
+            ant.health -= projectile.damage;
+            this.bulletSpark((projectile.x + ant.x) / 2, (projectile.y + ant.y) / 2);
+            this.createBloodSplat(ant)
+            if (ant.health <= 0) {
+                ant.destroy();
+                this.createDeadAnt(ant)
+            }
+        };
+
+        // Handle penetration
+        if (weapon!.penetration > ant.armor) {
+            applyDamageAndEffects();
+            // Reduce penetration value
+            projectile.penetration -= ant.armor / 2;
+        } else if (weapon!.penetration > ant.armor / 2) {
+            // If penetration is less than ant armor but more than half the armor, do full damage and destroy projectile
+            applyDamageAndEffects();
+            projectile.destroy();
+        } else {
+            projectile.destroy();
+        }
+
+        // Destroy projectile if its penetration is too low
+        if (projectile.penetration <= 0) {
+            projectile.destroy();
+        }
+    }
+
+    createExplosion(x: number, y: number, radius: number, baseDamage: number): void {
+        this.emitExplosion(400,300,fireballColor,x,y,20)
+
+        this.ants.children.each((ant: Phaser.GameObjects.GameObject) => {
+            const antSprite = ant as AntSprite
+            const distance = Phaser.Math.Distance.Between(x, y, antSprite.x, antSprite.y);
+            if (distance <= radius) {
+                var delay = (distance / 200) * 500; // Maximum distance mapped to 500ms
+                const damage = baseDamage * (1 - distance / radius);
+                this.time.delayedCall(delay, () => {
+                    (antSprite).health -= Math.max(damage - (antSprite).armor, 0);
+                    this.createBloodSplat(ant)
+                    if ((antSprite).health <= 0) {
+                        this.createBloodSplat(antSprite)
+                        this.createDeadAnt(antSprite)
+                        antSprite.destroy();
+                        this.emitExplosion(200,300,deadAntColor,antSprite.x,antSprite.y,10)
+                    }
+                }, [], this);
+
+            }
+            return true
+        });
+    }
+
+    emitExplosion(speed: number, lifespan: number, particleTint: number, x: number, y: number, noOfParticles:number) {
+        this.explosionEmitter.setParticleSpeed(speed)
+        this.explosionEmitter.setParticleLifespan(lifespan)
+        this.explosionEmitter.setParticleTint(particleTint)
+        this.explosionEmitter.emitParticleAt(x, y, noOfParticles);
+    }
+
+    createBloodSplat(ant: AntSprite) {
         const bloodsplat = this.add.image(ant.x, ant.y, 'blood', Phaser.Utils.Array.GetRandom(this.bloodFrameNames));
         bloodsplat.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2);
-        bloodsplat.displayHeight = 20;
-        bloodsplat.displayWidth = 20;
+        bloodsplat.displayHeight = 40;
+        bloodsplat.displayWidth = 40;
         bloodsplat.setDepth(depths.antblood);
         bloodsplat.setTint(antBloodColor);
-        if (ant.health <= 0) {
-            ant.destroy();
-            const deadAnt = this.add.image(ant.x, ant.y, 'blood', 8);
-            deadAnt.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2);
-            deadAnt.displayHeight = 40;
-            deadAnt.displayWidth = 40;
-            deadAnt.setTint(deadAntColor);
-        }
+    }
+
+    createDeadAnt(ant: AntSprite) {
+        const deadAnt = this.add.image(ant.x, ant.y, 'blood', 8);
+        deadAnt.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        deadAnt.displayHeight = 60;
+        deadAnt.displayWidth = 60;
+        deadAnt.setTint(deadAntColor);
     }
 }

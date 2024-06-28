@@ -1,18 +1,25 @@
+@font-face {
+    font-family: deadcrt;
+    src: url(/assets/fonts/DEADCRT.ttf);
+}
+
+@font-face {
+    font-family: lcdPhone;
+    src: url(/assets/fonts/LcdPhone-wgZ2.ttf);
+}
+
 body {
     margin: 0;
     padding: 0;
     color: rgba(255, 255, 255, 0.87);
-    background-color: #000000; 
+    background-color: #000000;
     font-family: Arial, Helvetica, sans-serif;
 }
 
 #app {
     width: 100%;
     height: 100vh;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+
 }
 
 .spritePosition {
@@ -21,28 +28,32 @@ body {
 }
 
 .button {
-    width: 140px;
-    margin: 10px;
-    padding: 10px;
-    background-color: #000000;
-    color: rgba(255, 255, 255, 0.87);
-    border: 1px solid rgba(255, 255, 255, 0.87);
-    cursor: pointer;
-    transition: all 0.3s;
+    font-family: deadcrt;
+}
 
-    &:hover {
-        border: 1px solid #0ec3c9;
-        color: #0ec3c9;
-    }
+.hudFont {
+    font-family: deadcrt;
+    font-size: 0.7em;
+    color: white;
+    /* Black outline */
+    text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000;
+}
 
-    &:active {
-        background-color: #0ec3c9;
-    }
+.lowerLeftHud {
+    position: fixed;
+    bottom: 50px;
+    left: 50px;
+    width: 300px;
+    opacity: 0.7;
+}
 
-    /* Disabled styles */
-    &:disabled {
-        cursor: not-allowed;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: rgba(255, 255, 255, 0.3);
-    }
+.screenCenter {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }

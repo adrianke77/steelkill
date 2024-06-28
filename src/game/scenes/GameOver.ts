@@ -1,4 +1,4 @@
-import { EventBus } from '../EventBus';
+import { EventBus } from '../../EventBus';
 import { Scene } from 'phaser';
 
 export class GameOver extends Scene
@@ -15,7 +15,7 @@ export class GameOver extends Scene
     create ()
     {
         this.camera = this.cameras.main
-        this.camera.setBackgroundColor(0xff0000);
+        this.camera.setBackgroundColor(0x110000);
 
         this.background = this.add.image(512, 384, 'background');
         this.background.setAlpha(0.5);

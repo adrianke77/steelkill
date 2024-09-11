@@ -1,55 +1,124 @@
-// InputManager.ts
-import { Game } from '../scenes/Game';
-import { Constants as ct } from '../constants';
+import { Game } from '../scenes/Game'
+import { dataStore } from '../../DataStore'
+
+type bindingTuplet = [string, string]
+
+const fixedBindings = {
+  up: 'W',
+  down: 'S',
+  left: 'A',
+  right: 'D',
+  boost: ' ',
+}
+
+const infaredToggleKey = 'V'
 
 export class InputManager {
-	scene: Game;
-	inputs: {
-		up: Phaser.Input.Keyboard.Key,
-		down: Phaser.Input.Keyboard.Key,
-		left: Phaser.Input.Keyboard.Key,
-		right: Phaser.Input.Keyboard.Key,
-		boost: Phaser.Input.Keyboard.Key
-	};
-	mouseStates: {
-		leftDown: boolean,
-		middleDown: boolean,
-		rightDown: boolean
-	};
+  scene: Game
+  // tracks if the key for the function is currently held down
+  fixedBindingStates: { [key: string]: boolean }
+  // tracks if the weapon group is currently active ( i.e. the button or key is held down )
+  customBindingStates: { [key: number]: boolean }
+  customBinding: bindingTuplet[]
 
-	constructor(scene: Game) {
-		this.scene = scene;
-		this.inputs = {
-			up: this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-			down: this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-			left: this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-			right: this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-			boost: this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
-		};
+  constructor(scene: Game) {
+    this.scene = scene
+    this.customBinding = dataStore.data.inputToWeaponMaps
+    // sample data: [ ['0', 'mouse'], ['0', 'mouse'], ['1', 'mouse'], ['2', 'mouse'] ]
+    this.customBindingStates = {
+      0: false,
+      1: false,
+      2: false,
+      3: false,
+    }
+    this.fixedBindingStates = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      boost: false,
+      infrared: false,
+    }
+  }
 
-		this.mouseStates = {
-			leftDown: false,
-			middleDown: false,
-			rightDown: false
-		};
+  initializeInputs() {
+    // Disable the right-click context menu
+    this.scene.input.mouse!.disableContextMenu()
+    // Generalized input handling
+    this.scene.input.enabled = true;
+    this.scene.input.keyboard!.enabled = true;
+    this.scene.input.keyboard!.on('keydown', (event: KeyboardEvent) =>
+      this.updateKeyboardInputState(event.key.toUpperCase(),true),
+    )
+    this.scene.input.keyboard!.on('keyup', (event: KeyboardEvent) =>
+      this.updateKeyboardInputState(event.key.toUpperCase(),false),
+    )
 
-		this.scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-			if (pointer.button === ct.MouseButtons.LEFT) {
-				this.mouseStates.leftDown = true;
-			} else if (pointer.button === ct.MouseButtons.MIDDLE) {
-				this.mouseStates.middleDown = true;
-			} else if (pointer.button === ct.MouseButtons.RIGHT) {
-				this.mouseStates.rightDown = true;
-			}
-		});
-		this.scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-			if (pointer.button === ct.MouseButtons.LEFT) {
-				this.mouseStates.leftDown = false;
-			} else if (pointer.button === ct.MouseButtons.MIDDLE) {
-				this.mouseStates.middleDown = false;
-			} else if (pointer.button === ct.MouseButtons.RIGHT) {
-				this.mouseStates.rightDown = false;
-			}
-		});
-	}
+    this.scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) =>{
+      this.updateMouseInputState(pointer.buttons)
+    })
+
+    this.scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) =>{
+      this.updateMouseInputState(pointer.buttons)
+    })
+  }
+
+  updateKeyboardInputState(pressedKey: string, isPressed: boolean) {
+    if (pressedKey === infaredToggleKey && isPressed) {
+      this.scene.viewMgr.toggleInfrared()
+      return
+    }
+
+    let processed = false
+      Object.entries(fixedBindings).forEach(([command, keyboardKey]) => {
+        if (keyboardKey === pressedKey) {
+          this.fixedBindingStates[command] = isPressed
+          processed = true
+        }
+      })
+    if (processed) {
+      return
+    }
+    this.customBinding.forEach((binding: bindingTuplet, index: number) => {
+      const boundDevice = binding[1]
+      const boundKey = binding[0]
+      if (boundDevice === 'key' && boundKey === pressedKey) {
+        this.customBindingStates[index] = isPressed
+      }
+    })
+  }
+
+  updateMouseInputState(buttonsBitmask: number) {
+    // note for future reference: remember buttons 1 and 2 are right and middle in native MouseEvent, but are middle and right in Phaser
+    // this is already flipped in WeapionsSelector React component
+    this.customBinding.forEach((binding: bindingTuplet, index: number) => {
+      const boundDevice = binding[1]
+      const boundButton = parseInt(binding[0])
+  
+      if (boundDevice === 'mouse') {
+        const isPressed = (buttonsBitmask & (1 << boundButton)) !== 0
+        this.customBindingStates[index] = isPressed
+      }
+    })
+  }
+
+  disableListeners() {
+    this.scene.input.keyboard!.removeAllListeners()
+    this.scene.input.removeAllListeners()
+    this.customBindingStates = {
+      0: false,
+      1: false,
+      2: false,
+      3: false,
+    }
+    this.fixedBindingStates = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      boost: false,
+      infrared: false,
+    }
+
+  }
 }

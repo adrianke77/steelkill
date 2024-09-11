@@ -1,4 +1,3 @@
-
 const frag = `
 precision mediump float;
 
@@ -23,21 +22,21 @@ void main() {
     gl_FragColor = color;
 }
 
-`;
+`
 
-export class ScanlinesPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
-    time: number
+export class ScanlinesPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
+  .PostFXPipeline {
+  time: number
 
-    constructor(game: Phaser.Game) {
-        super({
-            game,
-            fragShader: frag,
-        });
-    }
+  constructor(game: Phaser.Game) {
+    super({
+      game,
+      fragShader: frag,
+    })
+  }
 
-
-    onPreRender(): void {
-        // slowly moving scanlines
-        this.set1f('uTime', this.game.loop.time/40000)
-    }
+  onPreRender(): void {
+    // slowly moving scanlines
+    this.set1f('uTime', this.game.loop.time / 40000)
+  }
 }

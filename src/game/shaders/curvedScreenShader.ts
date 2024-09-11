@@ -29,13 +29,14 @@ void main() {
         gl_FragColor = color;
     }
 }
-`;
+`
 
-export class CurvedScreenPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
-	constructor(game: Phaser.Game) {
-		super({
-			game,
-			fragShader: frag,
-		});
-	}
+export class CurvedScreenPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
+  .PostFXPipeline {
+  constructor(game: Phaser.Game) {
+    super({
+      game,
+      fragShader: frag,
+    })
+  }
 }

@@ -1,52 +1,66 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { EventBus } from '../../../EventBus'
 
 interface HUDContextType {
-  magCount: number[];
-  remainingAmmo: number[];
-  isReloading: boolean[];
+  magCount: number[]
+  remainingAmmo: number[]
+  isReloading: boolean[]
   boostLeft: number
+  mechHealthLeft: number
 }
 
-const HUDContext = createContext<HUDContextType | undefined>(undefined);
+const HUDContext = createContext<HUDContextType | undefined>(undefined)
 
-export const AmmoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-
-  const [magCount, setMagCount] = useState([0, 0, 0, 0]);
-  const [remainingAmmo, setRemainingAmmo] = useState([0, 0, 0, 0]);
-  const [isReloading, setIsReloading] = useState([false, false, false, false]);
-  const [boostLeft, setBoostLeft] = useState(0);
+export const EventDataProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [magCount, setMagCount] = useState([0, 0, 0, 0])
+  const [remainingAmmo, setRemainingAmmo] = useState([0, 0, 0, 0])
+  const [isReloading, setIsReloading] = useState([false, false, false, false])
+  const [boostLeft, setBoostLeft] = useState(0)
+  const [mechHealthLeft, setMechHealthLeft] = useState(0)
 
   useEffect(() => {
-    const handleMagCount = (data: number[]) => setMagCount(data);
-    const handleRemainingAmmo = (data: number[]) => setRemainingAmmo(data);
-    const handleReloadStatus = (data: boolean[]) => setIsReloading(data);
-    const handleBoostStatus = (data: number) => setBoostLeft(data);
+    const handleMagCount = (data: number[]) => setMagCount(data)
+    const handleRemainingAmmo = (data: number[]) => setRemainingAmmo(data)
+    const handleReloadStatus = (data: boolean[]) => setIsReloading(data)
+    const handleBoostStatus = (data: number) => setBoostLeft(data)
+    const handleMechHealth = (data: number) => setMechHealthLeft(data)
 
-    EventBus.on('mag-count', handleMagCount);
-    EventBus.on('remaining-ammo', handleRemainingAmmo);
-    EventBus.on('reload-status', handleReloadStatus);
-    EventBus.on('boost-status', handleBoostStatus);
+    EventBus.on('mag-count', handleMagCount)
+    EventBus.on('remaining-ammo', handleRemainingAmmo)
+    EventBus.on('reload-status', handleReloadStatus)
+    EventBus.on('boost-status', handleBoostStatus)
+    EventBus.on('mech-health', handleMechHealth)
 
     return () => {
-      EventBus.off('mag-count', handleMagCount);
-      EventBus.off('remaining-ammo', handleRemainingAmmo);
-      EventBus.off('reload-status', handleReloadStatus);
-      EventBus.off('boost-status', handleBoostStatus);
-    };
-  }, []);
+      EventBus.off('mag-count', handleMagCount)
+      EventBus.off('remaining-ammo', handleRemainingAmmo)
+      EventBus.off('reload-status', handleReloadStatus)
+      EventBus.off('boost-status', handleBoostStatus)
+      EventBus.off('mech-health', handleMechHealth)
+    }
+  }, [])
 
   return (
-    <HUDContext.Provider value={{ magCount, remainingAmmo, isReloading, boostLeft }}>
+    <HUDContext.Provider
+      value={{
+        magCount,
+        remainingAmmo,
+        isReloading,
+        boostLeft,
+        mechHealthLeft,
+      }}
+    >
       {children}
     </HUDContext.Provider>
-  );
-};
+  )
+}
 
 export const useHUDData = (): HUDContextType => {
-  const context = useContext(HUDContext);
+  const context = useContext(HUDContext)
   if (!context) {
-    throw new Error('useHUDData must be used within an AmmoProvider');
+    throw new Error('useHUDData must be used within an EventDataProvider')
   }
-  return context;
-};
+  return context
+}

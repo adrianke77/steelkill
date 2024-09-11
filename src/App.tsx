@@ -1,64 +1,113 @@
-import { useRef, useState } from 'react';
-import { IRefPhaserGame, PhaserGame } from './game/PhaserGame';
-import { MainMenu } from './game/scenes/MainMenu';
-import { Game } from './game/scenes/Game';
-import { WeaponsInfo } from './ui/components/WeaponInfo';
-import { Constants } from './game/constants';
-import { AmmoProvider } from './ui/context/HUDContext';
-import { BoostInfo } from './ui/components/BoostInfo';
+import { useRef, useState } from 'react'
+import { IRefPhaserGame, PhaserGame } from './game/PhaserGame'
+import { MainMenu } from './game/scenes/MainMenu'
+import { Game } from './game/scenes/Game'
+import { WeaponSelector } from './ui/components/WeaponsSelector'
+import { WeaponsInfo } from './ui/components/WeaponInfo'
+import { EventDataProvider } from './ui/context/HUDContext'
+import { BoostInfo } from './ui/components/BoostInfo'
+import { MechHealthInfo } from './ui/components/MechHealthInfo'
+
+import { EventBus } from './EventBus'
+import { dataStore } from './DataStore'
 
 interface GameScene extends Phaser.Scene {
-    sceneName: string
+  sceneName: string
 }
 
 function App() {
-    //  References to the PhaserGame component (game and scene are exposed)
-    const phaserRef = useRef<IRefPhaserGame | null>(null);
-    const [sceneName, setSceneName] = useState('')
+  //  References to the PhaserGame component (game and scene are exposed)
+  const phaserRef = useRef<IRefPhaserGame | null>(null)
+  const [sceneName, setSceneName] = useState('')
 
-    const startGame = () => {
-        if (phaserRef.current) {
-            const scene = phaserRef.current.scene as MainMenu;
-            if (scene) {
-                scene.startGame();
-            }
-        }
+  dataStore.data['testDatakey'] = { testDataKey: 'testDataValue' }
+
+  const startGame = () => {
+    // test data send
+    EventBus.emit('react-data-send', [
+      'testDatakey',
+      { testDataKey2: 'testDataValue' },
+    ])
+    if (phaserRef.current) {
+      const scene = phaserRef.current.scene as MainMenu
+      if (scene) {
+        scene.startGame()
+      }
     }
+  }
 
-    const endGame = () => {
-        if (phaserRef.current) {
-            const scene = phaserRef.current.scene as Game;
-            if (scene) {
-                scene.endGame();
-            }
-        }
+  const endGame = () => {
+    if (phaserRef.current) {
+      const scene = phaserRef.current.scene as Game
+      if (scene) {
+        scene.endGame()
+      }
     }
+  }
 
-    // Event emitted from the PhaserGame component
-    const currentScene = (scene: Phaser.Scene) => {
-        const gameScene = scene as GameScene
-        setSceneName(gameScene.sceneName)
-    }
+  // Event emitted from the PhaserGame component
+  const currentScene = (scene: Phaser.Scene) => {
+    const gameScene = scene as GameScene
+    setSceneName(gameScene.sceneName)
+  }
 
-    return (
-        <AmmoProvider>
-            <div id="app">
-                <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
-                {
-                    sceneName === 'mainmenu' &&
-                    <button className="button screenCenter" onClick={startGame}>Start Game</button>
-                }
-                {
-                    sceneName === 'game' &&
-                    <div className='lowerLeftHud'>
-                        <WeaponsInfo weapons={Constants.weapons} />
-                        <BoostInfo />
-                        <button className="button" onClick={endGame}>End Game</button>
-                    </div>
-                }
+  return (
+    <EventDataProvider>
+      <div id="app">
+        <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
+        {sceneName === 'mainmenu' && (
+          <div className="startScreenCentre flexCenter">
+            <div className="hudFont" style={{ fontSize: 40, marginBottom: 10 }}>
+              Deadnaught
             </div>
-        </AmmoProvider>
-    )
+            <div className="hudFont" style={{ fontSize: 15, marginBottom: 100 }}>
+              Combat Demo
+            </div>
+            <div className="hudFont flexCenter" style={{ fontSize: 15, marginBottom: 80 }}>
+              <div>
+                <b>W A S D</b> : &nbsp;&nbsp;walk
+              </div>
+              <br />
+              <div>
+                <b>mouse</b> : &nbsp;&nbsp;aim
+              </div>
+              <br />
+              <div>
+                <b>left mouse button</b> : &nbsp;&nbsp;shoot
+              </div>
+              <br />
+              <div>
+                <b>spacebar + w a s d</b> : &nbsp;&nbsp;rocket boost
+              </div>
+              <br />
+              <div>
+                <b>V</b> : &nbsp;&nbsp;infrared vision
+              </div>
+            </div>
+            <WeaponSelector />
+            <button
+              className="button"
+              style={{ marginTop: 30 }}
+              onClick={startGame}
+            >
+              Start Game
+            </button>
+          </div>
+        )}
+        {sceneName === 'game' && (
+          <div className="lowerLeftHud">
+            <WeaponsInfo weapons={dataStore.data.weaponsData} />
+            <BoostInfo />
+            <MechHealthInfo />
+            <br></br>
+            <button className="button" onClick={endGame}>
+              End Game
+            </button>
+          </div>
+        )}
+      </div>
+    </EventDataProvider>
+  )
 }
 
 export default App

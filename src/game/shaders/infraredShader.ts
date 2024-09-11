@@ -26,23 +26,24 @@ void main() {
     } else if (average > 0.25) {
         infraredColor = vec4(0.0, 1.0, 0.5, color.a); // Green-Blue
     } else if (average > 0.125) {
-        infraredColor = vec4(0.0, 0.5, 1.0, color.a); // Blue
+        infraredColor = vec4(0.0, 0.2, 1.0, color.a); // Blue
     } else {
-        infraredColor = vec4(0.0, 0.0, 1.0, color.a); // Dark Blue
+        infraredColor = vec4(0.0, 0.0, 0.0, color.a); // Black
     }
 
     gl_FragColor = infraredColor;
 }
 
-`;
+`
 
-export class InfraredPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
-    time: number
+export class InfraredPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
+  .PostFXPipeline {
+  time: number
 
-    constructor(game: Phaser.Game) {
-        super({
-            game,
-            fragShader: frag,
-        });
-    }
+  constructor(game: Phaser.Game) {
+    super({
+      game,
+      fragShader: frag,
+    })
+  }
 }

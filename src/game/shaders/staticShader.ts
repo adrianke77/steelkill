@@ -1,4 +1,3 @@
-
 const frag = `
 precision mediump float;
 
@@ -27,25 +26,26 @@ void main() {
     gl_FragColor = color;
 }
 
-`;
+`
 
-export class StaticPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
-    staticIntensity:number
+export class StaticPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
+  .PostFXPipeline {
+  staticIntensity: number
 
-    constructor(game: Phaser.Game) {
-        super({
-            game,
-            fragShader: frag,
-        });
-        this.staticIntensity = 0.05
-    }
+  constructor(game: Phaser.Game) {
+    super({
+      game,
+      fragShader: frag,
+    })
+    this.staticIntensity = 0.05
+  }
 
-    setStaticIntensity(intensity:number):void {
-        this.staticIntensity = intensity
-    }
+  setStaticIntensity(intensity: number): void {
+    this.staticIntensity = intensity
+  }
 
-    onPreRender() {
-        this.set1f('uTime', this.game.loop.time / 1000);
-        this.set1f('uIntensity', this.staticIntensity);
-    }
+  onPreRender() {
+    this.set1f('uTime', this.game.loop.time / 1000)
+    this.set1f('uIntensity', this.staticIntensity)
+  }
 }

@@ -1,111 +1,19 @@
-import { EnemyDataMap, WeaponSpec} from '../interfaces'
-
-type WeaponDefinitions = { [key: string]: WeaponSpec }
+import { EnemyDataMap } from '../interfaces'
+import { weapons } from './weapons';
 
 export const music = ['horror-ambient-1','horror-ambient-2']
 
-export const weaponConstants= {
-  hmg1: {
-    name: '12.7mm MACHINE GUN',
-    fireDelay: 50,
-    image: 'bullet1',
-    initialSpeed: 1200,
-    baseSpread: 0.05,
-    roundHeight: 25,
-    roundWidth: 3,
-    damage: 6,
-    penetration: 4,
-    muzzleFlashSize: 1,
-    totalAmmo: 3200,
-    magSize: 400,
-    reloadDelay: 3000,
-    fireSound: 'hmgshot2',
-    fireSoundVol: 1.5,
-    reloadSound: 'hmgreload3',
-    reloadSoundVol: 1,
-    tracerRate: 6,
-    tracerLightColor: 0xFF0000,
-    tracerLightIntensity: 3,
-    tracerProjectileColor: 0xFF0000,
-    tracerLightRadius: 80,
-    tracerScaleUp:1.5,
-    tracerHitFadeTime: 1500,
-    tracerHitLightRadius: 100,
-    tracerHitLightIntensity: 2.5
-  },
-  rockets1: {
-    name: 'Hydra 84 ROCKET',
-    fireDelay: 3000,
-    image: 'missile',
-    initialSpeed: 0,
-    acceleration: 1000,
-    maxSpeed: 2000,
-    baseSpread: 0.1,
-    roundHeight: 20,
-    roundWidth: 10,
-    damage: 0,
-    explodeRadius: 70,
-    explodeDamage: 65,
-    penetration: 10,
-    burstFire: 6,
-    burstFireDelay: 100,
-    hasBoostFlame: true,
-    boosterLightColor: 0xed6240,
-    boosterLightIntensity:3,
-    boosterLightRadius: 100,
-    muzzleFlashSize: 1,
-    totalAmmo: 300,
-    magSize: 30,
-    reloadDelay: 5000,
-    fireSound: 'rocketlaunch',
-    fireSoundVol: 0.7,
-    stopFireSoundOnHit: true,
-    explodeSound: 'rocketexplosion',
-    explodeSoundVol: 1.3,
-    reloadSound: 'rocketsreload',
-    reloadSoundVol: 1.3,
-  },
-  railgun1: {
-    name: 'MK 43 DN-RAILGUN',
-    fireDelay: 2000,
-    image: 'bullet1',
-    initialSpeed: 4000,
-    baseSpread: 0.01,
-    roundHeight: 80,
-    roundWidth: 8,
-    damage: 40,
-    penetration: 70,
-    tint: 0x7df9ff,
-    lightColor: 0x7df9ff,
-    lightIntensity: 1,
-    muzzleFlashSize: 3,
-    totalAmmo: 100,
-    magSize: 1,
-    reloadDelay: 2000,
-    trail: true,
-    trailDuration: 1000,
-    fireSound: 'railgunshot',
-    reloadSound: 'railgunreload3',
-    reloadSoundVol: 1.4,
-    tracerRate: 1,
-    tracerLightColor: 0x2c75ff,
-    tracerLightIntensity: 10,
-    tracerProjectileColor: 0x2c75ff,
-    tracerLightRadius: 150,
-    tracerScaleUp:1,
-    tracerHitFadeTime: 8000,
-    tracerHitLightRadius: 70,
-    tracerHitLightIntensity: 15
-  },
-}  as WeaponDefinitions
+export const weaponConstants = weapons ;
 
 export type WeaponKey = keyof typeof weaponConstants;
 
 export const Constants = {
+  fieldWidth: 5000,
+  fieldHeight: 5000,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1500,
-  DecalFadeTime: 20000,
+  DecalFadeTime: 60000,
   musicVolume: 1.5,
   mechStepPeriod: 500,
   mechStepSoundVol: 2,
@@ -184,3 +92,9 @@ export const Constants = {
 }
 
 export type MouseButtonsKeys = keyof typeof Constants.MouseButtons;
+
+// avoid faded/blank frames in spritesheet muzzleflash.png
+
+const allMuzzleFrames = Phaser.Utils.Array.NumberArray(0, 31);
+
+export const brightMuzzleFrames = allMuzzleFrames.filter(frameNo => ![0,1,2,7,12,17,22,27].includes(Number(frameNo)));

@@ -38,16 +38,16 @@ export class ViewManager {
     this.camera.setSize(ct.gameWidth, ct.gameHeight)
     this.camera.startFollow(scene.player.mechContainer, true, 0.03, 0.03)
     this.camera.setPostPipeline([
-      StaticPostFxPipeline,
-      ScanlinesPostFxPipeline,
-      CurvedScreenPostFxPipeline,
+      'StaticPostFxPipeline',
+      'ScanlinesPostFxPipeline',
+      'CurvedScreenPostFxPipeline',
     ])
 
     const background = scene.add.tileSprite(
-      2500,
-      2500,
-      5000,
-      5000,
+      ct.fieldWidth/2,
+      ct.fieldHeight/2,
+      ct.fieldWidth,
+      ct.fieldHeight,
       'background',
     )
     background.setDepth(-1)
@@ -66,18 +66,18 @@ export class ViewManager {
     if (this.infraredIsOn) {
       this.camera.resetPostPipeline()
       this.camera.setPostPipeline([
-        InfraredPostFxPipeline,
-        StaticPostFxPipeline,
-        ScanlinesPostFxPipeline,
-        CurvedScreenPostFxPipeline,
+        'InfraredPostFxPipeline',
+        'StaticPostFxPipeline',
+        'ScanlinesPostFxPipeline',
+        'CurvedScreenPostFxPipeline',
       ])
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
     } else {
       this.camera.resetPostPipeline()
       this.camera.setPostPipeline([
-        StaticPostFxPipeline,
-        ScanlinesPostFxPipeline,
-        CurvedScreenPostFxPipeline,
+        'StaticPostFxPipeline',
+        'ScanlinesPostFxPipeline',
+        'CurvedScreenPostFxPipeline',
       ])
       this.scene.enemyMgr.switchEnemiesToNonInfraredColors()
     }

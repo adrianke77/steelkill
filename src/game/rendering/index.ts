@@ -1,6 +1,6 @@
 66 // renderUtils.ts
 import { Game } from '../scenes/Game'
-import { Constants as ct } from '../constants'
+import { brightMuzzleFrames, Constants as ct } from '../constants'
 import { EnemyData, EnemySprite, Projectile, WeaponSpec } from '../interfaces'
 import { blendColors } from '../utils'
 
@@ -18,7 +18,7 @@ export function loadRenderingAssets(scene: Game) {
     frameHeight: 96,
   })
   scene.load.spritesheet('muzzleflash', 'muzzleflash.png', {
-    frameWidth: 166,
+    frameWidth: 165,
     frameHeight: 165,
   })
   scene.load.image('dust', 'dust.png')
@@ -156,7 +156,7 @@ export function playMuzzleFlare(
   const size = weapon.muzzleFlashSize ? 25 * weapon.muzzleFlashSize : 25
   flare.displayHeight = size
   flare.displayWidth = size
-  const randomFrame = Phaser.Math.Between(0, 27)
+  const randomFrame = Phaser.Math.RND.pick(brightMuzzleFrames)
   flare.setFrame(randomFrame)
   flare.setPipeline('Light2D')
 
@@ -165,7 +165,7 @@ export function playMuzzleFlare(
   body.setVelocity(velocityX, velocityY)
 
   createLightFlash(scene, x, y, ct.muzzleFlashColor, 2, 10, 10)
-  scene.time.delayedCall(100, () => flare.destroy())
+  scene.time.delayedCall(60, () => flare.destroy())
 }
 
 export function addFlameToProjectile(

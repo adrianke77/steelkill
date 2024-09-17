@@ -62,7 +62,7 @@ export class Game extends Scene {
   preload() {
     this.sound.volume = 0.4
     this.load.setPath('assets')
-    music.forEach(fileName=>{
+    music.forEach(fileName => {
       this.load.audio(fileName, `audio/music/${fileName}.mp3`)
     })
     loadProjectileAssets(this)
@@ -76,10 +76,16 @@ export class Game extends Scene {
   }
 
   create() {
-    this.combatMusic = this.sound.add(music[Phaser.Math.Between(0, music.length - 1)])
+    this.scene.launch('HudScene')
+
+    this.scene.bringToTop('HudScene')
+
+    this.combatMusic = this.sound.add(
+      music[Phaser.Math.Between(0, music.length - 1)],
+    )
     this.combatMusic.play({
       loop: true,
-      volume: ct.musicVolume
+      volume: ct.musicVolume,
     })
     createEmittersAndAnimations(this)
 
@@ -160,6 +166,8 @@ export class Game extends Scene {
     })
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
+    this.scene.launch('HudScene')
+    this.scene.bringToTop('HudScene')
 
     EventBus.emit('current-scene-ready', this)
   }
@@ -271,10 +279,7 @@ export class Game extends Scene {
       this.player.boostFlames[position].setVisible(false)
     }
 
-    this.player.updateControlledAccelAndBoost(
-      accel,
-      isBoosting,
-    )
+    this.player.updateControlledAccelAndBoost(accel, isBoosting)
 
     if (!this.playerSkidding && isBoosting && velocMag > ct.maxWalkVel) {
       this.playerSkidding = true
@@ -293,22 +298,24 @@ export class Game extends Scene {
     ) {
       this.lastEnemySpawnTimes.ant = time
       this.enemyMgr.createEnemy(
-        Phaser.Math.Between(0, this.cameras.main.worldView.width),
-        20,
+        Phaser.Math.Between(0, ct.fieldWidth),
+        0,
         ct.enemyData.ant,
       )
     }
 
-    Object.entries(this.inputMgr.customBindingStates).forEach(([weaponIndex,isActive])=>{
-      if (isActive) {
-        const index = Number(weaponIndex)
-        const weapon = this.player.weapons[index]
-        if (time - this.lastWeaponFireTime[index] > weapon.fireDelay) {
-          this.playerWeaponFire(index, isBoosting, time)
-          this.lastWeaponFireTime[index] = time
+    Object.entries(this.inputMgr.customBindingStates).forEach(
+      ([weaponIndex, isActive]) => {
+        if (isActive) {
+          const index = Number(weaponIndex)
+          const weapon = this.player.weapons[index]
+          if (time - this.lastWeaponFireTime[index] > weapon.fireDelay) {
+            this.playerWeaponFire(index, isBoosting, time)
+            this.lastWeaponFireTime[index] = time
+          }
         }
-      }
-    })
+      },
+    )
 
     if (
       !isBoosting &&
@@ -336,9 +343,11 @@ export class Game extends Scene {
         body.setVelocity(0, 0)
       } else {
         const decelerationX =
-          Math.sign(currentVelX) * Math.min(Math.abs(currentVelX), ct.deceleration)
+          Math.sign(currentVelX) *
+          Math.min(Math.abs(currentVelX), ct.deceleration)
         const decelerationY =
-          Math.sign(currentVelY) * Math.min(Math.abs(currentVelY), ct.deceleration)
+          Math.sign(currentVelY) *
+          Math.min(Math.abs(currentVelY), ct.deceleration)
         ;(
           this.player.mechContainer.body as Phaser.Physics.Arcade.Body
         ).setAcceleration(-decelerationX, -decelerationY)

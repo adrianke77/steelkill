@@ -28,6 +28,7 @@ export interface WeaponSpec {
   lightIntensity?: number
   trail?: boolean
   trailDuration?: number
+  trailTint?: number
   fireSound: string
   fireSoundVol?: number
   stopFireSoundOnHit?: boolean

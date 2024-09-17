@@ -2,12 +2,12 @@ import { useState, useCallback, useEffect } from 'react'
 import { weaponConstants } from '../../../game/constants'
 import { dataStore } from '../../../DataStore'
 
-const initialWeapons = ['hmg1', 'hmg1', 'rockets1', 'railgun1']
+const initialWeapons = ['boltAP', 'boltAP', 'boltHE', 'boltHE']
 const initialBindings = [
   ['0', 'mouse'],
   ['0', 'mouse'],
   ['1', 'mouse'],
-  ['2', 'mouse'],
+  ['1', 'mouse'],
 ]
 
 const reservedKeys = [' ', 'w', 'a', 's', 'd', ' ', 'v']

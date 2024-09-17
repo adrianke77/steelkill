@@ -26,6 +26,7 @@ export const loadProjectileAssets = (scene: Game) => {
   Object.keys(weaponConstants).forEach(weaponKey => {
     const weapon = weaponConstants[weaponKey as WeaponKey] as WeaponSpec
     scene.load.image(weapon.image, `${weapon.image}.png`)
+    console.log(weapon.fireSound)
     scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
     if (weapon.explodeSound) {
       scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
@@ -138,7 +139,7 @@ export class ProjectileManager {
 
   private setupProjectileDisplay(
     projectile: Projectile,
-    weapon: any,
+    weapon: WeaponSpec,
     forwardAngle: number,
     hasTracer: boolean,
   ): void {
@@ -171,7 +172,7 @@ export class ProjectileManager {
     }
     if (weapon.trail) {
       this.scene.time.addEvent({
-        delay: 10, // Adjust the delay for how frequently to create the trail effect
+        delay: 5, // Adjust the delay for how frequently to create the trail effect
         callback: () => {
           if (!projectile.active) {
             return
@@ -185,11 +186,13 @@ export class ProjectileManager {
           trailImage.setRotation(forwardAngle)
           trailImage.setAlpha(0.5) // Initial alpha for the trail image
           trailImage.setPipeline('Light2D')
-
+          if (weapon.trailTint) {
+            trailImage.setTint(weapon.trailTint)
+          }
           this.scene.tweens.add({
             targets: trailImage,
             alpha: 0,
-            duration: 1000, // Adjust the duration for how long the trail should fade out
+            duration: weapon.trailDuration,
             onComplete: () => {
               trailImage.destroy()
             },
@@ -303,7 +306,7 @@ export class ProjectileManager {
       projectile,
       directionRadians,
     )
-    if (!enemyData.tooSmallToBleedWhenHit){
+    if (!enemyData.tooSmallToBleedWhenHit) {
       createBloodSplat(this.scene, enemy, 20)
     }
     if (enemy.health <= 0) {
@@ -465,8 +468,11 @@ export class ProjectileManager {
       const offsetY =
         weaponPosition[0] * Math.sin(rotation) +
         weaponPosition[1] * Math.cos(rotation)
-      const startX = this.scene.player.mechContainer.x + offsetX
-      const startY = this.scene.player.mechContainer.y + offsetY
+      const forwardOffset = 10
+      const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2);
+      const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2);
+      const startX = this.scene.player.mechContainer.x + offsetX + forwardX
+      const startY = this.scene.player.mechContainer.y + offsetY + forwardY
 
       this.playerCreateProjectile(
         startX,
@@ -489,8 +495,9 @@ export class ProjectileManager {
   }
 
   playWeaponFireSound = (weapon: WeaponSpec, projectile: Projectile) => {
-    // if same sound was played recently,
+    // if same sound was played very recently,
     // increase the sound's volume instead of playing another copy
+    // usually only catches weapons firing simultaneously
     if (this.sounds[weapon.fireSound].length > 0) {
       const lastSoundTuple = this.sounds[weapon.fireSound].slice(-1)[0]
       const [, soundInstance, , lastFireTime, soundVolume] = lastSoundTuple

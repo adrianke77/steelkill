@@ -96,48 +96,65 @@ export const WeaponSelector = () => {
   }
 
   return (
-    <div className="hudFont" style={{ marginTop: 15 }}>
-      {[...Array(4)].map((_, i) => (
-        <div key={i} style={{ marginBottom: 15 }}>
-          <label htmlFor={`weapon-select-${i}`}>Weapon Mount {i + 1}: </label>
-          <select
-            id={`weapon-select-${i}`}
-            value={selectedWeapons[i]}
-            onChange={e => handleWeaponChange(i, e.target.value)}
-            className="lcdphoneFont"
-            style={{ padding: 3 }}
-          >
-            {Object.keys(weaponConstants).map(key => {
-              return (
-                <option key={key} value={key} style={{ fontWeight: 900 }}>
-                  {weaponConstants[key].name}
-                </option>
-              )
-            })}
-          </select>
+    <div className="hudFont" style={{ marginTop: 15, width:800}}>
+      {/* Added headers for columns */}
+      <div style={{ display: 'flex', marginBottom: 15 }}>
+        <div style={{width: '20%',textAlign:'center' }}></div>
+        <div style={{width: '40%',textAlign:'center'  }}>Click to select weapons :</div>
+        <div style={{width: '40%',textAlign:'center'  }}>Click to bind key / button :</div>
+      </div>
 
-          <input
-            type="text"
-            value={renderBindingDisplay(i)}
-            placeholder="Bind key or mouse button"
-            onFocus={() => handleFocus(i)}
-            onBlur={() => setFocusedIndex(null)}
-            title="Click to bind key or mouse button"
-            readOnly
-            className="key-binding-input lcdphoneFont"
-            style={{
-              marginLeft: 10,
-              padding: 3,
-              userSelect: 'none',
-              cursor: 'pointer',
-              width: 250,
-            }}
-            onContextMenu={e => e.preventDefault()} // Disable right-click context menu
-          />
+      {[...Array(4)].map((_, i) => (
+        <div key={i} style={{ marginBottom: 15, display: 'flex' }}>
+          {/* Weapon Mount label column */}
+          <div style={{width: '20%',textAlign:'center'  }}>
+            <label htmlFor={`weapon-select-${i}`}>Weapon {i + 1}:&nbsp;&nbsp;</label>
+          </div>
+  
+          {/* Weapon selection dropdown column */}
+          <div style={{ width: '40%',textAlign:'center' }}>
+            <select
+              id={`weapon-select-${i}`}
+              value={selectedWeapons[i]}
+              onChange={e => handleWeaponChange(i, e.target.value)}
+              className="lcdphoneFont"
+              style={{ padding: 3 }}
+            >
+              {Object.keys(weaponConstants).map(key => {
+                return (
+                  <option key={key} value={key} style={{ fontWeight: 900 }}>
+                    {weaponConstants[key].name}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+  
+          {/* Key binding input column */}
+          <div style={{  width: '40%',textAlign:'center'  }}>
+            <input
+              type="text"
+              value={renderBindingDisplay(i)}
+              placeholder="Bind key or mouse button"
+              onFocus={() => handleFocus(i)}
+              onBlur={() => setFocusedIndex(null)}
+              readOnly
+              className="key-binding-input lcdphoneFont"
+              style={{
+                padding: 3,
+                userSelect: 'none',
+                cursor: 'pointer',
+                width: 250,
+              }}
+              onContextMenu={e => e.preventDefault()} // Disable right-click context menu
+            />
+          </div>
         </div>
       ))}
     </div>
   )
+  
+  
 }
 
 export default WeaponSelector

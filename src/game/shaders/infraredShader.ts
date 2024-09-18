@@ -7,6 +7,8 @@ uniform vec2 resolution;
 varying vec2 outTexCoord;
 
 void main() {
+    float intensity = 0.7; // Brightness/intensity adjustment variable inside shader
+
     vec4 color = texture2D(uMainSampler, outTexCoord);
     
     float average = (color.r + color.g + color.b) / 3.0;
@@ -31,10 +33,10 @@ void main() {
         infraredColor = vec4(0.0, 0.0, 0.0, color.a); // Black
     }
 
-    gl_FragColor = infraredColor;
+    // Adjust the brightness/intensity using the intensity variable
+    gl_FragColor = vec4(infraredColor.rgb * intensity, infraredColor.a);
 }
-
-`
+`;
 
 export class InfraredPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
   .PostFXPipeline {

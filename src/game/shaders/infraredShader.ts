@@ -15,9 +15,9 @@ void main() {
 
     vec4 infraredColor = vec4(0.0, 0.0, 0.0, color.a);
 
-    if (average > 0.875) {
+    if (average > 0.8) {
         infraredColor = vec4(1.0, 0.0, 0.0, color.a); // Red
-    } else if (average > 0.75) {
+    } else if (average > 0.65) {
         infraredColor = vec4(1.0, 0.5, 0.0, color.a); // Orange
     } else if (average > 0.55) {
         infraredColor = vec4(0.7, 0.7, 0.0, color.a); // Yellow

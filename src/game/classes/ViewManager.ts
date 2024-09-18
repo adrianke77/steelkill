@@ -7,10 +7,14 @@ import { Constants as ct } from '../constants'
 
 export class ViewManager {
   scene: Game
-  camera: Phaser.Cameras.Scene2D.Camera
+  mainCam: Phaser.Cameras.Scene2D.Camera
+  miniMapCam: Phaser.Cameras.Scene2D.Camera
   infraredIsOn: boolean
 
-  constructor(scene: Game) {
+  constructor(
+    scene: Game,
+  ) {
+
     this.scene = scene
     scene.lights.enable().setAmbientColor(0xbbbbbb)
     const renderer = scene.renderer as Phaser.Renderer.WebGL.WebGLRenderer
@@ -32,40 +36,50 @@ export class ViewManager {
       InfraredPostFxPipeline,
     )
 
-    this.camera = scene.cameras.main
-    this.camera.setBackgroundColor(0x333333)
-    this.camera.setBounds(0, 0, 5000, 5000)
-    this.camera.setSize(ct.gameWidth, ct.gameHeight)
-    this.camera.startFollow(scene.player.mechContainer, true, 0.03, 0.03)
-    this.camera.setPostPipeline([
+    this.mainCam = scene.cameras.main
+    this.mainCam.setBackgroundColor(0x333333)
+    this.mainCam.setBounds(0, 0, 5000, 5000)
+    this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
+    this.mainCam.setPostPipeline([
+      'StaticPostFxPipeline',
+      'ScanlinesPostFxPipeline',
+      'CurvedScreenPostFxPipeline',
+    ])
+    this.mainCam.ignore(this.scene.minimapLayer)
+    this.mainCam.startFollow(this.scene.player.mechContainer, true, 0.03, 0.03)
+
+    this.miniMapCam = this.scene.cameras.add()
+    this.miniMapCam.ignore(this.scene.mainLayer)
+    this.miniMapCam.setPostPipeline([
       'StaticPostFxPipeline',
       'ScanlinesPostFxPipeline',
       'CurvedScreenPostFxPipeline',
     ])
 
     const background = scene.add.tileSprite(
-      ct.fieldWidth/2,
-      ct.fieldHeight/2,
+      ct.fieldWidth / 2,
+      ct.fieldHeight / 2,
       ct.fieldWidth,
       ct.fieldHeight,
       'background',
     )
     background.setDepth(-1)
     background.setPipeline('Light2D')
+    this.scene.mainLayer.add(background)
     this.infraredIsOn = false
   }
 
   updateCameraOffset(rotation: number): void {
     const offsetX = 200 * Math.cos(rotation + Math.PI / 2)
     const offsetY = 200 * Math.sin(rotation + Math.PI / 2)
-    this.camera.setFollowOffset(offsetX, offsetY)
+    this.mainCam.setFollowOffset(offsetX, offsetY)
   }
 
   toggleInfrared(): void {
     this.infraredIsOn = !this.infraredIsOn
     if (this.infraredIsOn) {
-      this.camera.resetPostPipeline()
-      this.camera.setPostPipeline([
+      this.mainCam.resetPostPipeline()
+      this.mainCam.setPostPipeline([
         'InfraredPostFxPipeline',
         'StaticPostFxPipeline',
         'ScanlinesPostFxPipeline',
@@ -73,8 +87,8 @@ export class ViewManager {
       ])
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
     } else {
-      this.camera.resetPostPipeline()
-      this.camera.setPostPipeline([
+      this.mainCam.resetPostPipeline()
+      this.mainCam.setPostPipeline([
         'StaticPostFxPipeline',
         'ScanlinesPostFxPipeline',
         'CurvedScreenPostFxPipeline',

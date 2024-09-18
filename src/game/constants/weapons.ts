@@ -7,7 +7,7 @@ export const weapons= {
       name: '40MM CANNON ARMOR PIERCING',
       fireDelay: 350,
       image: 'bullet1',
-      initialSpeed: 1500,
+      initialSpeed: 1800,
       baseSpread: 0.03,
       roundHeight: 30,
       roundWidth: 4,

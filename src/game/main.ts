@@ -1,4 +1,3 @@
-import { Boot } from './scenes/Boot'
 import { GameOver } from './scenes/GameOver'
 import { Game as MainGame } from './scenes/Game'
 import { MainMenu } from './scenes/MainMenu'
@@ -7,7 +6,6 @@ import { Preloader } from './scenes/Preloader'
 import { Constants } from './constants'
 import { EventBus } from '../EventBus'
 import { DataFromReact } from './interfaces'
-import { HudScene } from './scenes/Hud'
 
 //  Find out more information about the Game Config at:
 //  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
@@ -27,7 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [Boot, Preloader, MainMenu, MainGame, GameOver, HudScene],
+  scene: [ Preloader, MainMenu, MainGame, GameOver],
   audio: {
     disableWebAudio: false, // Ensures Web Audio API is used
   },

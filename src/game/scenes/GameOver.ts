@@ -14,7 +14,7 @@ export class GameOver extends Scene {
     this.camera = this.cameras.main
     this.camera.setBackgroundColor(0x110000)
 
-    this.background = this.add.image(512, 384, 'background')
+    this.background = this.addImage(512, 384, 'background')
     this.background.setAlpha(0.5)
     this.background.setPipeline('Light2D')
 

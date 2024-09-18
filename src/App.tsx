@@ -60,10 +60,16 @@ function App() {
             <div className="hudFont" style={{ fontSize: 40, marginBottom: 10 }}>
               Deadnaught
             </div>
-            <div className="hudFont" style={{ fontSize: 15, marginBottom: 100 }}>
+            <div
+              className="hudFont"
+              style={{ fontSize: 15, marginBottom: 100 }}
+            >
               Combat Demo
             </div>
-            <div className="hudFont flexCenter" style={{ fontSize: 15, marginBottom: 80 }}>
+            <div
+              className="hudFont flexCenter"
+              style={{ fontSize: 15, marginBottom: 80 }}
+            >
               <div>
                 <b>W A S D</b> : &nbsp;&nbsp;walk
               </div>
@@ -95,12 +101,12 @@ function App() {
           </div>
         )}
         {sceneName === 'game' && (
-          <div className="lowerLeftHud">
+          <div className="lowerLeftHud" style={{ pointerEvents: 'none' }}>
             <WeaponsInfo weapons={dataStore.data.weaponsData} />
             <BoostInfo />
             <MechHealthInfo />
             <br></br>
-            <button className="button" onClick={endGame}>
+            <button className="button" onClick={endGame} style={{ pointerEvents: 'all' }}>
               End Game
             </button>
           </div>

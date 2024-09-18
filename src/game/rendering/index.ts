@@ -49,7 +49,7 @@ export function createEmittersAndAnimations(scene: Game) {
   graphics.generateTexture('whiteParticle', 20, 20)
   graphics.destroy()
 
-  scene.projectileSparkEmitter = scene.add.particles(
+  scene.projectileSparkEmitter = scene.addParticles(
     0,
     0,
     'whiteParticle',
@@ -58,7 +58,7 @@ export function createEmittersAndAnimations(scene: Game) {
   scene.projectileSparkEmitter.setDepth(ct.depths.projectileSpark)
   scene.projectileSparkEmitter.setPipeline('Light2D')
 
-  scene.enemyDeathBurstEmitter = scene.add.particles(
+  scene.enemyDeathBurstEmitter = scene.addParticles(
     0,
     0,
     'whiteParticle',
@@ -132,7 +132,7 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
 function addCombinedDecal(scene: Game) {
   const combinedTexture = scene.add.renderTexture(0, 0, 5000, 5000)
   combinedTexture.setBlendMode(Phaser.BlendModes.NORMAL)
-  const combinedDecalsImage = scene.add.image(0, 0, combinedTexture.texture)
+  const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
   combinedDecalsImage.setPipeline('Light2D')
   scene.decalCount = 0
@@ -151,7 +151,7 @@ export function playMuzzleFlare(
   velocityY: number,
   weapon: WeaponSpec,
 ): void {
-  const flare = scene.add.sprite(x, y, 'muzzleflash')
+  const flare = scene.addSprite(x, y, 'muzzleflash')
   flare.rotation = rotation - Math.PI / 2 // Adjust rotation to match mechContainer's direction
   const size = weapon.muzzleFlashSize ? 25 * weapon.muzzleFlashSize : 25
   flare.displayHeight = size
@@ -177,7 +177,7 @@ export function addFlameToProjectile(
 ) {
   const offsetX = Math.cos(forwardAngle) * projectile.displayHeight
   const offsetY = Math.sin(forwardAngle) * projectile.displayHeight
-  const flame = scene.add.sprite(x - offsetX, y - offsetY, 'boostflame')
+  const flame = scene.addSprite(x - offsetX, y - offsetY, 'boostflame')
   flame.setDisplaySize(projectile.displayWidth, projectile.displayHeight / 2)
   flame.setAngle(Phaser.Math.RadToDeg(forwardAngle - Math.PI)) // Set the angle of the flame to match the projectile's direction
   flame.play('boostflame')
@@ -198,7 +198,7 @@ export function createDustCloud(
   directionY: number,
   opacity: number,
 ): void {
-  const dustCloud = scene.physics.add.sprite(x, y, 'dust')
+  const dustCloud = scene.addSprite(x, y, 'dust')
   dustCloud.setRotation(Phaser.Math.Between(0, 2 * Math.PI))
 
   dustCloud.setAlpha(opacity)
@@ -246,7 +246,7 @@ export function createBloodSplat(
   splatSize: number,
 ) {
   const enemyData = enemy.enemyData as EnemyData
-  const bloodSplat = scene.add.image(
+  const bloodSplat = scene.addImage(
     enemy.x,
     enemy.y,
     'blood',
@@ -255,7 +255,6 @@ export function createBloodSplat(
   bloodSplat.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   bloodSplat.displayHeight = splatSize
   bloodSplat.displayWidth = splatSize
-  bloodSplat.setDepth(ct.depths.enemyblood)
   bloodSplat.setTint(enemyData.bloodColor)
   bloodSplat.setPipeline('Light2D')
   bloodSplat.setAlpha(0.8)
@@ -277,11 +276,10 @@ export function destroyEnemyAndCreateCorpseDecals(
   enemy.destroy()
   createBloodSplat(scene, enemy, 80)
   const enemyData = enemy.enemyData as EnemyData
-  const deadEnemy = scene.add.image(enemy.x, enemy.y, enemyData.corpseImage, 8)
+  const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   deadEnemy.displayHeight = enemyData.corpseSize
   deadEnemy.displayWidth = enemyData.corpseSize
-  deadEnemy.setDepth(ct.depths.enemybody)
   deadEnemy.setTint(enemyData.color)
   deadEnemy.setPipeline('Light2D')
   drawDecal(scene, deadEnemy)
@@ -342,7 +340,7 @@ export function renderExplosion(
   diameter: number,
   damage: number,
 ) {
-  const explosion = scene.add.sprite(x, y, 'explosion')
+  const explosion = scene.addSprite(x, y, 'explosion')
   explosion.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   const displayDiameter = Phaser.Math.FloatBetween(
     diameter * 1.2,
@@ -353,11 +351,10 @@ export function renderExplosion(
   explosion.setDepth(ct.depths.explosion)
   explosion.setAlpha(Phaser.Math.FloatBetween(0.7, 0.9))
   explosion.play('explosion')
-  const scorch = scene.add.sprite(x, y, 'scorch1')
+  const scorch = scene.addSprite(x, y, 'scorch1')
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setDepth(ct.depths.scorch)
   scorch.setAlpha(0.8)
   scorch.setPipeline('Light2D')
   drawDecal(scene, scorch)

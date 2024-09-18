@@ -26,7 +26,6 @@ export const loadProjectileAssets = (scene: Game) => {
   Object.keys(weaponConstants).forEach(weaponKey => {
     const weapon = weaponConstants[weaponKey as WeaponKey] as WeaponSpec
     scene.load.image(weapon.image, `${weapon.image}.png`)
-    console.log(weapon.fireSound)
     scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
     if (weapon.explodeSound) {
       scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
@@ -113,7 +112,8 @@ export class ProjectileManager {
     startY: number,
     image: string,
   ): Projectile {
-    const projectile = this.projectiles.create(
+    const projectile = this.scene.createInGroup(
+      this.projectiles,
       startX,
       startY,
       image,
@@ -177,7 +177,7 @@ export class ProjectileManager {
           if (!projectile.active) {
             return
           }
-          const trailImage = this.scene.add.image(
+          const trailImage = this.scene.addImage(
             projectile.x,
             projectile.y,
             weapon.image,
@@ -469,8 +469,8 @@ export class ProjectileManager {
         weaponPosition[0] * Math.sin(rotation) +
         weaponPosition[1] * Math.cos(rotation)
       const forwardOffset = 10
-      const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2);
-      const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2);
+      const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2)
+      const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2)
       const startX = this.scene.player.mechContainer.x + offsetX + forwardX
       const startY = this.scene.player.mechContainer.y + offsetY + forwardY
 

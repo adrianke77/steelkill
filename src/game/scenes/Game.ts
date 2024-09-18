@@ -15,6 +15,7 @@ import {
 import { EnemyManager, loadEnemyAssets } from '../classes/EnemyManager'
 import { InputManager } from '../classes/InputManager'
 import { ViewManager } from '../classes/ViewManager'
+import { MinimapManager } from '../classes/MinimapManager'
 import {
   WeaponSpec,
   EnemySprite,
@@ -24,11 +25,14 @@ import {
 } from '../interfaces'
 
 export class Game extends Scene {
+  minimapLayer: Phaser.GameObjects.Layer
+  mainLayer: Phaser.GameObjects.Layer
   viewMgr: ViewManager
   player: PlayerMech
   projectileMgr: ProjectileManager
   enemyMgr: EnemyManager
   inputMgr: InputManager
+  minimapMgr: MinimapManager
   lastMechStepTime: number
   lastWeaponFireTime: [number, number, number, number]
   magCount: [number, number, number, number]
@@ -76,9 +80,8 @@ export class Game extends Scene {
   }
 
   create() {
-    this.scene.launch('HudScene')
-
-    this.scene.bringToTop('HudScene')
+    this.mainLayer = this.add.layer()
+    this.minimapLayer = this.add.layer()
 
     this.combatMusic = this.sound.add(
       music[Phaser.Math.Between(0, music.length - 1)],
@@ -96,11 +99,12 @@ export class Game extends Scene {
     })
     this.combinedDecals = []
 
-    this.player = new PlayerMech(this)
     this.enemyMgr = new EnemyManager(this)
+    this.player = new PlayerMech(this)
     this.viewMgr = new ViewManager(this)
     this.projectileMgr = new ProjectileManager(this)
     this.inputMgr = new InputManager(this)
+    this.minimapMgr = new MinimapManager(this)
 
     this.inputMgr.initializeInputs()
 
@@ -166,9 +170,6 @@ export class Game extends Scene {
     })
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
-    this.scene.launch('HudScene')
-    this.scene.bringToTop('HudScene')
-
     EventBus.emit('current-scene-ready', this)
   }
 
@@ -360,10 +361,64 @@ export class Game extends Scene {
         this.player.mechContainer.body as Phaser.Physics.Arcade.Body
       ).setVelocity(currentVelX * scale, currentVelY * scale)
     }
+
+    this.minimapMgr.drawMinimap()
   }
 
   changeScene() {
     this.scene.start('GameOver')
+  }
+
+  addImage(
+    x: number,
+    y: number,
+    texture: string | Phaser.Textures.Texture,
+    frame?: string | number,
+  ) {
+    const image = this.add.image(x, y, texture, frame)
+    this.mainLayer.add(image)
+    return image
+  }
+
+  addSprite(x: number, y: number, key: string, frame?: string | number) {
+    const sprite = this.physics.add.sprite(x, y, key, frame)
+    this.mainLayer.add(sprite)
+    return sprite
+  }
+
+  addContainer(
+    x: number,
+    y: number,
+    children: Phaser.GameObjects.GameObject[],
+  ) {
+    const container = this.add.container(x, y, children)
+    this.mainLayer.add(container)
+    return container
+  }
+
+  addParticles(
+    x?: number,
+    y?: number,
+    texture?: string | Phaser.Textures.Texture,
+    config?: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig,
+  ) {
+    const particles = this.add.particles(x, y, texture, config)
+    this.mainLayer.add(particles)
+    return particles
+  }
+  
+  createInGroup(
+    group: Phaser.GameObjects.Group,
+    x?: number,
+    y?: number,
+    key?: string,
+    frame?: string | number,
+    visible?: boolean,
+    active?: boolean,
+  ) {
+    const member = group.create(x,y,key,frame,visible,active)
+    this.mainLayer.add(member)
+    return member
   }
 
   playerWeaponFire(

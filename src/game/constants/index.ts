@@ -7,6 +7,16 @@ export const weaponConstants = weapons ;
 
 export type WeaponKey = keyof typeof weaponConstants;
 
+const depths ={
+  minimap: 7501,
+  enemy: 9999,
+  player: 9999,
+  projectile: 8000,
+  explosion: 10000,
+  decals:7500,
+  projectileSpark: 10000,
+}
+
 export const Constants = {
   fieldWidth: 5000,
   fieldHeight: 5000,
@@ -37,16 +47,7 @@ export const Constants = {
   boostFadeTime: 400,
   deceleration: 70,
   startPosition: { y: 500, x: 900 },
-  depths: {
-    enemy: 9999,
-    player: 9999,
-    projectile: 8000,
-    enemyblood: 7500,
-    enemybody: 7500,
-    explosion: 10000,
-    scorch: 7500,
-    projectileSpark: 10000,
-  },
+  depths,
   MouseButtons: {
     LEFT: 0,
     MIDDLE: 1,

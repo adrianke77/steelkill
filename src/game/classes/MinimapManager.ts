@@ -1,7 +1,6 @@
 import { EnemySprite } from '../interfaces'
 import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
-import { Scene } from 'phaser'
 
 const MINIMAP_WIDTH = 200 // Width of the minimap in pixels
 const MINIMAP_HEIGHT = 200 // Height of the minimap in pixels
@@ -12,35 +11,31 @@ const MINIMAP_X = 30 // X position of the minimap on screen
 const MINIMAP_Y = 40 // Y position of the minimap on screen
 
 export class MinimapManager {
-  hudScene: Scene
-  gameScene: Game
+  scene: Game
   minimap: Phaser.GameObjects.Graphics
-  player: Phaser.Physics.Arcade.Sprite
-  enemies: Phaser.Physics.Arcade.Group
 
-  constructor(hudScene: Phaser.Scene, gameScene: Game) {
-    this.hudScene = hudScene
-    this.gameScene = gameScene
+  constructor(gameScene:Game) {
+    this.scene = gameScene
 
-    // Create minimap graphics in the HUD scene
-    this.minimap = this.hudScene.add.graphics()
+    this.minimap = this.scene.make.graphics()
     this.minimap.setScrollFactor(0) // Ensure it doesn't scroll
+    this.minimap.setDepth(ct.depths.minimap) // Draw on top of everything
+    this.scene.minimapLayer.add(this.minimap)
 
-    // No need to add the minimap to any layers
   }
   drawMinimap() {
     // Clear previous minimap drawing
     this.minimap.clear()
-
+    
     // Define the portion of the game field that the minimap shows
     const visibleGameWidth = MINIMAP_WIDTH / MINIMAP_SCALE
     const visibleGameHeight = MINIMAP_HEIGHT / MINIMAP_SCALE
 
     // Center the minimap on the player
     const minimapX =
-      this.gameScene.player.mechContainer.x - visibleGameWidth / 2
+      this.scene.player.mechContainer.x - visibleGameWidth / 2
     const minimapY =
-      this.gameScene.player.mechContainer.y - visibleGameHeight / 2
+      this.scene.player.mechContainer.y - visibleGameHeight / 2
 
     // Draw semi-transparent black background
     this.minimap.fillStyle(0x000000, 0.3)
@@ -96,7 +91,7 @@ export class MinimapManager {
     )
 
     // Draw enemies on the minimap
-    this.gameScene.enemyMgr.enemies.children.iterate(object => {
+    this.scene.enemyMgr.enemies.children.iterate(object => {
       const enemy = object as EnemySprite
       // Calculate the position relative to the minimap
       const relativeX = (enemy.x - minimapX) * MINIMAP_SCALE

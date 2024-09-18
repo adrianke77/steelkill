@@ -48,7 +48,7 @@ export class PlayerMech {
     )
     dataStore.data.weaponsData = this.weapons
 
-    this.playerMech = this.scene.physics.add.sprite(0, 0, 'mech')
+    this.playerMech = this.scene.addSprite(0, 0, 'mech')
     this.playerMech.displayWidth = ct.mechDimensions[0]
     this.playerMech.width = ct.mechDimensions[0]
     this.playerMech.displayHeight = ct.mechDimensions[1]
@@ -87,7 +87,7 @@ export class PlayerMech {
     this.boostFlames.front.setRotation(-Math.PI / 2)
     this.boostFlames.back.setRotation(Math.PI / 2)
 
-    this.mechContainer = this.scene.add.container(
+    this.mechContainer = this.scene.addContainer(
       ct.startPosition.x,
       ct.startPosition.y,
       [
@@ -109,6 +109,7 @@ export class PlayerMech {
     this.mechStepSound = this.scene.sound.add(
       'mechstep',
     ) as Phaser.Sound.WebAudioSound
+
   }
 
   getPlayerCoords(): [number, number, number] {

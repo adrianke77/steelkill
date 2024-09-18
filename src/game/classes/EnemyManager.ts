@@ -50,7 +50,7 @@ export class EnemyManager {
   }
 
   createEnemy(x: number, y: number, enemyData: EnemyData): void {
-    const enemy = this.enemies.create(x, y, enemyData.spriteSheetKey)
+    const enemy = this.scene.createInGroup(this.enemies,x, y, enemyData.spriteSheetKey)
     enemy.health = enemyData.health
     enemy.armor = enemyData.armor
     enemy.displayHeight = enemyData.displaySize

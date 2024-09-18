@@ -76,10 +76,12 @@ export class Game extends Scene {
     this.load.image('background', 'darksand.jpg')
     this.game.canvas.addEventListener('contextmenu', event => {
       event.preventDefault()
-    })
+    }, false);
   }
 
   create() {
+    document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto";
+
     this.mainLayer = this.add.layer()
     this.minimapLayer = this.add.layer()
 
@@ -211,15 +213,17 @@ export class Game extends Scene {
     )
 
     const pointer = this.input.activePointer
+    // required to get correct cursor position by factoring in camera movement causing offsets
+    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     this.player.mechContainer.rotation =
       Phaser.Math.Angle.Between(
         this.player.mechContainer.x,
         this.player.mechContainer.y,
-        pointer.worldX,
-        pointer.worldY,
+        worldPoint.x,
+        worldPoint.y,
       ) +
       Math.PI / 2
-
+    
     this.viewMgr.updateCameraOffset(this.player.mechContainer.rotation)
 
     const isBoosting =
@@ -361,6 +365,7 @@ export class Game extends Scene {
         this.player.mechContainer.body as Phaser.Physics.Arcade.Body
       ).setVelocity(currentVelX * scale, currentVelY * scale)
     }
+
 
     this.minimapMgr.drawMinimap()
   }

@@ -8,7 +8,7 @@ export const weaponConstants = weapons ;
 export type WeaponKey = keyof typeof weaponConstants;
 
 const depths ={
-  minimap: 7501,
+  minimap: 15000,
   enemy: 9999,
   player: 9999,
   projectile: 8000,

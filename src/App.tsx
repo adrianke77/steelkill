@@ -54,7 +54,7 @@ function App() {
   return (
     <EventDataProvider>
       <div id="app">
-        <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
+        <PhaserGame ref={phaserRef} currentActiveScene={currentScene}/>
         {sceneName === 'mainmenu' && (
           <div className="startScreenCentre flexCenter">
             <div className="hudFont" style={{ fontSize: 40, marginBottom: 10 }}>

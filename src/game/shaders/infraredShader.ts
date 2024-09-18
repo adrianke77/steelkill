@@ -7,7 +7,7 @@ uniform vec2 resolution;
 varying vec2 outTexCoord;
 
 void main() {
-    float intensity = 0.7; // Brightness/intensity adjustment variable inside shader
+    float intensity = 0.8; // Brightness/intensity adjustment variable inside shader
 
     vec4 color = texture2D(uMainSampler, outTexCoord);
     
@@ -19,14 +19,14 @@ void main() {
         infraredColor = vec4(1.0, 0.0, 0.0, color.a); // Red
     } else if (average > 0.75) {
         infraredColor = vec4(1.0, 0.5, 0.0, color.a); // Orange
-    } else if (average > 0.625) {
-        infraredColor = vec4(1.0, 1.0, 0.0, color.a); // Yellow
-    } else if (average > 0.5) {
-        infraredColor = vec4(0.5, 1.0, 0.0, color.a); // Yellow-Green
-    } else if (average > 0.375) {
-        infraredColor = vec4(0.0, 1.0, 0.0, color.a); // Green
-    } else if (average > 0.25) {
-        infraredColor = vec4(0.0, 1.0, 0.5, color.a); // Green-Blue
+    } else if (average > 0.55) {
+        infraredColor = vec4(0.7, 0.7, 0.0, color.a); // Yellow
+    } else if (average > 0.40) {
+        infraredColor = vec4(0.5, 0.7, 0.0, color.a); // Yellow-Green
+    } else if (average > 0.35) {
+        infraredColor = vec4(0.0, 0.7, 0.0, color.a); // Green
+    } else if (average > 0.20) {
+        infraredColor = vec4(0.0, 0.7, 0.5, color.a); // Green-Blue
     } else if (average > 0.125) {
         infraredColor = vec4(0.0, 0.2, 1.0, color.a); // Blue
     } else {

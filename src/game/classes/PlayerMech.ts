@@ -49,6 +49,7 @@ export class PlayerMech {
     dataStore.data.weaponsData = this.weapons
 
     this.playerMech = this.scene.addSprite(0, 0, 'mech')
+    this.playerMech.setOrigin(0.5, 0.5)
     this.playerMech.displayWidth = ct.mechDimensions[0]
     this.playerMech.width = ct.mechDimensions[0]
     this.playerMech.displayHeight = ct.mechDimensions[1]

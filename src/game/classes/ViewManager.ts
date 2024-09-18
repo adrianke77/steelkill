@@ -55,6 +55,7 @@ export class ViewManager {
       'ScanlinesPostFxPipeline',
       'CurvedScreenPostFxPipeline',
     ])
+    this.miniMapCam.startFollow(this.scene.player.mechContainer, true, 0.03, 0.03)
 
     const background = scene.add.tileSprite(
       ct.fieldWidth / 2,
@@ -73,6 +74,7 @@ export class ViewManager {
     const offsetX = 200 * Math.cos(rotation + Math.PI / 2)
     const offsetY = 200 * Math.sin(rotation + Math.PI / 2)
     this.mainCam.setFollowOffset(offsetX, offsetY)
+    this.miniMapCam.setFollowOffset(offsetX, offsetY)
   }
 
   toggleInfrared(): void {

@@ -9,36 +9,34 @@ const GAME_HEIGHT = ct.fieldHeight // Actual height of the game field
 const MINIMAP_SCALE = 0.05 // smaller value means more of the field is visible in the minimap
 const MINIMAP_X = 30 // X position of the minimap on screen
 const MINIMAP_Y = 40 // Y position of the minimap on screen
+const MINIMAP_BKGRND_ALPHA = 0.4 // Transparency of the minimap background
 
 export class MinimapManager {
   scene: Game
   minimap: Phaser.GameObjects.Graphics
 
-  constructor(gameScene:Game) {
+  constructor(gameScene: Game) {
     this.scene = gameScene
 
     this.minimap = this.scene.make.graphics()
     this.minimap.setScrollFactor(0) // Ensure it doesn't scroll
     this.minimap.setDepth(ct.depths.minimap) // Draw on top of everything
     this.scene.minimapLayer.add(this.minimap)
-
   }
   drawMinimap() {
     // Clear previous minimap drawing
     this.minimap.clear()
-    
+
     // Define the portion of the game field that the minimap shows
     const visibleGameWidth = MINIMAP_WIDTH / MINIMAP_SCALE
     const visibleGameHeight = MINIMAP_HEIGHT / MINIMAP_SCALE
 
     // Center the minimap on the player
-    const minimapX =
-      this.scene.player.mechContainer.x - visibleGameWidth / 2
-    const minimapY =
-      this.scene.player.mechContainer.y - visibleGameHeight / 2
+    const minimapX = this.scene.player.mechContainer.x - visibleGameWidth / 2
+    const minimapY = this.scene.player.mechContainer.y - visibleGameHeight / 2
 
     // Draw semi-transparent black background
-    this.minimap.fillStyle(0x000000, 0.3)
+    this.minimap.fillStyle(0x000000, MINIMAP_BKGRND_ALPHA)
     this.minimap.fillRect(MINIMAP_X, MINIMAP_Y, MINIMAP_WIDTH, MINIMAP_HEIGHT)
 
     // Calculate the boundary positions relative to the minimap
@@ -106,6 +104,26 @@ export class MinimapManager {
       ) {
         this.minimap.fillStyle(0xff0000, 1)
         this.minimap.fillCircle(MINIMAP_X + relativeX, MINIMAP_Y + relativeY, 2)
+      }
+      return true
+    })
+
+    // Draw projectiles on the minimap
+    this.scene.projectileMgr.projectiles.children.iterate(object => {
+      const projectile = object as Phaser.Physics.Arcade.Sprite
+      // Calculate the position relative to the minimap
+      const relativeX = (projectile.x - minimapX) * MINIMAP_SCALE
+      const relativeY = (projectile.y - minimapY) * MINIMAP_SCALE
+
+      // Only draw if the projectile is within the visible minimap area
+      if (
+        relativeX >= 0 &&
+        relativeX <= MINIMAP_WIDTH &&
+        relativeY >= 0 &&
+        relativeY <= MINIMAP_HEIGHT
+      ) {
+        this.minimap.fillStyle(0xFFFFFF, 1)
+        this.minimap.fillCircle(MINIMAP_X + relativeX, MINIMAP_Y + relativeY, 1)
       }
       return true
     })

@@ -18,6 +18,8 @@ export class MainMenu extends Scene {
     // Load the background image asset
     this.load.setPath('assets')
     this.load.image('menubackground', 'mechbackground.jpg')
+
+    document.body.style.cursor = 'default'
   }
 
   create() {

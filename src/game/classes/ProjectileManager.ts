@@ -62,7 +62,6 @@ export class ProjectileManager {
     y: number,
     angle: number,
     weaponIndex: number,
-    isUnstable: boolean,
     hasTracer: boolean,
   ): void {
     const weapon = this.scene.player.weapons[weaponIndex]
@@ -80,7 +79,7 @@ export class ProjectileManager {
     this.setupProjectilePhysics(projectile, weapon, weaponIndex)
 
     const facing = angle - Math.PI / 2
-    const spread = isUnstable ? weapon.baseSpread * 1.5 : weapon.baseSpread
+    const spread = weapon.baseSpread
     const forwardAngle = Phaser.Math.FloatBetween(
       facing + spread,
       facing - spread,
@@ -456,7 +455,6 @@ export class ProjectileManager {
     delay: number,
     weaponPosition: WeaponPosition,
     weaponIndex: number,
-    isUnstable: boolean,
     weapon: WeaponSpec,
     hasTracer: boolean,
   ) => {
@@ -479,7 +477,6 @@ export class ProjectileManager {
         startY,
         rotation,
         weaponIndex,
-        isUnstable,
         hasTracer,
       )
       playMuzzleFlare(

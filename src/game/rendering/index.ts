@@ -164,7 +164,15 @@ export function playMuzzleFlare(
   const body = flare.body as Phaser.Physics.Arcade.Body
   body.setVelocity(velocityX, velocityY)
 
-  createLightFlash(scene, x, y, ct.muzzleFlashColor, 2, 10, 10)
+  createLightFlash(
+    scene,
+    x,
+    y,
+    ct.muzzleFlashColor,
+    2,
+    10,
+    weapon.muzzleFlashSize ? weapon.muzzleFlashSize * 25 : 25,
+  )
   scene.time.delayedCall(60, () => flare.destroy())
 }
 

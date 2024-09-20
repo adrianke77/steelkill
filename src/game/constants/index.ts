@@ -1,19 +1,19 @@
 import { EnemyDataMap } from '../interfaces'
-import { weapons } from './weapons';
+import { weapons } from './weapons'
 
-export const music = ['horror-ambient-1','horror-ambient-2']
+export const music = ['horror-ambient-1', 'horror-ambient-2']
 
-export const weaponConstants = weapons ;
+export const weaponConstants = weapons
 
-export type WeaponKey = keyof typeof weaponConstants;
+export type WeaponKey = keyof typeof weaponConstants
 
-const depths ={
+const depths = {
   minimap: 15000,
   enemy: 9999,
   player: 9999,
   projectile: 8000,
   explosion: 10000,
-  decals:7500,
+  decals: 7500,
   projectileSpark: 10000,
 }
 
@@ -36,8 +36,9 @@ export const Constants = {
   mechDimensions: [30, 30],
   boostLength: 50,
   boostWidth: 20,
+  boostTint: 0xFF77FF,
   explosionColor: 0xed6240,
-  boosterLightColor: 0xed6240,
+  boosterLightColor: 0xFF77FF,
   boostSoundVol: 0.8,
   muzzleFlashColor: 0xf9cf57,
   maxWalkVel: 100,
@@ -92,10 +93,12 @@ export const Constants = {
   boostConsumption: 40,
 }
 
-export type MouseButtonsKeys = keyof typeof Constants.MouseButtons;
+export type MouseButtonsKeys = keyof typeof Constants.MouseButtons
 
 // avoid faded/blank frames in spritesheet muzzleflash.png
 
-const allMuzzleFrames = Phaser.Utils.Array.NumberArray(0, 31);
+const allMuzzleFrames = Phaser.Utils.Array.NumberArray(0, 31)
 
-export const brightMuzzleFrames = allMuzzleFrames.filter(frameNo => ![0,1,2,7,12,17,22,27].includes(Number(frameNo)));
+export const brightMuzzleFrames = allMuzzleFrames.filter(
+  frameNo => ![0, 1, 2, 7, 12, 17, 22, 27].includes(Number(frameNo)),
+)

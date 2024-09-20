@@ -3,7 +3,7 @@ import { EventBus } from '../../EventBus'
 import { Constants as ct, weaponConstants, WeaponKey } from '../constants'
 import { EnemySprite, FourPositions } from '../interfaces'
 import { Game } from '../scenes/Game'
-import { createLightFlash, renderExplosion } from '../rendering'
+import { renderExplosion } from '../rendering'
 import { EnemyData, WeaponSpec } from '../interfaces'
 import { dataStore } from '../../DataStore'
 
@@ -81,8 +81,6 @@ export class PlayerMech {
       const sprite = this.boostFlames[position]
       sprite.setOrigin(0, 0.5)
       sprite.play('boostflame')
-      sprite.displayHeight = ct.boostWidth
-      sprite.displayWidth = ct.boostLength
     }
     this.boostFlames.left.setRotation(Math.PI)
     this.boostFlames.front.setRotation(-Math.PI / 2)
@@ -219,85 +217,5 @@ export class PlayerMech {
         soundInstance.destroy()
       })
     })
-  }
-
-  updateControlledAccelAndBoost(
-    accel: number,
-    isBoosting: boolean,
-  ): void {
-    const rotation = this.mechContainer.rotation
-    let angle: number = 0
-
-    const visibleFlame = (position: FourPositions): void => {
-      const flame = this.boostFlames[position]
-      flame.setVisible(true)
-      createLightFlash(
-        this.scene,
-        flame.x + this.mechContainer.x,
-        flame.y + this.mechContainer.y,
-        ct.boosterLightColor,
-        10,
-        1,
-        100,
-      )
-    }
-
-    const inputsStates = this.scene.inputMgr.fixedBindingStates
-
-    if (inputsStates.up && inputsStates.right) {
-      angle = rotation - Math.PI / 4
-      if (isBoosting) {
-        visibleFlame('back')
-        visibleFlame('left')
-      }
-    } else if (inputsStates.up && inputsStates.left) {
-      angle = rotation - (Math.PI * 3) / 4
-      if (isBoosting) {
-        visibleFlame('right')
-        visibleFlame('back')
-      }
-    } else if (inputsStates.down && inputsStates.right) {
-      angle = rotation + Math.PI / 4
-      if (isBoosting) {
-        visibleFlame('left')
-        visibleFlame('front')
-      }
-    } else if (inputsStates.down && inputsStates.left) {
-      angle = rotation + (Math.PI * 3) / 4
-      if (isBoosting) {
-        visibleFlame('front')
-        visibleFlame('right')
-      }
-    } else if (inputsStates.up) {
-      angle = rotation - Math.PI / 2
-      if (isBoosting) {
-        visibleFlame('back')
-      }
-    } else if (inputsStates.down) {
-      angle = rotation + Math.PI / 2
-      if (isBoosting) {
-        visibleFlame('front')
-      }
-    } else if (inputsStates.left) {
-      angle = rotation - Math.PI
-      if (isBoosting) {
-        visibleFlame('right')
-      }
-    } else if (inputsStates.right) {
-      angle = rotation
-      if (isBoosting) {
-        visibleFlame('left')
-      }
-    }
-
-    let accelX = 0
-    let accelY = 0
-
-    accelX += accel * Math.cos(angle)
-    accelY += accel * Math.sin(angle)
-    ;(this.mechContainer.body as Phaser.Physics.Arcade.Body).setAcceleration(
-      accelX,
-      accelY,
-    )
   }
 }

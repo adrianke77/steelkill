@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { weaponConstants } from '../../../game/constants'
 import { dataStore } from '../../../DataStore'
 
-const initialWeapons = ['boltAP', 'boltHE', 'railgun1', 'rockets1']
+const initialWeapons = ['hmg1', 'boltHE', 'railgun1', 'rockets1']
 const initialBindings = [
   ['0', 'mouse'],
   ['0', 'mouse'],
@@ -89,6 +89,18 @@ export const WeaponSelector = () => {
   const renderBindingDisplay = (i: number): string => {
     const device = keyBindings[i][1]
     let buttonOrKey = keyBindings[i][0]
+    if (buttonOrKey === ' ') {
+      buttonOrKey = 'SPACE'
+    }
+    if (device === 'mouse'&& buttonOrKey === '0') {
+      buttonOrKey = 'LEFT BUTTON'
+    }
+    if (device === 'mouse'&& buttonOrKey === '1') {
+      buttonOrKey = 'RIGHT BUTTON'
+    }
+    if (device === 'mouse'&& buttonOrKey === '2') {
+      buttonOrKey = 'MIDDLE BUTTON'
+    }
     if (buttonOrKey === ' ') {
       buttonOrKey = 'SPACE'
     }

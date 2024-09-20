@@ -6,6 +6,7 @@ import {
   createEmittersAndAnimations,
   addCloudAtPlayermech,
   loadRenderingAssets,
+  createLightFlash
 } from '../rendering'
 import { loadMechAssets, PlayerMech } from '../classes/PlayerMech'
 import {
@@ -74,13 +75,17 @@ export class Game extends Scene {
     loadEnemyAssets(this)
     loadMechAssets(this)
     this.load.image('background', 'darksand.jpg')
-    this.game.canvas.addEventListener('contextmenu', event => {
-      event.preventDefault()
-    }, false);
+    this.game.canvas.addEventListener(
+      'contextmenu',
+      event => {
+        event.preventDefault()
+      },
+      false,
+    )
   }
 
   create() {
-    document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto";
+    document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto"
 
     this.mainLayer = this.add.layer()
     this.minimapLayer = this.add.layer()
@@ -214,7 +219,7 @@ export class Game extends Scene {
 
     const pointer = this.input.activePointer
     // required to get correct cursor position by factoring in camera movement causing offsets
-    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.player.mechContainer.rotation =
       Phaser.Math.Angle.Between(
         this.player.mechContainer.x,
@@ -223,7 +228,7 @@ export class Game extends Scene {
         worldPoint.y,
       ) +
       Math.PI / 2
-    
+
     this.viewMgr.updateCameraOffset(this.player.mechContainer.rotation)
 
     const isBoosting =
@@ -278,13 +283,122 @@ export class Game extends Scene {
     const currentVelY = this.player.mechContainer.body!.velocity.y
     const velocMag = getVectMag(currentVelX, currentVelY)
 
+    // Compute acceleration based on screen-relative input
+    let ax = 0
+    let ay = 0
+    if (this.inputMgr.fixedBindingStates.right) {
+      ax += accel
+    }
+    if (this.inputMgr.fixedBindingStates.left) {
+      ax -= accel
+    }
+    if (this.inputMgr.fixedBindingStates.down) {
+      ay += accel
+    }
+    if (this.inputMgr.fixedBindingStates.up) {
+      ay -= accel
+    }
+
+    // Apply acceleration to player's body
+    (
+      this.player.mechContainer.body as Phaser.Physics.Arcade.Body
+    ).setAcceleration(ax, ay)
+
+    // Normalize the acceleration vector
+    const accelMag = Math.sqrt(ax * ax + ay * ay)
+    let normAx = 0
+    let normAy = 0
+    if (accelMag > 0) {
+      normAx = ax / accelMag
+      normAy = ay / accelMag
+    }
+
+    // Get the player's rotation
+    const mechRotation = this.player.mechContainer.rotation
+
+    // Compute direction angles for each flame
+    const frontAngle = mechRotation + Math.PI / 2
+    const rearAngle = mechRotation - Math.PI / 2
+    const leftAngle = mechRotation
+    const rightAngle = mechRotation + Math.PI
+
+    // Direction vectors for each flame
+    const frontDir = { x: Math.cos(frontAngle), y: Math.sin(frontAngle) }
+    const rearDir = { x: Math.cos(rearAngle), y: Math.sin(rearAngle) }
+    const leftDir = { x: Math.cos(leftAngle), y: Math.sin(leftAngle) }
+    const rightDir = { x: Math.cos(rightAngle), y: Math.sin(rightAngle) }
+
+    // Initialize flames visibility and scale
     for (const position of Object.keys(
       this.player.boostFlames,
     ) as FourPositions[]) {
-      this.player.boostFlames[position].setVisible(false)
+      const flame = this.player.boostFlames[position]
+      flame.setVisible(false)
+      flame.displayWidth = ct.boostWidth
+      flame.displayHeight = ct.boostLength
+      flame.setScale(0)
     }
 
-    this.player.updateControlledAccelAndBoost(accel, isBoosting)
+    if (isBoosting && accelMag > 0) {
+      // Compute dot products between flame directions and acceleration vector
+      const dotFront = frontDir.x * normAx + frontDir.y * normAy
+      const dotRear = rearDir.x * normAx + rearDir.y * normAy
+      const dotLeft = leftDir.x * normAx + leftDir.y * normAy
+      const dotRight = rightDir.x * normAx + rightDir.y * normAy
+
+      // Compute scales based on dot products (only positive values)
+      const frontScale = Math.max(0, dotFront)
+      const rearScale = Math.max(0, dotRear)
+      const leftScale = Math.max(0, dotLeft)
+      const rightScale = Math.max(0, dotRight)
+
+      const flameLight = (flame:Phaser.GameObjects.Sprite, scale:number ): void => {
+        flame.setVisible(true)
+        createLightFlash(
+          this,
+          flame.x + this.player.mechContainer.x,
+          flame.y + this.player.mechContainer.y,
+          ct.boosterLightColor,
+          10 * scale,
+          1,
+          100,
+        )
+      }
+
+      // Set flames visible and adjust their scale
+      if (frontScale > 0) {
+        const flame = this.player.boostFlames.front
+        flame.setVisible(true)
+        flame.setScale(frontScale)
+        flameLight(flame, frontScale)
+        flame.displayWidth = ct.boostLength * frontScale
+        flame.displayHeight = ct.boostWidth * frontScale
+      }
+      if (rearScale > 0) {
+        const flame = this.player.boostFlames.back
+        flame.setVisible(true)
+        flame.setScale(rearScale)
+        flameLight(flame, rearScale)
+        flame.displayWidth = ct.boostLength * rearScale
+        flame.displayHeight = ct.boostWidth * rearScale
+      }
+      if (leftScale > 0) {
+        const flame = this.player.boostFlames.left
+        flame.setVisible(true)
+        flame.setScale(leftScale)
+        flameLight(flame, leftScale)
+        flame.displayWidth = ct.boostLength * leftScale
+        flame.displayHeight = ct.boostWidth * leftScale
+      }
+      if (rightScale > 0) {
+        const flame = this.player.boostFlames.right
+        flame.setVisible(true)
+        flame.setScale(rightScale)
+        flameLight(flame, rightScale)
+        flame.displayWidth = ct.boostLength * rightScale
+        flame.displayHeight = ct.boostWidth * rightScale
+      }
+    }
 
     if (!this.playerSkidding && isBoosting && velocMag > ct.maxWalkVel) {
       this.playerSkidding = true
@@ -366,7 +480,6 @@ export class Game extends Scene {
       ).setVelocity(currentVelX * scale, currentVelY * scale)
     }
 
-
     this.minimapMgr.drawMinimap()
   }
 
@@ -411,7 +524,7 @@ export class Game extends Scene {
     this.mainLayer.add(particles)
     return particles
   }
-  
+
   createInGroup(
     group: Phaser.GameObjects.Group,
     x?: number,
@@ -421,7 +534,7 @@ export class Game extends Scene {
     visible?: boolean,
     active?: boolean,
   ) {
-    const member = group.create(x,y,key,frame,visible,active)
+    const member = group.create(x, y, key, frame, visible, active)
     this.mainLayer.add(member)
     return member
   }

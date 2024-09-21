@@ -163,6 +163,20 @@ export class Game extends Scene {
       this,
     );
 
+    this.physics.add.collider(
+      this.projectileMgr.projectiles,
+      this.player.mechContainer,
+      (object1) => {
+        const projectile = object1 as Projectile
+        if (projectile.enemySource) {
+          this.playerTakeDamage(projectile.damage);
+          this.projectileMgr.destroyProjectile(projectile);
+        }
+      },
+      undefined,
+      this,
+    );
+
     this.fpsText = this.add.text(10, 10, '', {
       fontSize: '16px',
       color: '#FFFFFF',
@@ -209,18 +223,34 @@ export class Game extends Scene {
     // Update player motion
     this.player.update(time);
 
-    // Ant generation for combat demo
-    if (
-      time - ct.enemyData.ant.spawnPeriod > this.lastEnemySpawnTimes.ant &&
-      this.enemyMgr.enemies.getChildren().length < 300
-    ) {
-      this.lastEnemySpawnTimes.ant = time;
-      this.enemyMgr.createEnemy(
-        Phaser.Math.Between(0, ct.fieldWidth),
-        0,
-        ct.enemyData.ant,
-      );
-    }
+    // // Ant generation for combat demo
+    // if (
+    //   time - ct.enemyData.ant.spawnPeriod > this.lastEnemySpawnTimes.ant &&
+    //   this.enemyMgr.enemies.getChildren().length < 300
+    // ) {
+    //   this.lastEnemySpawnTimes.ant = time;
+    //   this.enemyMgr.createEnemy(
+    //     Phaser.Math.Between(0, ct.fieldWidth),
+    //     0,
+    //     ct.enemyData.ant,
+    //   );
+    // }
+
+    // general enemy spawning
+    Object.entries(ct.enemyData).forEach(([enemyKey, enemyData]) => {
+      if (
+        time - enemyData.spawnPeriod > this.lastEnemySpawnTimes[enemyKey] &&
+        this.enemyMgr.enemies.getChildren().length < 300
+      ) {
+        this.lastEnemySpawnTimes[enemyKey] = time;
+        this.enemyMgr.createEnemy(
+          Phaser.Math.Between(0, ct.fieldWidth),
+          0,
+          enemyData,
+        );
+      }
+    });
+
 
     Object.entries(this.inputMgr.customBindingStates).forEach(
       ([weaponIndex, isActive]) => {
@@ -278,6 +308,14 @@ export class Game extends Scene {
     const particles = this.add.particles(x, y, texture, config);
     this.mainLayer.add(particles);
     return particles;
+  }
+
+  playerTakeDamage(damage: number): void {
+    this.player.mechHealth -= damage;
+    if (this.player.mechHealth <= 0) {
+      this.endGame();
+    }
+    EventBus.emit('player-health', this.player.mechHealth);
   }
 
   createInGroup(

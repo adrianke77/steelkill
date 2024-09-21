@@ -10,6 +10,7 @@ import { MechHealthInfo } from './ui/components/MechHealthInfo'
 
 import { EventBus } from './EventBus'
 import { dataStore } from './DataStore'
+import MovementKeyBinding from './ui/components/MovementKeyBinding/MovementKeyBinding'
 
 interface GameScene extends Phaser.Scene {
   sceneName: string
@@ -62,38 +63,33 @@ function App() {
             </div>
             <div
               className="hudFont"
-              style={{ fontSize: 15, marginBottom: 100 }}
+              style={{ fontSize: 15, marginBottom: 60 }}
             >
               Combat Demo
             </div>
             <div
               className="hudFont flexCenter"
-              style={{ fontSize: 15, marginBottom: 80 }}
+              style={{ fontSize: 15, marginBottom: 60 }}
             >
-              <div>
-                <b>W A S D</b> : &nbsp;&nbsp;walk
-              </div>
               <br />
               <div>
                 <b>mouse</b> : &nbsp;&nbsp;aim
               </div>
               <br />
               <div>
-                <b>left mouse button</b> : &nbsp;&nbsp;shoot
-              </div>
-              <br />
-              <div>
-                <b>spacebar + w a s d</b> : &nbsp;&nbsp;rocket boost
-              </div>
-              <br />
-              <div>
                 <b>V</b> : &nbsp;&nbsp;infrared vision
+              </div>
+              <br />
+              <div>
+                <b>MOVE KEY + BOOST</b> : &nbsp;&nbsp;rocket boosted drifting
               </div>
             </div>
             <WeaponSelector />
+            <br/>
+            <MovementKeyBinding />
             <button
               className="button"
-              style={{ marginTop: 30 }}
+              style={{ marginTop: 30, fontSize: 20, backgroundColor: 'red' }}
               onClick={startGame}
             >
               Start Game
@@ -101,12 +97,12 @@ function App() {
           </div>
         )}
         {sceneName === 'game' && (
-          <div className="lowerLeftHud" style={{ pointerEvents: 'none' }}>
+          <div className="lowerLeftHud" style={{ pointerEvents: 'none', fontSize:18 }}>
             <WeaponsInfo weapons={dataStore.data.weaponsData} />
             <BoostInfo />
             <MechHealthInfo />
             <br></br>
-            <button className="button" onClick={endGame} style={{ pointerEvents: 'all' }}>
+            <button className="button" onClick={endGame} style={{ pointerEvents: 'all', backgroundColor: 'red'  }}>
               End Game
             </button>
           </div>

@@ -45,33 +45,43 @@ export interface WeaponSpec {
   tracerHitLightIntensity?: number
 }
 
+export interface EnemyWeaponData {
+  image: string;
+  damage: number;
+  initialSpeed: number;
+  trail?: boolean; // Optional: Whether the projectile has a trail
+}
+
 export interface EnemyData {
-  spawnPeriod: number
-  speed: number
-  health: number
-  armor: number
-  displaySize: number
-  collisionSize: number
-  bloodColor: number
-  color: number
-  walkAnimation: string
-  corpseImage: string
-  corpseSize: number
-  spriteSheetKey: string
-  directionTimerMax: number
-  directionTimerMin: number
-  randomSound?: string
-  randomSoundChance?: number
-  randomSoundVol?: number
-  // likelihood of sound happening per direction change
-  // change this once enemy AI updated
-  randomSoundLikelihood?: number
-  deathSound: string
-  deathSoundVol?: number
-  hitDamage: number
-  hitDelay: number
-  hitSound: string
-  tooSmallToBleedWhenHit?: boolean
+  spawnPeriod: number;
+  speed: number;
+  health: number;
+  armor: number;
+  displaySize: number;
+  collisionSize: number;
+  bloodColor: number;
+  color: number;
+  walkAnimation: string;
+  corpseImage: string;
+  corpseSize: number;
+  spriteSheetKey: string;
+  directionTimerMax: number;
+  directionTimerMin: number;
+  randomSound?: string;
+  randomSoundChance?: number;
+  randomSoundVol?: number;
+  randomSoundLikelihood?: number; // Likelihood of sound happening per direction change
+  deathSound: string;
+  deathSoundVol?: number;
+  hitDamage: number;
+  hitDelay: number;
+  hitSound: string;
+  tooSmallToBleedWhenHit?: boolean;
+
+  // New properties for firing projectiles
+  canFireProjectiles?: boolean; // Whether the enemy can fire projectiles
+  fireRate?: number; // How frequently the enemy fires projectiles (in ms)
+  enemyWeapon?: EnemyWeaponData; // Data related to the projectile fired by the enemy
 }
 
 export interface EnemyDataMap {
@@ -104,6 +114,7 @@ export interface Projectile extends Phaser.Physics.Arcade.Sprite {
   }
   weapon: WeaponSpec
   hasTracer?: boolean
+  enemySource?: boolean
 }
 
 export type ProjectileLightFields = 'light' | 'flameLight' | 'tracerLight'

@@ -1,5 +1,5 @@
-import { EnemyDataMap } from '../interfaces'
 import { weapons } from './weapons'
+import { enemies } from './enemies'
 
 export const music = ['horror-ambient-1', 'horror-ambient-2']
 
@@ -26,7 +26,7 @@ export const Constants = {
   DecalFadeTime: 60000,
   musicVolume: 1.5,
   mechStepPeriod: 500,
-  mechStepSoundVol: 2,
+  mechStepSoundVol: 3,
   mechStartingHealth: 500,
   mechDeathSound: 'mechexplosion',
   mechDeathSoundVolume: 2,
@@ -36,14 +36,14 @@ export const Constants = {
   mechDimensions: [30, 30],
   boostLength: 50,
   boostWidth: 20,
-  boostTint: 0xFF77FF,
+  boostTint: 0xffbbff,
   explosionColor: 0xed6240,
-  boosterLightColor: 0xFF77FF,
+  boosterLightColor: 0xffbbff,
   boostSoundVol: 0.8,
   muzzleFlashColor: 0xf9cf57,
-  maxWalkVel: 100,
+  maxWalkVel: 150,
   maxBoostVel: 300,
-  walkAccel: 150,
+  walkAccel: 200,
   boostAccel: 400,
   boostFadeTime: 400,
   deceleration: 70,
@@ -54,33 +54,7 @@ export const Constants = {
     MIDDLE: 1,
     RIGHT: 2,
   },
-  enemyData: {
-    ant: {
-      spawnPeriod: 25,
-      speed: 100,
-      health: 40,
-      armor: 5,
-      displaySize: 40,
-      collisionSize: 35,
-      bloodColor: 0x00aa00,
-      color: 0x221111,
-      walkAnimation: 'antwalk',
-      corpseImage: 'blood',
-      corpseSize: 50,
-      spriteSheetKey: 'ant',
-      randomSound: 'antsounds2',
-      randomSoundVol: 1.5,
-      randomSoundChance: 0.2,
-      directionTimerMax: 750,
-      directionTimerMin: 250,
-      deathSound: 'antdeath',
-      deathSoundVol: 0.6,
-      hitDamage: 22,
-      hitDelay: 500,
-      hitSound: 'anthit',
-      tooSmallToBleedWhenHit: true,
-    },
-  } as EnemyDataMap,
+  enemyData: enemies,
   // front left is -15, -15
   weaponPositions: [
     [-12, -10], // far left

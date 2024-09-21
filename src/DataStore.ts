@@ -22,6 +22,7 @@ class DataStore {
     this.data = {
       weapons:{},
       inputToWeaponMaps: {},
+      moveBindings: {}
     }
   }
 }

@@ -6,5 +6,5 @@
   
   <!-- Green stroke on top -->
   <path d="m8 5.25v-3m0 11.5v-3m2.75-2.75h3m-11.5 0h3" stroke="#FF0000" stroke-width="1"/>
-  <circle cx="8" cy="8" r="5" stroke="#880000" stroke-width="1"/>
+  <circle cx="8" cy="8" r="5" stroke="#BB0000" stroke-width="1"/>
 </svg>

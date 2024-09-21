@@ -9,9 +9,9 @@ import {
 } from '../utils'
 
 export const loadEnemyAssets = (scene: Game) => {
-  scene.load.spritesheet('ant', 'whiteant.png', {
+  scene.load.spritesheet('whiteant8', 'whiteant8.png', {
     frameWidth: 202,
-    frameHeight: 248,
+    frameHeight: 247,
   })
   for (const enemyName of Object.keys(ct.enemyData)) {
     const enemyData = ct.enemyData[enemyName]
@@ -50,7 +50,12 @@ export class EnemyManager {
   }
 
   createEnemy(x: number, y: number, enemyData: EnemyData): void {
-    const enemy = this.scene.createInGroup(this.enemies,x, y, enemyData.spriteSheetKey)
+    const enemy = this.scene.createInGroup(
+      this.enemies,
+      x,
+      y,
+      enemyData.spriteSheetKey,
+    )
     enemy.health = enemyData.health
     enemy.armor = enemyData.armor
     enemy.displayHeight = enemyData.displaySize
@@ -66,7 +71,32 @@ export class EnemyManager {
     enemy.enemyData = enemyData
     enemy.lastHitTime = 0
     enemy.lastScreamTime = 0
+    // Start firing projectiles if the enemy can shoot
+    if (enemyData.canFireProjectiles) {
+      this.startFiringProjectiles(enemy)
+    }
     this.resetDirectionTimer(enemy)
+  }
+
+  private startFiringProjectiles(enemy: EnemySprite): void {
+    const fireRate = enemy.enemyData.fireRate || 1000; // Default fire rate is 1 second
+
+    this.scene.time.addEvent({
+      delay: fireRate,
+      loop: true,
+      callback: () => {
+        const [playerX, playerY] = this.scene.player.getPlayerCoords();
+        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, playerX, playerY);
+
+        this.scene.projectileMgr.enemyCreateProjectile(
+          enemy.x,
+          enemy.y,
+          angle,
+          enemy,
+        );
+      },
+      callbackScope: this,
+    });
   }
 
   switchEnemiesToInfraredColors(): void {

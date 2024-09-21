@@ -102,7 +102,7 @@ export class MinimapManager {
         relativeY >= 0 &&
         relativeY <= MINIMAP_HEIGHT
       ) {
-        this.minimap.fillStyle(0xff0000, 1)
+        this.minimap.fillStyle(0xbb0000, 1)
         this.minimap.fillCircle(MINIMAP_X + relativeX, MINIMAP_Y + relativeY, 2)
       }
       return true

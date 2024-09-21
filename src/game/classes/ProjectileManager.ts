@@ -65,7 +65,7 @@ export class ProjectileManager {
     hasTracer: boolean,
   ): void {
     const weapon = this.scene.player.weapons[weaponIndex]
-    const { startX, startY } = this.calculateStartPosition(
+    const { startX, startY } = this.calculateProjectileStartPosition(
       x,
       y,
       angle,
@@ -94,7 +94,34 @@ export class ProjectileManager {
     this.playWeaponFireSound(weapon, projectile)
   }
 
-  private calculateStartPosition(
+  enemyCreateProjectile(
+    x: number,
+    y: number,
+    angle: number,
+    enemy: EnemySprite,
+  ): void {
+    const enemyWeapon = enemy.enemyData.enemyWeapon as WeaponSpec;
+    const projectile = this.createProjectile(x, y, enemyWeapon!.image);
+    projectile.enemySource = true; // mark it as an enemy projectile
+    projectile.damage = enemyWeapon!.damage;
+
+    const forwardAngle = angle - Math.PI / 2;
+    this.setupProjectilePhysics(projectile, enemyWeapon, 0); // Set up with enemy weapon
+
+    projectile.setRotation(forwardAngle);
+    projectile.setVelocity(
+      enemyWeapon.initialSpeed * Math.cos(forwardAngle),
+      enemyWeapon.initialSpeed * Math.sin(forwardAngle),
+    );
+
+    // Optional: Add effects such as lights, trail, etc.
+    if (enemyWeapon.trail) {
+      // Add trail similar to player projectiles
+      this.setupProjectileDisplay(projectile, enemyWeapon, forwardAngle, false);
+    }
+  }
+
+  private calculateProjectileStartPosition(
     x: number,
     y: number,
     angle: number,
@@ -274,11 +301,11 @@ export class ProjectileManager {
 
     // Handle penetration
     if (projectile!.penetration > enemy.armor) {
-      this.applyProjectileDamageAndEffects(projectile, enemy)
+      this.applyProjectileDamageAndEffects(projectile, enemy, 1)
       projectile.penetration -= enemy.armor / 2
       return false
     } else if (projectile!.penetration > enemy.armor / 2) {
-      this.applyProjectileDamageAndEffects(projectile, enemy)
+      this.applyProjectileDamageAndEffects(projectile, enemy, 0.3)
       this.destroyProjectile(projectile)
     } else if (projectile!.penetration < enemy.armor / 2) {
       this.destroyProjectile(projectile)
@@ -289,9 +316,10 @@ export class ProjectileManager {
   private applyProjectileDamageAndEffects(
     projectile: Projectile,
     enemy: EnemySprite,
+    damageFactor: number
   ): void {
     const enemyData = enemy.enemyData as EnemyData
-    enemy.health -= projectile.damage
+    enemy.health -= projectile.damage * damageFactor
     const directionRadians = Phaser.Math.Angle.Between(
       projectile.x,
       projectile.y,

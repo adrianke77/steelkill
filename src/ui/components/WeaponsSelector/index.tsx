@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { weaponConstants } from '../../../game/constants'
 import { dataStore } from '../../../DataStore'
 
+const reservedKeys = ['v']
+
 const initialWeapons = ['hmg1', 'boltHE', 'railgun1', 'rockets1']
 const initialBindings = [
   ['0', 'mouse'],
@@ -10,10 +12,14 @@ const initialBindings = [
   ['1', 'mouse'],
 ]
 
-const reservedKeys = [' ', 'w', 'a', 's', 'd', ' ', 'v']
-
-dataStore.data.weapons = initialWeapons
-dataStore.data.inputToWeaponMaps = initialBindings
+dataStore.data.weapons =
+  Object.keys(dataStore.data.weapons).length > 0
+    ? dataStore.data.weapons
+    : initialWeapons
+dataStore.data.inputToWeaponMaps =
+  Object.keys(dataStore.data.inputToWeaponMaps).length > 0
+    ? dataStore.data.inputToWeaponMaps
+    : initialBindings
 
 export const WeaponSelector = () => {
   const [selectedWeapons, setSelectedWeapons] = useState<string[]>(
@@ -49,7 +55,7 @@ export const WeaponSelector = () => {
           const key = event.key.toLowerCase()
           if (reservedKeys.includes(key)) {
             alert(
-              `"${key === ' ' ? 'Spacebar' : key}" is reserved for movement or other game functions. Please choose another key.`,
+              `"${key === ' ' ? 'Spacebar' : key}" is reserved other game functions. Please choose another key.`,
             )
             ;(event.target as HTMLElement).blur()
             return
@@ -92,13 +98,13 @@ export const WeaponSelector = () => {
     if (buttonOrKey === ' ') {
       buttonOrKey = 'SPACE'
     }
-    if (device === 'mouse'&& buttonOrKey === '0') {
+    if (device === 'mouse' && buttonOrKey === '0') {
       buttonOrKey = 'LEFT BUTTON'
     }
-    if (device === 'mouse'&& buttonOrKey === '1') {
+    if (device === 'mouse' && buttonOrKey === '1') {
       buttonOrKey = 'RIGHT BUTTON'
     }
-    if (device === 'mouse'&& buttonOrKey === '2') {
+    if (device === 'mouse' && buttonOrKey === '2') {
       buttonOrKey = 'MIDDLE BUTTON'
     }
     if (buttonOrKey === ' ') {
@@ -108,23 +114,29 @@ export const WeaponSelector = () => {
   }
 
   return (
-    <div className="hudFont" style={{ marginTop: 15, width:800}}>
+    <div className="hudFont" style={{ marginTop: 15, width: 800 }}>
       {/* Added headers for columns */}
       <div style={{ display: 'flex', marginBottom: 15 }}>
-        <div style={{width: '20%',textAlign:'center' }}></div>
-        <div style={{width: '40%',textAlign:'center'  }}>Click to select weapons :</div>
-        <div style={{width: '40%',textAlign:'center'  }}>Click to bind key / button :</div>
+        <div style={{ width: '20%', textAlign: 'center' }}></div>
+        <div style={{ width: '40%', textAlign: 'center', fontSize: 14 }}>
+          Click to select weapons :
+        </div>
+        <div style={{ width: '40%', textAlign: 'center', fontSize: 14 }}>
+          Click to bind key / button :
+        </div>
       </div>
 
       {[...Array(4)].map((_, i) => (
         <div key={i} style={{ marginBottom: 15, display: 'flex' }}>
           {/* Weapon Mount label column */}
-          <div style={{width: '20%',textAlign:'center'  }}>
-            <label htmlFor={`weapon-select-${i}`}>Weapon {i + 1}:&nbsp;&nbsp;</label>
+          <div style={{ width: '20%', textAlign: 'center' }}>
+            <label htmlFor={`weapon-select-${i}`}>
+              Weapon {i + 1}:&nbsp;&nbsp;
+            </label>
           </div>
-  
+
           {/* Weapon selection dropdown column */}
-          <div style={{ width: '40%',textAlign:'center' }}>
+          <div style={{ width: '40%', textAlign: 'center' }}>
             <select
               id={`weapon-select-${i}`}
               value={selectedWeapons[i]}
@@ -141,9 +153,9 @@ export const WeaponSelector = () => {
               })}
             </select>
           </div>
-  
+
           {/* Key binding input column */}
-          <div style={{  width: '40%',textAlign:'center'  }}>
+          <div style={{ width: '40%', textAlign: 'center' }}>
             <input
               type="text"
               value={renderBindingDisplay(i)}
@@ -165,8 +177,6 @@ export const WeaponSelector = () => {
       ))}
     </div>
   )
-  
-  
 }
 
 export default WeaponSelector

@@ -68,9 +68,9 @@ export function createEmittersAndAnimations(scene: Game) {
   scene.enemyDeathBurstEmitter.setPipeline('Light2D')
 
   scene.anims.create({
-    key: 'antwalk',
-    frames: scene.anims.generateFrameNumbers('ant', { start: 0, end: 61 }),
-    frameRate: 100,
+    key: 'whiteant8',
+    frames: scene.anims.generateFrameNumbers('whiteant8', { start: 0, end: 7 }),
+    frameRate: 20,
     repeat: -1,
   })
 
@@ -282,7 +282,7 @@ export function destroyEnemyAndCreateCorpseDecals(
     enemy.randomSound.destroy()
   }
   enemy.destroy()
-  createBloodSplat(scene, enemy, 80)
+  createBloodSplat(scene, enemy, enemy.enemyData.corpseSize*2)
   const enemyData = enemy.enemyData as EnemyData
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
@@ -382,8 +382,8 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
   const currentPosY = scene.player.mechContainer.body!.position.y
   createDustCloud(
     scene,
-    currentPosX + scene.player.mechContainer.width / 2,
-    currentPosY + scene.player.mechContainer.height / 2,
+    currentPosX + scene.player.mechContainer.width,
+    currentPosY + scene.player.mechContainer.height,
     scene.player.mechContainer.body!.velocity.x,
     scene.player.mechContainer.body!.velocity.y,
     opacity,

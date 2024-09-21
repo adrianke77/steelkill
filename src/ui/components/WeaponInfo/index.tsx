@@ -29,6 +29,7 @@ export const WeaponsInfo = ({
             </div>
             <div>{status}</div>
             <div>---</div>
+            <br />
           </div>
         )
       })}

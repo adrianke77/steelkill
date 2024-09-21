@@ -3,20 +3,13 @@ import { dataStore } from '../../DataStore'
 
 type bindingTuplet = [string, string]
 
-const fixedBindings = {
-  up: 'W',
-  down: 'S',
-  left: 'A',
-  right: 'D',
-  boost: ' ',
-}
-
 const infaredToggleKey = 'V'
 
 export class InputManager {
   scene: Game
+  moveBindings: { [key: string]: string }
   // tracks if the key for the function is currently held down
-  fixedBindingStates: { [key: string]: boolean }
+  moveBindingStates: { [key: string]: boolean }
   // tracks if the weapon group is currently active ( i.e. the button or key is held down )
   customBindingStates: { [key: number]: boolean }
   customBinding: bindingTuplet[]
@@ -24,6 +17,8 @@ export class InputManager {
   constructor(scene: Game) {
     this.scene = scene
     this.customBinding = dataStore.data.inputToWeaponMaps
+    this.moveBindings = dataStore.data.moveBindings
+    console.log(this.moveBindings)
     // sample data: [ ['0', 'mouse'], ['0', 'mouse'], ['1', 'mouse'], ['2', 'mouse'] ]
     this.customBindingStates = {
       0: false,
@@ -31,7 +26,8 @@ export class InputManager {
       2: false,
       3: false,
     }
-    this.fixedBindingStates = {
+    this.moveBindings = dataStore.data.moveBindings
+    this.moveBindingStates = {
       up: false,
       down: false,
       left: false,
@@ -63,6 +59,10 @@ export class InputManager {
     })
   }
 
+  getMoveBindings() {
+    return this.moveBindings
+  }
+
   updateKeyboardInputState(pressedKey: string, isPressed: boolean) {
     if (pressedKey === infaredToggleKey && isPressed) {
       this.scene.viewMgr.toggleInfrared()
@@ -70,9 +70,9 @@ export class InputManager {
     }
 
     let processed = false
-      Object.entries(fixedBindings).forEach(([command, keyboardKey]) => {
+      Object.entries(this.moveBindings).forEach(([command, keyboardKey]) => {
         if (keyboardKey === pressedKey) {
-          this.fixedBindingStates[command] = isPressed
+          this.moveBindingStates[command] = isPressed
           processed = true
         }
       })
@@ -111,7 +111,7 @@ export class InputManager {
       2: false,
       3: false,
     }
-    this.fixedBindingStates = {
+    this.moveBindingStates = {
       up: false,
       down: false,
       left: false,

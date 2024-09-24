@@ -30,11 +30,12 @@ export class PlayerMech {
   mechStepSound: Phaser.Sound.WebAudioSound
   isBoostSoundFading: boolean
   isBoostSoundPlaying: boolean
-  mechHealth: number
+  health: number
   hitSoundNames: string[]
   weapons: WeaponSpec[]
   lastMechStepTime: number
   playerSkidding: boolean
+  armor:number
 
   constructor(scene: Game) {
     this.hitSoundNames = ['mechhit1', 'mechhit2', 'mechhit3', 'mechhit4']
@@ -45,6 +46,7 @@ export class PlayerMech {
     this.isBoostSoundFading = false
     this.lastMechStepTime = 0
     this.playerSkidding = false
+    this.armor = ct.playerInitialArmor
 
     const selectedWeapons = dataStore.data['weapons'] as string[]
     this.weapons = selectedWeapons.map(
@@ -78,8 +80,8 @@ export class PlayerMech {
     }
     this.playerMech.setPipeline('Light2D')
 
-    this.mechHealth = ct.mechStartingHealth
-    EventBus.emit('mech-health', this.mechHealth)
+    this.health = ct.mechStartingHealth
+    EventBus.emit('player-health', this.health)
 
     for (const position of Object.keys(this.boostFlames) as FourPositions[]) {
       const sprite = this.boostFlames[position]
@@ -382,12 +384,7 @@ export class PlayerMech {
     if (enemyData.hitDamage && time - enemy.lastHitTime > enemyData.hitDelay) {
       enemy.lastHitTime = time
       this.playTwoRandomMechHitSounds()
-      this.scene.player.mechHealth -=
-        enemyData.hitDamage * Phaser.Math.FloatBetween(0.97, 1.03)
-      if (this.scene.player.mechHealth <= 0) {
-        this.scene.player.mechHealth = 0
-        this.scene.player.playerDeath()
-      }
+      this.damagePlayer(enemyData.hitDamage * Phaser.Math.FloatBetween(0.97, 1.03))
       const directionRadians = Phaser.Math.Angle.Between(
         enemy.x,
         enemy.y,
@@ -402,7 +399,7 @@ export class PlayerMech {
         directionRadians,
         10,
       )
-      if (this.mechHealth <= ct.mechStartingHealth * 0.6) {
+      if (this.health <= ct.mechStartingHealth * 0.6) {
         // additional 'fire' spark
         this.scene.projectileMgr.hitSpark(
           (this.mechContainer.x + enemy.x) / 2,
@@ -412,9 +409,17 @@ export class PlayerMech {
           20,
         )
       }
-      EventBus.emit('mech-health', this.scene.player.mechHealth)
     }
     return true
+  }
+
+  damagePlayer(damage:number) {
+    this.scene.player.health -= damage
+    if (this.scene.player.health <= 0) {
+      this.scene.player.health = 0
+      this.scene.player.playerDeath()
+    }
+    EventBus.emit('player-health', this.scene.player.health)
   }
 
   playTwoRandomMechHitSounds(): void {

@@ -1,6 +1,11 @@
 import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
-import { EnemyData, EnemySprite, SoundTracker } from '../interfaces'
+import {
+  EnemyData,
+  EnemySprite,
+  EnemyWeaponSpec,
+  SoundTracker,
+} from '../interfaces'
 import {
   generateUniqueId,
   getSoundPan,
@@ -73,7 +78,11 @@ export class EnemyManager {
     enemy.lastScreamTime = 0
 
     if (enemyData.weapons && enemyData.weapons.length > 0) {
-      enemy.lastFireTime = enemyData.weapons.map(() => 0)
+      // randomize when enemies fire
+      const time = this.scene.game.loop.time
+      enemy.lastWeaponFireTime = enemyData.weapons.map(
+        weapon => time + Phaser.Math.Between(0, weapon.fireDelay/2),
+      )
       enemy.tracerTracking = enemyData.weapons.map(() => 0)
     }
 
@@ -85,11 +94,24 @@ export class EnemyManager {
     const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
     const direction = enemy.direction
 
-    // if (enemy.enemyData.weapons && enemy.enemyData.weapons.length > 0) {
-    //   enemy.enemyData.weapons.forEach((weapon) => {
-    //     this.enemyWeaponFire(enemy, weapon)
-    //   })
-    // }
+    const time = this.scene.game.loop.time
+    const distanceToPlayer = Phaser.Math.Distance.Between(
+      enemy.x,
+      enemy.y,
+      playerX,
+      playerY,
+    )
+    if (enemy.enemyData.weapons && enemy.enemyData.weapons.length > 0) {
+      enemy.enemyData.weapons.forEach((weapon, index) => {
+        if (
+          distanceToPlayer < weapon.maxRange! &&
+          time - enemy.lastWeaponFireTime![index] > weapon.fireDelay
+        ) {
+          this.enemyWeaponFire(enemy, weapon, index)
+          enemy.lastWeaponFireTime![index] = time
+        }
+      })
+    }
 
     enemy.rotation = angle + Math.PI / 2
     switch (direction) {
@@ -121,60 +143,54 @@ export class EnemyManager {
     }
   }
 
-  // enemyWeaponFire(enemy:EnemySprite,weapon: WeaponSpec) {
-  //   const projectileMgr = this.scene.projectileMgr
-  //   // Handle tracers
-  //   let hasTracer = false;
-  //   if (weapon.tracerRate) {
-  //     if (projectileMgr.playerTracers[weaponIndex] === undefined) {
-  //       projectileMgr.playerTracers[weaponIndex] = weaponIndex;
-  //     } else {
-  //       if (
-  //         projectileMgr.playerTracers[weaponIndex] >= weapon.tracerRate
-  //       ) {
-  //         projectileMgr.playerTracers[weaponIndex] = 1;
-  //         hasTracer = true;
-  //       } else {
-  //         projectileMgr.playerTracers[weaponIndex]++;
-  //       }
-  //     }
-  //   }
+  enemyWeaponFire(enemy: EnemySprite, weapon: EnemyWeaponSpec, index: number) {
+    const projectileMgr = this.scene.projectileMgr
 
-  //   // Fire the weapon
-  //   if (!!weapon.burstFire && !!weapon.burstFireDelay) {
-  //     for (let i = 0; i < weapon.burstFire; i++) {
-  //       projectileMgr.fireWeapon(
-  //         i * weapon.burstFireDelay,
-  //         weaponPosition,
-  //         weaponIndex,
-  //         weapon,
-  //         hasTracer,
-  //       );
-  //     }
-  //   } else {
-  //     projectileMgr.fireWeapon(
-  //       0,
-  //       weaponPosition,
-  //       weaponIndex,
-  //       weapon,
-  //       hasTracer,
-  //     );
-  //   }
+    // Handle tracers
+    let hasTracer = false
+    let tracker = enemy.tracerTracking![index]
+    if (weapon.tracerRate) {
+      if (weapon.tracerRate === 1) {
+        hasTracer = true
+      } else {
+        if (tracker === undefined) {
+          // Initialize the tracer counter for this weapon
+          tracker = index
+        } else {
+          if (tracker >= weapon.tracerRate) {
+            tracker = 1
+            hasTracer = true
+          } else {
+            tracker++
+          }
+        }
+        enemy.tracerTracking![index] = tracker
+      }
+    }
 
-  //   // If the magazine is now empty or does not have enough ammo for another burst, start reloading immediately
-  //   if (
-  //     this.magCount[weaponIndex] < ammoReduction &&
-  //     this.remainingAmmo[weaponIndex] > 0
-  //   ) {
-  //     this.startReload(weaponIndex, time, weapon.reloadDelay);
-  //   } else {
-  //     // Update reloading status
-  //     EventBus.emit(
-  //       'reload-status',
-  //       this.lastReloadStart.map((startTime) => startTime !== 0),
-  //     );
-  //   }
-  // }
+    // Fire the weapon
+    if (!!weapon.burstFire && !!weapon.burstFireDelay) {
+      for (let i = 0; i < weapon.burstFire; i++) {
+        projectileMgr.enemyShot(
+          i * weapon.burstFireDelay,
+          enemy.x,
+          enemy.y,
+          enemy.rotation,
+          weapon,
+          hasTracer,
+        )
+      }
+    } else {
+      projectileMgr.enemyShot(
+        0,
+        enemy.x,
+        enemy.y,
+        enemy.rotation,
+        weapon,
+        hasTracer,
+      )
+    }
+  }
 
   resetDirectionTimer(enemy: EnemySprite): void {
     const enemyData = enemy.enemyData as EnemyData
@@ -304,5 +320,4 @@ export class EnemyManager {
       return true
     })
   }
-
 }

@@ -146,11 +146,13 @@ export class Game extends Scene {
       this.projectileMgr.projectiles,
       this.enemyMgr.enemies,
       undefined,
-      (projectile, enemy) => {
-        return this.projectileMgr.projectileHitsEnemy(
-          projectile as Projectile,
-          enemy as EnemySprite,
-        )
+      (object1, object2) => {
+        const projectile = object1 as Projectile
+        const enemy = object2 as EnemySprite
+        if (projectile.enemySource === true) {
+          return false
+        }
+        return this.projectileMgr.projectileHitsEnemy(projectile, enemy)
       },
       this,
     )
@@ -158,11 +160,10 @@ export class Game extends Scene {
     this.physics.add.collider(
       this.projectileMgr.projectiles,
       this.player.mechContainer,
-      object1 => {
-        const projectile = object1 as Projectile
+      (_, object2) => { 
+        const projectile = object2 as Projectile
         if (projectile.enemySource) {
-          this.playerTakeDamage(projectile.damage)
-          this.projectileMgr.destroyProjectile(projectile)
+          this.projectileMgr.projectileHitsPlayer(projectile)
         }
       },
       undefined,
@@ -289,14 +290,6 @@ export class Game extends Scene {
     return particles
   }
 
-  playerTakeDamage(damage: number): void {
-    this.player.mechHealth -= damage
-    if (this.player.mechHealth <= 0) {
-      this.endGame()
-    }
-    EventBus.emit('player-health', this.player.mechHealth)
-  }
-
   createInGroup(
     group: Phaser.GameObjects.Group,
     x?: number,
@@ -320,9 +313,14 @@ export class Game extends Scene {
     }
     const ammoReduction = weapon.burstFire ? weapon.burstFire : 1
 
-    if (!this.canFireWeapon(weaponIndex, ammoReduction)) {
-      this.startReload(weaponIndex, time, weapon.reloadDelay)
-      return
+    const ammoCheck = this.canFireWeapon(weaponIndex, ammoReduction)
+    if (!ammoCheck) {
+      if (ammoCheck === null) {
+        return
+      } else {
+        this.startReload(weaponIndex, time, weapon.reloadDelay)
+        return
+      }
     }
 
     // Reduce ammo count in magazine by the determined amount
@@ -331,47 +329,40 @@ export class Game extends Scene {
 
     // Handle tracers
     let hasTracer = false
+    let tracker = this.projectileMgr.playerTracers[weaponIndex]
     if (weapon.tracerRate) {
       if (weapon.tracerRate === 1) {
         // If tracerRate is 1, every shot should have a tracer
         hasTracer = true
       } else {
-        if (this.projectileMgr.playerTracers[weaponIndex] === undefined) {
+        if (tracker === undefined) {
           // Initialize the tracer counter for this weapon
-          this.projectileMgr.playerTracers[weaponIndex] = weaponIndex
+          tracker = weaponIndex
           hasTracer = true // First shot should be a tracer
         } else {
-          if (
-            this.projectileMgr.playerTracers[weaponIndex] >= weapon.tracerRate
-          ) {
-            this.projectileMgr.playerTracers[weaponIndex] = 1
+          if (tracker >= weapon.tracerRate) {
+            tracker = 1
             hasTracer = true
           } else {
-            this.projectileMgr.playerTracers[weaponIndex]++
+            tracker++
           }
         }
+        this.projectileMgr.playerTracers[weaponIndex] = tracker
       }
     }
 
     // Fire the weapon
     if (!!weapon.burstFire && !!weapon.burstFireDelay) {
       for (let i = 0; i < weapon.burstFire; i++) {
-        this.projectileMgr.fireWeapon(
+        this.projectileMgr.playerShot(
           i * weapon.burstFireDelay,
           weaponPosition,
-          weaponIndex,
           weapon,
           hasTracer,
         )
       }
     } else {
-      this.projectileMgr.fireWeapon(
-        0,
-        weaponPosition,
-        weaponIndex,
-        weapon,
-        hasTracer,
-      )
+      this.projectileMgr.playerShot(0, weaponPosition, weapon, hasTracer)
     }
 
     // If the magazine is now empty or does not have enough ammo for another burst, start reloading immediately
@@ -408,7 +399,11 @@ export class Game extends Scene {
     return false
   }
 
-  private canFireWeapon(weaponIndex: number, ammoReduction: number): boolean {
+  // returns true if can fire, false if need to reload, null if no ammo entirely
+  private canFireWeapon(
+    weaponIndex: number,
+    ammoReduction: number,
+  ): boolean | null {
     if (this.magCount[weaponIndex] < ammoReduction) {
       if (this.remainingAmmo[weaponIndex] > 0) {
         return false // Need to reload
@@ -417,7 +412,7 @@ export class Game extends Scene {
           'reload-status',
           this.lastReloadStart.map(startTime => startTime !== 0),
         )
-        return false // No ammo left
+        return null // No ammo left
       }
     }
     return true

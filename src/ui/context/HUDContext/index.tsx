@@ -6,7 +6,7 @@ interface HUDContextType {
   remainingAmmo: number[]
   isReloading: boolean[]
   boostLeft: number
-  mechHealthLeft: number
+  playerHealthLeft: number
 }
 
 const HUDContext = createContext<HUDContextType | undefined>(undefined)
@@ -18,27 +18,27 @@ export const EventDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [remainingAmmo, setRemainingAmmo] = useState([0, 0, 0, 0])
   const [isReloading, setIsReloading] = useState([false, false, false, false])
   const [boostLeft, setBoostLeft] = useState(0)
-  const [mechHealthLeft, setMechHealthLeft] = useState(0)
+  const [playerHealthLeft, setPlayerHealthLeft] = useState(0)
 
   useEffect(() => {
     const handleMagCount = (data: number[]) => setMagCount(data)
     const handleRemainingAmmo = (data: number[]) => setRemainingAmmo(data)
     const handleReloadStatus = (data: boolean[]) => setIsReloading(data)
     const handleBoostStatus = (data: number) => setBoostLeft(data)
-    const handleMechHealth = (data: number) => setMechHealthLeft(data)
+    const handlePlayerHealth = (data: number) => setPlayerHealthLeft(data)
 
     EventBus.on('mag-count', handleMagCount)
     EventBus.on('remaining-ammo', handleRemainingAmmo)
     EventBus.on('reload-status', handleReloadStatus)
     EventBus.on('boost-status', handleBoostStatus)
-    EventBus.on('mech-health', handleMechHealth)
+    EventBus.on('player-health', handlePlayerHealth)
 
     return () => {
       EventBus.off('mag-count', handleMagCount)
       EventBus.off('remaining-ammo', handleRemainingAmmo)
       EventBus.off('reload-status', handleReloadStatus)
       EventBus.off('boost-status', handleBoostStatus)
-      EventBus.off('mech-health', handleMechHealth)
+      EventBus.off('player-health', handlePlayerHealth)
     }
   }, [])
 
@@ -49,7 +49,7 @@ export const EventDataProvider: React.FC<{ children: React.ReactNode }> = ({
         remainingAmmo,
         isReloading,
         boostLeft,
-        mechHealthLeft,
+        playerHealthLeft,
       }}
     >
       {children}

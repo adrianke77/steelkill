@@ -1,4 +1,4 @@
-import { EnemySprite } from '../interfaces'
+import { EnemySprite, Projectile } from '../interfaces'
 import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
 
@@ -110,7 +110,7 @@ export class MinimapManager {
 
     // Draw projectiles on the minimap
     this.scene.projectileMgr.projectiles.children.iterate(object => {
-      const projectile = object as Phaser.Physics.Arcade.Sprite
+      const projectile = object as Projectile
       // Calculate the position relative to the minimap
       const relativeX = (projectile.x - minimapX) * MINIMAP_SCALE
       const relativeY = (projectile.y - minimapY) * MINIMAP_SCALE
@@ -122,7 +122,8 @@ export class MinimapManager {
         relativeY >= 0 &&
         relativeY <= MINIMAP_HEIGHT
       ) {
-        this.minimap.fillStyle(0xFFFFFF, 1)
+        const color = projectile.enemySource? 0x00FF00 : 0xFFFFFF
+        this.minimap.fillStyle(color, 1)
         this.minimap.fillCircle(MINIMAP_X + relativeX, MINIMAP_Y + relativeY, 1)
       }
       return true

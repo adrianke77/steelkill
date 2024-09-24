@@ -13,10 +13,12 @@ export interface WeaponSpec {
   totalAmmo: number
   magSize: number
   reloadDelay: number
+  maxRange?: number
   explodeRadius?: number
   explodeDamage?: number
   explodeSound?: string
   explodeSoundVol?: number
+  explodeColor?: number
   burstFire?: number
   burstFireDelay?: number
   hasBoostFlame?: boolean
@@ -45,32 +47,38 @@ export interface WeaponSpec {
   tracerHitLightIntensity?: number
 }
 
+export interface EnemyWeaponSpec
+  extends Omit<
+    WeaponSpec,
+    'totalAmmo' | 'magSize' | 'reloadDelay' | 'reloadSound'
+  > {}
+
 export interface EnemyData {
-  spawnPeriod: number;
-  speed: number;
-  health: number;
-  armor: number;
-  displaySize: number;
-  collisionSize: number;
-  bloodColor: number;
-  color: number;
-  walkAnimation: string;
-  corpseImage: string;
-  corpseSize: number;
-  spriteSheetKey: string;
-  directionTimerMax: number;
-  directionTimerMin: number;
-  randomSound?: string;
-  randomSoundChance?: number;
-  randomSoundVol?: number;
-  randomSoundLikelihood?: number; // Likelihood of sound happening per direction change
-  deathSound: string;
-  deathSoundVol?: number;
-  hitDamage: number;
-  hitDelay: number;
-  hitSound: string;
-  tooSmallToBleedWhenHit?: boolean;
-  weapons?: WeaponSpec[];
+  spawnPeriod: number
+  speed: number
+  health: number
+  armor: number
+  displaySize: number
+  collisionSize: number
+  bloodColor: number
+  color: number
+  walkAnimation: string
+  corpseImage: string
+  corpseSize: number
+  spriteSheetKey: string
+  directionTimerMax: number
+  directionTimerMin: number
+  randomSound?: string
+  randomSoundChance?: number
+  randomSoundVol?: number
+  randomSoundLikelihood?: number // Likelihood of sound happening per direction change
+  deathSound: string
+  deathSoundVol?: number
+  hitDamage: number
+  hitDelay: number
+  hitSound: string
+  tooSmallToBleedWhenHit?: boolean
+  weapons?: EnemyWeaponSpec[]
 }
 
 export interface EnemyDataMap {
@@ -87,6 +95,8 @@ export interface EnemySprite extends Phaser.Physics.Arcade.Sprite {
   randomSound?: Phaser.Sound.WebAudioSound
   randomSoundId: string
   lastHitTime: number
+  tracerTracking?: number[]
+  lastWeaponFireTime?: number[]
 }
 
 export interface Projectile extends Phaser.Physics.Arcade.Sprite {
@@ -101,7 +111,7 @@ export interface Projectile extends Phaser.Physics.Arcade.Sprite {
     x: number
     y: number
   }
-  weapon: WeaponSpec
+  weapon: WeaponSpec | EnemyWeaponSpec
   hasTracer?: boolean
   enemySource?: boolean
 }
@@ -124,4 +134,3 @@ type SoundTuple = [
 export type SoundTracker = { [key: string]: SoundTuple[] }
 
 export type DataFromReact = [string, any]
-

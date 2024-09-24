@@ -47,6 +47,7 @@ export const Constants = {
   boostAccel: 400,
   boostFadeTime: 400,
   deceleration: 70,
+  playerInitialArmor: 10,
   startPosition: { y: 500, x: 900 },
   depths,
   MouseButtons: {

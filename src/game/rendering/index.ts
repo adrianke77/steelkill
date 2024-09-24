@@ -1,7 +1,7 @@
 66 // renderUtils.ts
 import { Game } from '../scenes/Game'
 import { brightMuzzleFrames, Constants as ct } from '../constants'
-import { EnemyData, EnemySprite, Projectile, WeaponSpec } from '../interfaces'
+import { EnemyData, EnemySprite, EnemyWeaponSpec, Projectile, WeaponSpec } from '../interfaces'
 import { blendColors } from '../utils'
 
 export function loadRenderingAssets(scene: Game) {
@@ -149,7 +149,7 @@ export function playMuzzleFlare(
   rotation: number,
   velocityX: number,
   velocityY: number,
-  weapon: WeaponSpec,
+  weapon: WeaponSpec | EnemyWeaponSpec,
 ): void {
   const flare = scene.addSprite(x, y, 'muzzleflash')
   flare.rotation = rotation - Math.PI / 2 // Adjust rotation to match mechContainer's direction
@@ -347,6 +347,7 @@ export function renderExplosion(
   y: number,
   diameter: number,
   damage: number,
+  color?: number
 ) {
   const explosion = scene.addSprite(x, y, 'explosion')
   explosion.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
@@ -357,6 +358,9 @@ export function renderExplosion(
   explosion.displayHeight = displayDiameter + 10
   explosion.displayWidth = displayDiameter + 10
   explosion.setDepth(ct.depths.explosion)
+  if (color) {
+    explosion.setTint(color)
+  }
   explosion.setAlpha(Phaser.Math.FloatBetween(0.7, 0.9))
   explosion.play('explosion')
   const scorch = scene.addSprite(x, y, 'scorch1')

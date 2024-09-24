@@ -9,6 +9,7 @@ import {
   WeaponSpec,
   SoundTracker,
   EnemyData,
+  EnemyWeaponSpec,
 } from '../interfaces'
 import {
   addFlameToProjectile,
@@ -57,26 +58,29 @@ export class ProjectileManager {
     })
   }
 
-  playerCreateProjectile(
+  createProjectile(
     x: number,
     y: number,
     angle: number,
-    weaponIndex: number,
+    weapon: WeaponSpec | EnemyWeaponSpec,
     hasTracer: boolean,
+    enemySource?: boolean,
   ): void {
-    const weapon = this.scene.player.weapons[weaponIndex]
     const { startX, startY } = this.calculateProjectileStartPosition(
       x,
       y,
       angle,
       weapon.roundHeight,
     )
-    const projectile = this.createProjectile(startX, startY, weapon.image)
+    const projectile = this.createProjectileSprite(startX, startY, weapon.image)
     projectile.weapon = weapon
+    if (enemySource) {
+      projectile.enemySource = true
+    }
 
     createLightFlash(this.scene, startX, startY, ct.muzzleFlashColor, 1, 2, 100)
 
-    this.setupProjectilePhysics(projectile, weapon, weaponIndex)
+    this.setupProjectilePhysics(projectile, weapon)
 
     const facing = angle - Math.PI / 2
     const spread = weapon.baseSpread
@@ -106,7 +110,7 @@ export class ProjectileManager {
     return { startX: x + offsetX, startY: y + offsetY }
   }
 
-  private createProjectile(
+  private createProjectileSprite(
     startX: number,
     startY: number,
     image: string,
@@ -125,12 +129,11 @@ export class ProjectileManager {
 
   private setupProjectilePhysics(
     projectile: Projectile,
-    weapon: WeaponSpec,
-    weaponIndex: number,
+    weapon: WeaponSpec | EnemyWeaponSpec,
   ): void {
     projectile.damage = weapon.damage
     projectile.penetration = weapon.penetration
-    projectile.weaponIndex = weaponIndex
+    projectile.weapon = weapon
     if (weapon.tint) {
       projectile.setTint(weapon.tint)
     }
@@ -138,7 +141,7 @@ export class ProjectileManager {
 
   private setupProjectileDisplay(
     projectile: Projectile,
-    weapon: WeaponSpec,
+    weapon: WeaponSpec | EnemyWeaponSpec,
     forwardAngle: number,
     hasTracer: boolean,
   ): void {
@@ -244,7 +247,7 @@ export class ProjectileManager {
     startX: number,
     startY: number,
     forwardAngle: number,
-    weapon: WeaponSpec,
+    weapon: WeaponSpec | EnemyWeaponSpec,
   ): void {
     addFlameToProjectile(this.scene, projectile, startX, startY, forwardAngle)
     projectile.setPipeline('Light2D')
@@ -256,17 +259,14 @@ export class ProjectileManager {
   }
 
   projectileHitsEnemy(projectile: Projectile, enemy: EnemySprite): boolean {
-    const weapon = this.scene.player.weapons[projectile.weaponIndex]
-    projectile.setData('weapon', weapon)
-
+    const weapon = projectile.weapon
     // Handle explosion
     if (weapon?.explodeRadius) {
       this.playExplosionSound(projectile)
-      this.createExplosion(
+      this.createExplosionHittingEnemy(
         (projectile.x + enemy.x) / 2,
         (projectile.y + enemy.y) / 2,
-        weapon.explodeRadius,
-        weapon.explodeDamage!,
+        weapon,
       )
       this.destroyProjectile(projectile)
       return true
@@ -274,11 +274,11 @@ export class ProjectileManager {
 
     // Handle penetration
     if (projectile!.penetration > enemy.armor) {
-      this.applyProjectileDamageAndEffects(projectile, enemy, 1)
+      this.applyProjectileDamageAndEffectsToEnemy(projectile, enemy, 1)
       projectile.penetration -= enemy.armor / 2
       return false
     } else if (projectile!.penetration > enemy.armor / 2) {
-      this.applyProjectileDamageAndEffects(projectile, enemy, 0.3)
+      this.applyProjectileDamageAndEffectsToEnemy(projectile, enemy, 0.5)
       this.destroyProjectile(projectile)
     } else if (projectile!.penetration < enemy.armor / 2) {
       this.destroyProjectile(projectile)
@@ -286,10 +286,39 @@ export class ProjectileManager {
     return true
   }
 
-  private applyProjectileDamageAndEffects(
+  projectileHitsPlayer(projectile: Projectile): boolean {
+    const player = this.scene.player.mechContainer
+    const weapon = projectile.weapon
+    // Handle explosion
+    if (weapon?.explodeRadius) {
+      this.playExplosionSound(projectile)
+      this.createExplosionHittingPlayer(
+        (projectile.x + player.x) / 2,
+        (projectile.y + player.y) / 2,
+        weapon,
+      )
+      this.destroyProjectile(projectile)
+      return true
+    }
+
+    // Handle penetration
+    if (projectile!.penetration > this.scene.player.armor) {
+      this.applyProjectileDamageAndEffectsToPlayer(projectile, 1)
+      projectile.penetration -= this.scene.player.armor / 2
+      return false
+    } else if (projectile!.penetration > this.scene.player.armor / 2) {
+      this.applyProjectileDamageAndEffectsToPlayer(projectile, 0.3)
+      this.destroyProjectile(projectile)
+    } else if (projectile!.penetration < this.scene.player.armor / 2) {
+      this.destroyProjectile(projectile)
+    }
+    return true
+  }
+
+  private applyProjectileDamageAndEffectsToEnemy(
     projectile: Projectile,
     enemy: EnemySprite,
-    damageFactor: number
+    damageFactor: number,
   ): void {
     const enemyData = enemy.enemyData as EnemyData
     enemy.health -= projectile.damage * damageFactor
@@ -302,9 +331,9 @@ export class ProjectileManager {
     this.projectileSpark(
       (projectile.x + enemy.x) / 2,
       (projectile.y + enemy.y) / 2,
-      enemyData,
       projectile,
       directionRadians,
+      enemyData,
     )
     if (!enemyData.tooSmallToBleedWhenHit) {
       createBloodSplat(this.scene, enemy, 20)
@@ -326,29 +355,41 @@ export class ProjectileManager {
     }
   }
 
-  destroyProjectile(projectile: Projectile): void {
-    if (projectile.flame) {
-      projectile.flame.destroy()
-    }
-    if (projectile.light) {
-      this.scene.lights.removeLight(projectile.light)
-    }
-    if (projectile.tracerLight) {
-      this.scene.lights.removeLight(projectile.tracerLight)
-    }
-    if (projectile.flameLight) {
-      this.scene.lights.removeLight(projectile.flameLight)
-    }
-    projectile.destroy()
+  private applyProjectileDamageAndEffectsToPlayer(
+    projectile: Projectile,
+    damageFactor: number,
+  ): void {
+    const player = this.scene.player
+    player.health -= projectile.damage * damageFactor
+    const directionRadians = Phaser.Math.Angle.Between(
+      projectile.x,
+      projectile.y,
+      player.mechContainer.x,
+      player.mechContainer.y,
+    )
+    this.projectileSpark(
+      (projectile.x + player.mechContainer.x) / 2,
+      (projectile.y + player.mechContainer.y) / 2,
+      projectile,
+      directionRadians,
+    )
   }
 
-  createExplosion(
+  createExplosionHittingEnemy(
     x: number,
     y: number,
-    radius: number,
-    baseDamage: number,
+    weapon: WeaponSpec | EnemyWeaponSpec,
   ): void {
-    renderExplosion(this.scene, x, y, radius * 2, baseDamage)
+    const radius = weapon.explodeRadius!
+    const baseDamage = weapon.explodeDamage!
+    renderExplosion(
+      this.scene,
+      x,
+      y,
+      radius * 2,
+      baseDamage,
+      weapon.explodeColor,
+    )
     this.scene.enemyMgr.enemies.children.each(
       (enemy: Phaser.GameObjects.GameObject) => {
         const enemySprite = enemy as EnemySprite
@@ -392,21 +433,63 @@ export class ProjectileManager {
     )
   }
 
+  createExplosionHittingPlayer(
+    x: number,
+    y: number,
+    weapon: WeaponSpec | EnemyWeaponSpec,
+  ): void {
+    const player = this.scene.player
+    const radius = weapon.explodeRadius!
+    const baseDamage = weapon.explodeDamage!
+    renderExplosion(
+      this.scene,
+      x,
+      y,
+      radius * 2,
+      baseDamage,
+      weapon.explodeColor,
+    )
+    const distance = Phaser.Math.Distance.Between(
+      x,
+      y,
+      player.mechContainer.x,
+      player.mechContainer.y,
+    )
+    console.log(distance, radius)
+    if (distance <= radius) {
+      const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+      console.log(damage)
+      player.damagePlayer(damage - player.armor)
+    }
+  }
+
+  destroyProjectile(projectile: Projectile): void {
+    if (projectile.flame) {
+      projectile.flame.destroy()
+    }
+    if (projectile.light) {
+      this.scene.lights.removeLight(projectile.light)
+    }
+    if (projectile.tracerLight) {
+      this.scene.lights.removeLight(projectile.tracerLight)
+    }
+    if (projectile.flameLight) {
+      this.scene.lights.removeLight(projectile.flameLight)
+    }
+    projectile.destroy()
+  }
+
   projectileSpark(
     x: number,
     y: number,
-    enemyData: EnemyData,
     projectile: Projectile,
     radDirection?: number,
+    enemyData?: EnemyData,
   ): void {
-    this.hitSpark(
-      x,
-      y,
-      Phaser.Math.RND.pick([0xffffff, enemyData.bloodColor]),
-      radDirection,
-      5,
-      projectile,
-    )
+    const sparkColor = enemyData
+      ? Phaser.Math.RND.pick([0xffffff, enemyData.bloodColor])
+      : 0xffffff
+    this.hitSpark(x, y, sparkColor, radDirection, 5, projectile)
   }
 
   hitSpark(
@@ -452,10 +535,9 @@ export class ProjectileManager {
     }
   }
 
-  fireWeapon = (
+  playerShot = (
     delay: number,
     weaponPosition: WeaponPosition,
-    weaponIndex: number,
     weapon: WeaponSpec,
     hasTracer: boolean,
   ) => {
@@ -473,13 +555,7 @@ export class ProjectileManager {
       const startX = this.scene.player.mechContainer.x + offsetX + forwardX
       const startY = this.scene.player.mechContainer.y + offsetY + forwardY
 
-      this.playerCreateProjectile(
-        startX,
-        startY,
-        rotation,
-        weaponIndex,
-        hasTracer,
-      )
+      this.createProjectile(startX, startY, rotation, weapon, hasTracer)
       playMuzzleFlare(
         this.scene,
         startX,
@@ -492,7 +568,32 @@ export class ProjectileManager {
     })
   }
 
-  playWeaponFireSound = (weapon: WeaponSpec, projectile: Projectile) => {
+  enemyShot = (
+    delay: number,
+    x: number,
+    y: number,
+    angle: number,
+    weapon: EnemyWeaponSpec,
+    hasTracer: boolean,
+  ) => {
+    this.scene.time.delayedCall(delay, () => {
+      this.createProjectile(x, y, angle, weapon, hasTracer, true)
+      playMuzzleFlare(
+        this.scene,
+        x,
+        y,
+        angle,
+        this.scene.player.mechContainer.body!.velocity.x,
+        this.scene.player.mechContainer.body!.velocity.y,
+        weapon,
+      )
+    })
+  }
+
+  playWeaponFireSound = (
+    weapon: WeaponSpec | EnemyWeaponSpec,
+    projectile: Projectile,
+  ) => {
     // if same sound was played very recently,
     // increase the sound's volume instead of playing another copy
     // usually only catches weapons firing simultaneously
@@ -559,7 +660,7 @@ export class ProjectileManager {
   }
 
   playExplosionSound = (projectile: Projectile) => {
-    const weapon = projectile.getData('weapon') as WeaponSpec
+    const weapon = projectile.weapon as WeaponSpec
     const explodeSound = weapon.explodeSound!
     if (this.sounds[explodeSound].length > 6) {
       const [, sound] = this.sounds[explodeSound].shift()!

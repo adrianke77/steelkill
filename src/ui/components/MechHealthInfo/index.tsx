@@ -2,9 +2,9 @@ import { useHUDData } from '../../context/HUDContext'
 import { Constants } from '../../../game/constants'
 
 export const MechHealthInfo = (): React.JSX.Element => {
-  const { mechHealthLeft } = useHUDData()
+  const { playerHealthLeft } = useHUDData()
   const healthPercentage = Math.max(
-    (mechHealthLeft / Constants.mechStartingHealth) * 100,
+    (playerHealthLeft / Constants.mechStartingHealth) * 100,
     0,
   )
   const healthStyle =

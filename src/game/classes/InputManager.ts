@@ -18,7 +18,6 @@ export class InputManager {
     this.scene = scene
     this.customBinding = dataStore.data.inputToWeaponMaps
     this.moveBindings = dataStore.data.moveBindings
-    console.log(this.moveBindings)
     // sample data: [ ['0', 'mouse'], ['0', 'mouse'], ['1', 'mouse'], ['2', 'mouse'] ]
     this.customBindingStates = {
       0: false,

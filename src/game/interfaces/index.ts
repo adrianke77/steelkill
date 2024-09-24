@@ -45,13 +45,6 @@ export interface WeaponSpec {
   tracerHitLightIntensity?: number
 }
 
-export interface EnemyWeaponData {
-  image: string;
-  damage: number;
-  initialSpeed: number;
-  trail?: boolean; // Optional: Whether the projectile has a trail
-}
-
 export interface EnemyData {
   spawnPeriod: number;
   speed: number;
@@ -77,11 +70,7 @@ export interface EnemyData {
   hitDelay: number;
   hitSound: string;
   tooSmallToBleedWhenHit?: boolean;
-
-  // New properties for firing projectiles
-  canFireProjectiles?: boolean; // Whether the enemy can fire projectiles
-  fireRate?: number; // How frequently the enemy fires projectiles (in ms)
-  enemyWeapon?: EnemyWeaponData; // Data related to the projectile fired by the enemy
+  weapons?: WeaponSpec[];
 }
 
 export interface EnemyDataMap {

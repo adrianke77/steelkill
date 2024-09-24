@@ -1,4 +1,5 @@
 import { EnemyDataMap } from '../interfaces'
+import { weapons } from './weapons'
 
 export const enemies ={
     ant: {
@@ -15,12 +16,12 @@ export const enemies ={
       corpseSize: 50,
       spriteSheetKey: 'whiteant8',
       randomSound: 'antsounds2',
-      randomSoundVol: 1.5,
-      randomSoundChance: 0.2,
+      randomSoundVol: 2,
+      randomSoundChance: 0.4,
       directionTimerMax: 750,
       directionTimerMin: 250,
       deathSound: 'antdeath',
-      deathSoundVol: 0.6,
+      deathSoundVol: 1.5,
       hitDamage: 22,
       hitDelay: 500,
       hitSound: 'anthit',
@@ -40,23 +41,16 @@ export const enemies ={
       corpseSize: 100,
       spriteSheetKey: 'whiteant8',
       randomSound: 'antsounds2',
-      randomSoundVol: 1.5,
-      randomSoundChance: 0.2,
+      randomSoundVol: 3,
+      randomSoundChance: 0.4,
       directionTimerMax: 750,
       directionTimerMin: 250,
       deathSound: 'antdeath',
-      deathSoundVol: 0.6,
+      deathSoundVol: 2,
       hitDamage: 22,
       hitDelay: 500,
       hitSound: 'anthit',
       tooSmallToBleedWhenHit: false,
-    //   canFireProjectiles: true, // Indicates this enemy can fire projectiles
-    //   fireRate: 1000, // Fire every second
-    //   enemyWeapon: {
-    //     image: 'enemyProjectile',
-    //     damage: 10,
-    //     initialSpeed: 200,
-    //     trail: true, // Optionally add trail effects
-    //   },
+      weapons: [weapons.hmg1]
     },
   } as EnemyDataMap

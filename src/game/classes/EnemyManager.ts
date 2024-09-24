@@ -71,50 +71,110 @@ export class EnemyManager {
     enemy.enemyData = enemyData
     enemy.lastHitTime = 0
     enemy.lastScreamTime = 0
-    // Start firing projectiles if the enemy can shoot
-    if (enemyData.canFireProjectiles) {
-      this.startFiringProjectiles(enemy)
+
+    if (enemyData.weapons && enemyData.weapons.length > 0) {
+      enemy.lastFireTime = enemyData.weapons.map(() => 0)
+      enemy.tracerTracking = enemyData.weapons.map(() => 0)
     }
+
     this.resetDirectionTimer(enemy)
   }
 
-  private startFiringProjectiles(enemy: EnemySprite): void {
-    const fireRate = enemy.enemyData.fireRate || 1000; // Default fire rate is 1 second
+  chasePlayer(enemy: EnemySprite, speed: number): void {
+    const [playerX, playerY] = this.scene.player.getPlayerCoords()
+    const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
+    const direction = enemy.direction
 
-    this.scene.time.addEvent({
-      delay: fireRate,
-      loop: true,
-      callback: () => {
-        const [playerX, playerY] = this.scene.player.getPlayerCoords();
-        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, playerX, playerY);
+    // if (enemy.enemyData.weapons && enemy.enemyData.weapons.length > 0) {
+    //   enemy.enemyData.weapons.forEach((weapon) => {
+    //     this.enemyWeaponFire(enemy, weapon)
+    //   })
+    // }
 
-        this.scene.projectileMgr.enemyCreateProjectile(
-          enemy.x,
-          enemy.y,
-          angle,
-          enemy,
-        );
-      },
-      callbackScope: this,
-    });
+    enemy.rotation = angle + Math.PI / 2
+    switch (direction) {
+      case 'charge':
+        enemy.setVelocity(
+          speed * 4 * Math.cos(angle),
+          speed * 3 * Math.sin(angle),
+        )
+        break
+      case 'stop':
+        enemy.setVelocity(0, 0)
+        break
+      case 'angled-left': {
+        const leftAngle = angle - Math.PI / 4
+        enemy.setVelocity(
+          speed * 2 * Math.cos(leftAngle),
+          speed * Math.sin(leftAngle),
+        )
+        break
+      }
+      case 'angled-right': {
+        const rightAngle = angle + Math.PI / 4
+        enemy.setVelocity(
+          speed * 2 * Math.cos(rightAngle),
+          speed * Math.sin(rightAngle),
+        )
+        break
+      }
+    }
   }
 
-  switchEnemiesToInfraredColors(): void {
-    this.enemies.children.iterate(enemy => {
-      const enemySprite = enemy as EnemySprite
-      const color = increaseColorIntensity(enemySprite.enemyData.color)
-      enemySprite.setTint(color)
-      return true
-    })
-  }
+  // enemyWeaponFire(enemy:EnemySprite,weapon: WeaponSpec) {
+  //   const projectileMgr = this.scene.projectileMgr
+  //   // Handle tracers
+  //   let hasTracer = false;
+  //   if (weapon.tracerRate) {
+  //     if (projectileMgr.playerTracers[weaponIndex] === undefined) {
+  //       projectileMgr.playerTracers[weaponIndex] = weaponIndex;
+  //     } else {
+  //       if (
+  //         projectileMgr.playerTracers[weaponIndex] >= weapon.tracerRate
+  //       ) {
+  //         projectileMgr.playerTracers[weaponIndex] = 1;
+  //         hasTracer = true;
+  //       } else {
+  //         projectileMgr.playerTracers[weaponIndex]++;
+  //       }
+  //     }
+  //   }
 
-  switchEnemiesToNonInfraredColors(): void {
-    this.enemies.children.iterate(enemy => {
-      const enemySprite = enemy as EnemySprite
-      enemySprite.setTint(enemySprite.enemyData.color)
-      return true
-    })
-  }
+  //   // Fire the weapon
+  //   if (!!weapon.burstFire && !!weapon.burstFireDelay) {
+  //     for (let i = 0; i < weapon.burstFire; i++) {
+  //       projectileMgr.fireWeapon(
+  //         i * weapon.burstFireDelay,
+  //         weaponPosition,
+  //         weaponIndex,
+  //         weapon,
+  //         hasTracer,
+  //       );
+  //     }
+  //   } else {
+  //     projectileMgr.fireWeapon(
+  //       0,
+  //       weaponPosition,
+  //       weaponIndex,
+  //       weapon,
+  //       hasTracer,
+  //     );
+  //   }
+
+  //   // If the magazine is now empty or does not have enough ammo for another burst, start reloading immediately
+  //   if (
+  //     this.magCount[weaponIndex] < ammoReduction &&
+  //     this.remainingAmmo[weaponIndex] > 0
+  //   ) {
+  //     this.startReload(weaponIndex, time, weapon.reloadDelay);
+  //   } else {
+  //     // Update reloading status
+  //     EventBus.emit(
+  //       'reload-status',
+  //       this.lastReloadStart.map((startTime) => startTime !== 0),
+  //     );
+  //   }
+  // }
 
   resetDirectionTimer(enemy: EnemySprite): void {
     const enemyData = enemy.enemyData as EnemyData
@@ -163,41 +223,6 @@ export class EnemyManager {
     soundInstance.once('complete', () => {
       soundInstance.destroy()
     })
-  }
-
-  chasePlayer(enemy: EnemySprite, speed: number): void {
-    const [playerX, playerY] = this.scene.player.getPlayerCoords()
-    const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
-    const direction = enemy.direction
-
-    enemy.rotation = angle + Math.PI / 2
-    switch (direction) {
-      case 'charge':
-        enemy.setVelocity(
-          speed * 4 * Math.cos(angle),
-          speed * 3 * Math.sin(angle),
-        )
-        break
-      case 'stop':
-        enemy.setVelocity(0, 0)
-        break
-      case 'angled-left': {
-        const leftAngle = angle - Math.PI / 4
-        enemy.setVelocity(
-          speed * 2 * Math.cos(leftAngle),
-          speed * Math.sin(leftAngle),
-        )
-        break
-      }
-      case 'angled-right': {
-        const rightAngle = angle + Math.PI / 4
-        enemy.setVelocity(
-          speed * 2 * Math.cos(rightAngle),
-          speed * Math.sin(rightAngle),
-        )
-        break
-      }
-    }
   }
 
   attemptEnemySound(enemy: EnemySprite): void {
@@ -262,4 +287,22 @@ export class EnemyManager {
       1,
     )
   }
+
+  switchEnemiesToInfraredColors(): void {
+    this.enemies.children.iterate(enemy => {
+      const enemySprite = enemy as EnemySprite
+      const color = increaseColorIntensity(enemySprite.enemyData.color)
+      enemySprite.setTint(color)
+      return true
+    })
+  }
+
+  switchEnemiesToNonInfraredColors(): void {
+    this.enemies.children.iterate(enemy => {
+      const enemySprite = enemy as EnemySprite
+      enemySprite.setTint(enemySprite.enemyData.color)
+      return true
+    })
+  }
+
 }

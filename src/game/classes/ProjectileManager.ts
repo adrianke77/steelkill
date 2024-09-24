@@ -39,7 +39,7 @@ export const loadProjectileAssets = (scene: Game) => {
 export class ProjectileManager {
   private scene: Game
   projectiles: Phaser.GameObjects.Group
-  tracersTracking: { [key: number]: number } = {}
+  playerTracers: { [key: number]: number } = {}
   sounds: SoundTracker = {}
   soundInstances: { [key: string]: Phaser.Sound.BaseSound } = {}
 
@@ -92,33 +92,6 @@ export class ProjectileManager {
       this.addBoostFlame(projectile, startX, startY, forwardAngle, weapon)
     }
     this.playWeaponFireSound(weapon, projectile)
-  }
-
-  enemyCreateProjectile(
-    x: number,
-    y: number,
-    angle: number,
-    enemy: EnemySprite,
-  ): void {
-    const enemyWeapon = enemy.enemyData.enemyWeapon as WeaponSpec;
-    const projectile = this.createProjectile(x, y, enemyWeapon!.image);
-    projectile.enemySource = true; // mark it as an enemy projectile
-    projectile.damage = enemyWeapon!.damage;
-
-    const forwardAngle = angle - Math.PI / 2;
-    this.setupProjectilePhysics(projectile, enemyWeapon, 0); // Set up with enemy weapon
-
-    projectile.setRotation(forwardAngle);
-    projectile.setVelocity(
-      enemyWeapon.initialSpeed * Math.cos(forwardAngle),
-      enemyWeapon.initialSpeed * Math.sin(forwardAngle),
-    );
-
-    // Optional: Add effects such as lights, trail, etc.
-    if (enemyWeapon.trail) {
-      // Add trail similar to player projectiles
-      this.setupProjectileDisplay(projectile, enemyWeapon, forwardAngle, false);
-    }
   }
 
   private calculateProjectileStartPosition(

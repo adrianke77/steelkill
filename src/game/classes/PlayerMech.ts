@@ -115,7 +115,7 @@ export class PlayerMech {
     this.mechStepSound.setVolume(ct.mechStepSoundVol)
   }
 
-  update(time: number): void {
+  updatePlayerMotion(time: number): void {
     const pointer = this.scene.input.activePointer
     const worldPoint = this.scene.cameras.main.getWorldPoint(
       pointer.x,

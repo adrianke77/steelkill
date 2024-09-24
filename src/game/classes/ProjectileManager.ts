@@ -1,6 +1,7 @@
 // ProjectileManager.ts
 import { Game } from '../scenes/Game'
 import { Constants as ct, weaponConstants, WeaponKey } from '../constants'
+import { enemyWeapons } from '../constants/weapons'
 import {
   EnemySprite,
   Projectile,
@@ -23,7 +24,7 @@ import {
 import { generateUniqueId, getSoundPan } from '../utils'
 
 export const loadProjectileAssets = (scene: Game) => {
-  scene.load.image('scorch1', 'scorch1.png')
+  scene.load.image('scorch1', 'scorch2.png')
   Object.keys(weaponConstants).forEach(weaponKey => {
     const weapon = weaponConstants[weaponKey as WeaponKey] as WeaponSpec
     scene.load.image(weapon.image, `${weapon.image}.png`)
@@ -33,6 +34,14 @@ export const loadProjectileAssets = (scene: Game) => {
     }
     if (weapon.reloadSound) {
       scene.load.audio(weapon.reloadSound, `audio/${weapon.reloadSound}.mp3`)
+    }
+  })
+  Object.keys(enemyWeapons).forEach(weaponKey => {
+    const weapon = enemyWeapons[weaponKey as WeaponKey] as EnemyWeaponSpec
+    scene.load.image(weapon.image, `${weapon.image}.png`)
+    scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
+    if (weapon.explodeSound) {
+      scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
     }
   })
 }
@@ -48,6 +57,13 @@ export class ProjectileManager {
     this.scene = scene
     this.sounds = {}
     this.scene.player.weapons.forEach(weapon => {
+      this.sounds[weapon.fireSound] = []
+      if (weapon.explodeSound) {
+        this.sounds[weapon.explodeSound] = []
+      }
+    })
+    Object.keys(enemyWeapons).forEach(key => {
+      const weapon = enemyWeapons[key as WeaponKey] as EnemyWeaponSpec
       this.sounds[weapon.fireSound] = []
       if (weapon.explodeSound) {
         this.sounds[weapon.explodeSound] = []
@@ -74,6 +90,7 @@ export class ProjectileManager {
     )
     const projectile = this.createProjectileSprite(startX, startY, weapon.image)
     projectile.weapon = weapon
+    projectile.start = [x, y]
     if (enemySource) {
       projectile.enemySource = true
     }
@@ -96,6 +113,32 @@ export class ProjectileManager {
       this.addBoostFlame(projectile, startX, startY, forwardAngle, weapon)
     }
     this.playWeaponFireSound(weapon, projectile)
+  }
+
+  checkRange(projectile: Projectile): boolean {
+    const weapon = projectile.weapon
+    if (!weapon.maxRange) {
+      return false
+    }
+    const distance = Phaser.Math.Distance.Between(
+      projectile.start[0],
+      projectile.start[1],
+      projectile.x,
+      projectile.y,
+    )
+    if (distance > weapon.maxRange) {
+      if (weapon.explodeRadius) {
+        this.playExplosionSound(projectile)
+        if (projectile.enemySource) {
+          this.createExplosionHittingPlayer(projectile.x, projectile.y, weapon)
+        } else {
+          this.createExplosionHittingEnemy(projectile.x, projectile.y, weapon)
+        }
+      }
+      this.destroyProjectile(projectile)
+      return true
+    }
+    return false
   }
 
   private calculateProjectileStartPosition(
@@ -382,14 +425,14 @@ export class ProjectileManager {
   ): void {
     const radius = weapon.explodeRadius!
     const baseDamage = weapon.explodeDamage!
-    renderExplosion(
-      this.scene,
-      x,
-      y,
-      radius * 2,
-      baseDamage,
-      weapon.explodeColor,
-    )
+    renderExplosion(this.scene, x, y, radius * 2, baseDamage, {
+      color: weapon.explodeColor,
+      scorchTint: weapon.scorchTint,
+      explodeAfterGlowDuration: weapon.explodeAfterGlowDuration,
+      explodeAfterGlowTint: weapon.explodeAfterGlowTint,
+      explodeAfterGlowIntensity: weapon.explodeAfterGlowIntensity,
+      explodeAfterGlowRadius: weapon.explodeAfterGlowRadius,
+    })
     this.scene.enemyMgr.enemies.children.each(
       (enemy: Phaser.GameObjects.GameObject) => {
         const enemySprite = enemy as EnemySprite
@@ -441,24 +484,22 @@ export class ProjectileManager {
     const player = this.scene.player
     const radius = weapon.explodeRadius!
     const baseDamage = weapon.explodeDamage!
-    renderExplosion(
-      this.scene,
-      x,
-      y,
-      radius * 2,
-      baseDamage,
-      weapon.explodeColor,
-    )
+    renderExplosion(this.scene, x, y, radius * 2, baseDamage, {
+      color: weapon.explodeColor,
+      scorchTint: weapon.scorchTint,
+      explodeAfterGlowDuration: weapon.explodeAfterGlowDuration,
+      explodeAfterGlowTint: weapon.explodeAfterGlowTint,
+      explodeAfterGlowIntensity: weapon.explodeAfterGlowIntensity,
+      explodeAfterGlowRadius: weapon.explodeAfterGlowRadius,
+    })
     const distance = Phaser.Math.Distance.Between(
       x,
       y,
       player.mechContainer.x,
       player.mechContainer.y,
     )
-    console.log(distance, radius)
     if (distance <= radius) {
       const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
-      console.log(damage)
       player.damagePlayer(damage - player.armor)
     }
   }

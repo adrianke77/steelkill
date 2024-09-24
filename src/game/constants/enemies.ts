@@ -10,7 +10,7 @@ export const enemies = {
     displaySize: 40,
     collisionSize: 35,
     bloodColor: 0x00dd00,
-    color: 0x221111,
+    color: 0x220505,
     walkAnimation: 'whiteant8',
     corpseImage: 'blood',
     corpseSize: 50,
@@ -28,7 +28,7 @@ export const enemies = {
     tooSmallToBleedWhenHit: true,
   },
   fireant: {
-    spawnPeriod: 200,
+    spawnPeriod: 300,
     speed: 80,
     health: 200,
     armor: 10,
@@ -51,6 +51,6 @@ export const enemies = {
     hitDelay: 500,
     hitSound: 'anthit',
     tooSmallToBleedWhenHit: false,
-    weapons: [enemyWeapons.enemyExplosiveSpit],
+    weapons: [enemyWeapons.enemyPlasmaSpit],
   },
 } as EnemyDataMap

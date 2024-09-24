@@ -19,6 +19,11 @@ export interface WeaponSpec {
   explodeSound?: string
   explodeSoundVol?: number
   explodeColor?: number
+  explodeAfterGlowDuration?: number
+  explodeAfterGlowTint?: number
+  explodeAfterGlowIntensity?: number
+  explodeAfterGlowRadius?: number
+  scorchTint?: number
   burstFire?: number
   burstFireDelay?: number
   hasBoostFlame?: boolean
@@ -114,6 +119,7 @@ export interface Projectile extends Phaser.Physics.Arcade.Sprite {
   weapon: WeaponSpec | EnemyWeaponSpec
   hasTracer?: boolean
   enemySource?: boolean
+  start: [number, number]
 }
 
 export type ProjectileLightFields = 'light' | 'flameLight' | 'tracerLight'

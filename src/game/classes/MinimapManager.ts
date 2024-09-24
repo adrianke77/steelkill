@@ -122,9 +122,13 @@ export class MinimapManager {
         relativeY >= 0 &&
         relativeY <= MINIMAP_HEIGHT
       ) {
-        const color = projectile.enemySource? 0x00FF00 : 0xFFFFFF
+        const color = projectile.enemySource ? 0x66ff66 : 0xffffff
         this.minimap.fillStyle(color, 1)
-        this.minimap.fillCircle(MINIMAP_X + relativeX, MINIMAP_Y + relativeY, 1)
+        this.minimap.fillCircle(
+          MINIMAP_X + relativeX,
+          MINIMAP_Y + relativeY,
+          projectile.enemySource ? 2 : 1,
+        )
       }
       return true
     })

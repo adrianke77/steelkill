@@ -160,7 +160,7 @@ export class Game extends Scene {
     this.physics.add.collider(
       this.projectileMgr.projectiles,
       this.player.mechContainer,
-      (_, object2) => { 
+      (_, object2) => {
         const projectile = object2 as Projectile
         if (projectile.enemySource) {
           this.projectileMgr.projectileHitsPlayer(projectile)
@@ -194,8 +194,16 @@ export class Game extends Scene {
     this.projectileMgr.projectiles.children.iterate(
       (projectile: Phaser.GameObjects.GameObject): boolean => {
         const projectileSprite = projectile as Projectile
+        if (!projectileSprite) {
+          return true
+        }
+        const projectileDestroyed =
+          this.projectileMgr.checkRange(projectileSprite)
+        if (projectileDestroyed) {
+          return true
+        }
 
-        ;['light', 'flameLight', 'tracerLight'].forEach(lightType => {
+        ['light', 'flameLight', 'tracerLight'].forEach(lightType => {
           const light = projectileSprite[
             lightType as keyof Projectile
           ] as Phaser.GameObjects.Light

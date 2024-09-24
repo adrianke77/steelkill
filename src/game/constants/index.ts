@@ -63,7 +63,7 @@ export const Constants = {
     [-7.5, -10], // mid left
     [7.5, -10], // mid right
   ],
-  boostCapacity: 10000,
+  boostCapacity: 15000,
   boostRegeneration: 20,
   boostConsumption: 40,
 }

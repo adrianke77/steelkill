@@ -78,11 +78,7 @@ export class EnemyManager {
     enemy.lastScreamTime = 0
 
     if (enemyData.weapons && enemyData.weapons.length > 0) {
-      // randomize when enemies fire
-      const time = this.scene.game.loop.time
-      enemy.lastWeaponFireTime = enemyData.weapons.map(
-        weapon => time + Phaser.Math.Between(0, weapon.fireDelay/2),
-      )
+      enemy.lastWeaponFireTime = enemyData.weapons.map(() => 0)
       enemy.tracerTracking = enemyData.weapons.map(() => 0)
     }
 
@@ -284,11 +280,8 @@ export class EnemyManager {
     ) as Phaser.Sound.WebAudioSound
 
     const [playerX, playerY, playerRot] = this.scene.player.getPlayerCoords()
-    // let soundScale = getSoundDistanceScale(enemy.x, enemy.y, playerX, playerY);
     if (enemyData.deathSoundVol) {
       soundInstance.setVolume(enemyData.deathSoundVol)
-
-      // 	soundScale = enemyData.deathSoundVol * soundScale
     }
     const detune = Phaser.Math.Between(-300, 300)
     const pan = getSoundPan(enemy.x, enemy.y, playerX, playerY, playerRot)

@@ -1,7 +1,13 @@
 66 // renderUtils.ts
 import { Game } from '../scenes/Game'
 import { brightMuzzleFrames, Constants as ct } from '../constants'
-import { EnemyData, EnemySprite, EnemyWeaponSpec, Projectile, WeaponSpec } from '../interfaces'
+import {
+  EnemyData,
+  EnemySprite,
+  EnemyWeaponSpec,
+  Projectile,
+  WeaponSpec,
+} from '../interfaces'
 import { blendColors } from '../utils'
 
 export function loadRenderingAssets(scene: Game) {
@@ -282,7 +288,7 @@ export function destroyEnemyAndCreateCorpseDecals(
     enemy.randomSound.destroy()
   }
   enemy.destroy()
-  createBloodSplat(scene, enemy, enemy.enemyData.corpseSize*2)
+  createBloodSplat(scene, enemy, enemy.enemyData.corpseSize * 2)
   const enemyData = enemy.enemyData as EnemyData
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
@@ -347,7 +353,14 @@ export function renderExplosion(
   y: number,
   diameter: number,
   damage: number,
-  color?: number
+  optionals?: {
+    color?: number
+    scorchTint?: number
+    explodeAfterGlowDuration?: number
+    explodeAfterGlowTint?: number
+    explodeAfterGlowIntensity?: number
+    explodeAfterGlowRadius?: number
+  },
 ) {
   const explosion = scene.addSprite(x, y, 'explosion')
   explosion.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
@@ -358,8 +371,8 @@ export function renderExplosion(
   explosion.displayHeight = displayDiameter + 10
   explosion.displayWidth = displayDiameter + 10
   explosion.setDepth(ct.depths.explosion)
-  if (color) {
-    explosion.setTint(color)
+  if (optionals && optionals.color) {
+    explosion.setTint(optionals.color)
   }
   explosion.setAlpha(Phaser.Math.FloatBetween(0.7, 0.9))
   explosion.play('explosion')
@@ -367,18 +380,32 @@ export function renderExplosion(
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.8)
+  scorch.setAlpha(0.9)
+  scorch.setTint(
+    optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
+  )
   scorch.setPipeline('Light2D')
   drawDecal(scene, scorch)
   createLightFlash(
     scene,
     x,
     y,
-    ct.explosionColor,
+    optionals && optionals.color ? optionals.color : ct.explosionColor,
     200,
     damage / 3,
     diameter * 2,
   )
+  if (optionals && optionals.explodeAfterGlowDuration) {
+    createLightFlash(
+      scene,
+      x,
+      y,
+      optionals.explodeAfterGlowTint!,
+      optionals.explodeAfterGlowDuration,
+      optionals.explodeAfterGlowIntensity!,
+      optionals.explodeAfterGlowRadius!,
+    )
+  }
 }
 
 export function addCloudAtPlayermech(scene: Game, opacity: number): void {

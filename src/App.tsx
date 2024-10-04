@@ -59,7 +59,7 @@ function App() {
         {sceneName === 'mainmenu' && (
           <div className="startScreenCentre flexCenter">
             <div className="hudFont" style={{ fontSize: 40, marginBottom: 10 }}>
-              Deadnaught
+              Deadnought
             </div>
             <div
               className="hudFont"

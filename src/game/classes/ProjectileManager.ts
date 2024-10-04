@@ -1,6 +1,6 @@
 // ProjectileManager.ts
 import { Game } from '../scenes/Game'
-import { Constants as ct, weaponConstants, WeaponKey } from '../constants'
+import { Constants as ct, weaponConstants} from '../constants'
 import { enemyWeapons } from '../constants/weapons'
 import {
   EnemySprite,
@@ -23,27 +23,29 @@ import {
 } from '../rendering'
 import { generateUniqueId, getSoundPan } from '../utils'
 
+const loadAssets = (
+  scene: Game,
+  weapons: Record<string, WeaponSpec | EnemyWeaponSpec>,
+) => {
+  Object.values(weapons).forEach(weapon => {
+    scene.load.image(weapon.image, `${weapon.image}.png`)
+    scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
+    if ('explodeSound' in weapon && weapon.explodeSound) {
+      scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
+    }
+    if ('reloadSound' in weapon && weapon.reloadSound) {
+      scene.load.audio(
+        weapon.reloadSound,
+        `audio/${weapon.reloadSound}.mp3`,
+      )
+    }
+  })
+}
+
 export const loadProjectileAssets = (scene: Game) => {
   scene.load.image('scorch1', 'scorch2.png')
-  Object.keys(weaponConstants).forEach(weaponKey => {
-    const weapon = weaponConstants[weaponKey as WeaponKey] as WeaponSpec
-    scene.load.image(weapon.image, `${weapon.image}.png`)
-    scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
-    if (weapon.explodeSound) {
-      scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
-    }
-    if (weapon.reloadSound) {
-      scene.load.audio(weapon.reloadSound, `audio/${weapon.reloadSound}.mp3`)
-    }
-  })
-  Object.keys(enemyWeapons).forEach(weaponKey => {
-    const weapon = enemyWeapons[weaponKey as WeaponKey] as EnemyWeaponSpec
-    scene.load.image(weapon.image, `${weapon.image}.png`)
-    scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
-    if (weapon.explodeSound) {
-      scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
-    }
-  })
+  loadAssets(scene, weaponConstants)
+  loadAssets(scene, enemyWeapons)
 }
 
 export class ProjectileManager {
@@ -56,19 +58,19 @@ export class ProjectileManager {
   constructor(scene: Game) {
     this.scene = scene
     this.sounds = {}
-    this.scene.player.weapons.forEach(weapon => {
-      this.sounds[weapon.fireSound] = []
-      if (weapon.explodeSound) {
-        this.sounds[weapon.explodeSound] = []
-      }
-    })
-    Object.keys(enemyWeapons).forEach(key => {
-      const weapon = enemyWeapons[key as WeaponKey] as EnemyWeaponSpec
-      this.sounds[weapon.fireSound] = []
-      if (weapon.explodeSound) {
-        this.sounds[weapon.explodeSound] = []
-      }
-    })
+
+    const addWeaponSounds = (weapons: WeaponSpec[] | EnemyWeaponSpec[]) => {
+      weapons.forEach(weapon => {
+        this.sounds[weapon.fireSound] = []
+        if (weapon.explodeSound) {
+          this.sounds[weapon.explodeSound] = []
+        }
+      })
+    }
+
+    addWeaponSounds(this.scene.player.weapons)
+    addWeaponSounds(Object.values(enemyWeapons))
+
     this.projectiles = this.scene.physics.add.group({
       classType: Phaser.Physics.Arcade.Sprite,
     })
@@ -350,7 +352,7 @@ export class ProjectileManager {
       projectile.penetration -= this.scene.player.armor / 2
       return false
     } else if (projectile!.penetration > this.scene.player.armor / 2) {
-      this.applyProjectileDamageAndEffectsToPlayer(projectile, 0.3)
+      this.applyProjectileDamageAndEffectsToPlayer(projectile, 0.5)
       this.destroyProjectile(projectile)
     } else if (projectile!.penetration < this.scene.player.armor / 2) {
       this.destroyProjectile(projectile)

@@ -11,17 +11,21 @@ import { EnemyManager, loadEnemyAssets } from '../classes/EnemyManager'
 import { InputManager } from '../classes/InputManager'
 import { ViewManager } from '../classes/ViewManager'
 import { MinimapManager } from '../classes/MinimapManager'
+import { BeamManager } from '../classes/BeamManager'
 import { WeaponSpec, EnemySprite, Projectile, EnemyData } from '../interfaces'
 
 export class Game extends Scene {
   minimapLayer: Phaser.GameObjects.Layer
   mainLayer: Phaser.GameObjects.Layer
+  
   viewMgr: ViewManager
   player: PlayerMech
   projectileMgr: ProjectileManager
   enemyMgr: EnemyManager
   inputMgr: InputManager
   minimapMgr: MinimapManager
+  beamMgr: BeamManager
+
   lastWeaponFireTime: [number, number, number, number]
   magCount: [number, number, number, number]
   remainingAmmo: [number, number, number, number]
@@ -96,6 +100,7 @@ export class Game extends Scene {
     this.player = new PlayerMech(this)
     this.viewMgr = new ViewManager(this)
     this.projectileMgr = new ProjectileManager(this)
+    this.beamMgr = new BeamManager(this)
     this.inputMgr = new InputManager(this)
     this.minimapMgr = new MinimapManager(this)
 
@@ -240,14 +245,27 @@ export class Game extends Scene {
       }
     })
 
+    this.beamMgr.updateBeams(time)
+
     Object.entries(this.inputMgr.customBindingStates).forEach(
-      ([weaponIndex, isActive]) => {
-        if (isActive) {
-          const index = Number(weaponIndex)
-          const weapon = this.player.weapons[index]
-          if (time - this.lastWeaponFireTime[index] > weapon.fireDelay) {
-            this.playerWeaponFire(index, time)
-            this.lastWeaponFireTime[index] = time
+      ([weaponIndexStr, isActive]) => {
+        const weaponIndex = Number(weaponIndexStr)
+        const weapon = this.player.weapons[weaponIndex]
+
+        if (weapon.isBeam) {
+          if (isActive) {
+            if (!this.beamMgr.activeBeams[weaponIndex]) {
+              this.beamMgr.startBeam(weaponIndex)
+            }
+          } else {
+            this.beamMgr.stopBeam(weaponIndex)
+          }
+        } else {
+          if (isActive) {
+            if (time - this.lastWeaponFireTime[weaponIndex] > weapon.fireDelay) {
+              this.playerWeaponFire(weaponIndex, time)
+              this.lastWeaponFireTime[weaponIndex] = time
+            }
           }
         }
       },

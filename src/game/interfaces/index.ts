@@ -50,6 +50,9 @@ export interface WeaponSpec {
   tracerHitFadeTime?: number
   tracerHitLightRadius?: number
   tracerHitLightIntensity?: number
+  isBeam?: boolean
+  beamColor?: number
+  beamWidth?: number
 }
 
 export interface EnemyWeaponSpec

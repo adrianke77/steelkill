@@ -28,8 +28,12 @@ const loadAssets = (
   weapons: Record<string, WeaponSpec | EnemyWeaponSpec>,
 ) => {
   Object.values(weapons).forEach(weapon => {
-    scene.load.image(weapon.image, `${weapon.image}.png`)
-    scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
+    if ('image' in weapon && weapon.image) {
+      scene.load.image(weapon.image, `${weapon.image}.png`)
+    }
+    if ('fireSound' in weapon && weapon.fireSound) {
+      scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
+    }
     if ('explodeSound' in weapon && weapon.explodeSound) {
       scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
     }

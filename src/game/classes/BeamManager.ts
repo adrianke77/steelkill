@@ -105,6 +105,7 @@ export class BeamManager {
       beamGraphics.lineTo(beamEndX, beamEndY)
       beamGraphics.closePath()
       beamGraphics.strokePath()
+      this.scene.addGraphicsFiltering(beamGraphics)
 
       // Apply damage if enemy is hit
       if (closestEnemy) {

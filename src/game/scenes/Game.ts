@@ -315,6 +315,10 @@ export class Game extends Scene {
     this.mainLayer.add(particles)
     return particles
   }
+  
+  addGraphicsFiltering(graphics: Phaser.GameObjects.Graphics) {
+    this.mainLayer.add(graphics)
+  }
 
   createInGroup(
     group: Phaser.GameObjects.Group,

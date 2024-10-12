@@ -28,7 +28,7 @@
     "prettify": "prettier --write ."
   },
   "dependencies": {
-    "phaser": "3.85.0-beta.2",
+    "phaser": "3.86",
     "phaser3-rex-plugins": "^1.80.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

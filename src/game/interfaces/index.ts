@@ -53,6 +53,11 @@ export interface WeaponSpec {
   isBeam?: boolean
   beamColor?: number
   beamWidth?: number
+  beamParticlesColor?: number
+  beamParticlesDensity?: number // number of emitters along the length of the beam generating particles
+  beamGlowWidth?: number // width of the glow around the beam
+  beamLightRadius?: number // radius of point lights along beam
+  beamLightIntensity?: number // intensity of point lights along beam
 }
 
 export interface EnemyWeaponSpec

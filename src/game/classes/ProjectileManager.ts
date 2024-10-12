@@ -578,7 +578,7 @@ export class ProjectileManager {
         weapon.tracerHitLightRadius!,
       )
     } else {
-      createLightFlash(this.scene, x, y, ct.muzzleFlashColor, 50, 2.5, 80)
+      createLightFlash(this.scene, x, y, particleTint , 50, 0.5, 100)
     }
   }
 

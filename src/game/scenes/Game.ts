@@ -50,7 +50,7 @@ export class Game extends Scene {
   }
 
   endGame() {
-    this.combatMusic.stop()
+    this.sound.stopAll()
     this.scene.start('MainMenu')
   }
 
@@ -272,10 +272,6 @@ export class Game extends Scene {
     )
 
     this.minimapMgr.drawMinimap()
-  }
-
-  changeScene() {
-    this.scene.start('GameOver')
   }
 
   addImage(

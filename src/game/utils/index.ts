@@ -89,3 +89,51 @@ export const increaseColorIntensity = (color: number): number => {
   // Combine the adjusted components back into a single color
   return (r << 16) | (g << 8) | b
 }
+
+// Liang-Barsky Clipping Function
+export function clipLineToRect(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  rect: { xMin: number; yMin: number; xMax: number; yMax: number },
+) {
+  const dx = x1 - x0
+  const dy = y1 - y0
+
+  let u1 = 0
+  let u2 = 1
+
+  const p = [-dx, dx, -dy, dy]
+  const q = [x0 - rect.xMin, rect.xMax - x0, y0 - rect.yMin, rect.yMax - y0]
+
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) {
+        // Line is parallel and outside the boundary
+        return null
+      }
+      // Line is parallel and inside the boundary, continue
+    } else {
+      const t = q[i] / p[i]
+      if (p[i] < 0) {
+        // Potential entering point
+        u1 = Math.max(u1, t)
+      } else {
+        // Potential leaving point
+        u2 = Math.min(u2, t)
+      }
+      if (u1 > u2) {
+        // No portion of the line is within the rectangle
+        return null
+      }
+    }
+  }
+
+  const clippedX0 = x0 + u1 * dx
+  const clippedY0 = y0 + u1 * dy
+  const clippedX1 = x0 + u2 * dx
+  const clippedY1 = y0 + u2 * dy
+
+  return { x0: clippedX0, y0: clippedY0, x1: clippedX1, y1: clippedY1 }
+}

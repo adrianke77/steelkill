@@ -24,7 +24,7 @@ export const Constants = {
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1500,
   DecalFadeTime: 60000,
-  musicVolume: 1.5,
+  musicVolume: 1,
   mechStepPeriod: 500,
   mechStepSoundVol: 3,
   mechStartingHealth: 500,

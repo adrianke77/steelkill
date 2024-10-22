@@ -151,7 +151,7 @@ export class EnemyManager {
       } else {
         if (tracker === undefined) {
           // Initialize the tracer counter for this weapon
-          tracker = index
+          tracker = index*2
         } else {
           if (tracker >= weapon.tracerRate) {
             tracker = 1

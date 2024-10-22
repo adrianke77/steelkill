@@ -1,6 +1,6 @@
 // ProjectileManager.ts
 import { Game } from '../scenes/Game'
-import { Constants as ct, weaponConstants} from '../constants'
+import { Constants as ct, weaponConstants } from '../constants'
 import { enemyWeapons } from '../constants/weapons'
 import {
   EnemySprite,
@@ -23,33 +23,36 @@ import {
 } from '../rendering'
 import { generateUniqueId, getSoundPan } from '../utils'
 
-const loadAssets = (
+export const calculateWeaponStartPosition = (
   scene: Game,
-  weapons: Record<string, WeaponSpec | EnemyWeaponSpec>,
-) => {
-  Object.values(weapons).forEach(weapon => {
-    if ('image' in weapon && weapon.image) {
-      scene.load.image(weapon.image, `${weapon.image}.png`)
-    }
-    if ('fireSound' in weapon && weapon.fireSound) {
-      scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
-    }
-    if ('explodeSound' in weapon && weapon.explodeSound) {
-      scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
-    }
-    if ('reloadSound' in weapon && weapon.reloadSound) {
-      scene.load.audio(
-        weapon.reloadSound,
-        `audio/${weapon.reloadSound}.mp3`,
-      )
-    }
-  })
+  weaponPosition: WeaponPosition,
+  rotation: number,
+  forwardOffset: number,
+): { startX: number; startY: number } => {
+  const offsetX =
+    weaponPosition[0] * Math.cos(rotation) -
+    weaponPosition[1] * Math.sin(rotation)
+  const offsetY =
+    weaponPosition[0] * Math.sin(rotation) +
+    weaponPosition[1] * Math.cos(rotation)
+  const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2)
+  const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2)
+  const startX = scene.player.mechContainer.x + offsetX + forwardX
+  const startY = scene.player.mechContainer.y + offsetY + forwardY
+
+  return { startX, startY }
 }
 
-export const loadProjectileAssets = (scene: Game) => {
-  scene.load.image('scorch1', 'scorch2.png')
-  loadAssets(scene, weaponConstants)
-  loadAssets(scene, enemyWeapons)
+export const calculateProjectileStartPosition = (
+  x: number,
+  y: number,
+  angle: number,
+  roundHeight: number,
+) => {
+  const halfLength = roundHeight / 4
+  const offsetX = halfLength * Math.cos(angle - Math.PI / 2)
+  const offsetY = halfLength * Math.sin(angle - Math.PI / 2)
+  return { startX: x + offsetX, startY: y + offsetY }
 }
 
 export class ProjectileManager {
@@ -88,7 +91,7 @@ export class ProjectileManager {
     hasTracer: boolean,
     enemySource?: boolean,
   ): void {
-    const { startX, startY } = this.calculateProjectileStartPosition(
+    const { startX, startY } = calculateProjectileStartPosition(
       x,
       y,
       angle,
@@ -145,18 +148,6 @@ export class ProjectileManager {
       return true
     }
     return false
-  }
-
-  private calculateProjectileStartPosition(
-    x: number,
-    y: number,
-    angle: number,
-    roundHeight: number,
-  ) {
-    const halfLength = roundHeight / 4
-    const offsetX = halfLength * Math.cos(angle - Math.PI / 2)
-    const offsetY = halfLength * Math.sin(angle - Math.PI / 2)
-    return { startX: x + offsetX, startY: y + offsetY }
   }
 
   private createProjectileSprite(
@@ -578,7 +569,7 @@ export class ProjectileManager {
         weapon.tracerHitLightRadius!,
       )
     } else {
-      createLightFlash(this.scene, x, y, particleTint , 50, 0.5, 100)
+      createLightFlash(this.scene, x, y, particleTint, 50, 0.5, 100)
     }
   }
 
@@ -590,17 +581,12 @@ export class ProjectileManager {
   ) => {
     this.scene.time.delayedCall(delay, () => {
       const rotation = this.scene.player.mechContainer.rotation
-      const offsetX =
-        weaponPosition[0] * Math.cos(rotation) -
-        weaponPosition[1] * Math.sin(rotation)
-      const offsetY =
-        weaponPosition[0] * Math.sin(rotation) +
-        weaponPosition[1] * Math.cos(rotation)
-      const forwardOffset = 10
-      const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2)
-      const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2)
-      const startX = this.scene.player.mechContainer.x + offsetX + forwardX
-      const startY = this.scene.player.mechContainer.y + offsetY + forwardY
+      const { startX, startY } = calculateWeaponStartPosition(
+        this.scene,
+        weaponPosition,
+        rotation,
+        10,
+      )
 
       this.createProjectile(startX, startY, rotation, weapon, hasTracer)
       playMuzzleFlare(
@@ -743,4 +729,31 @@ export class ProjectileManager {
       )
     })
   }
+}
+
+// asset loading
+const loadAssets = (
+  scene: Game,
+  weapons: Record<string, WeaponSpec | EnemyWeaponSpec>,
+) => {
+  Object.values(weapons).forEach(weapon => {
+    if ('image' in weapon && weapon.image) {
+      scene.load.image(weapon.image, `${weapon.image}.png`)
+    }
+    if ('fireSound' in weapon && weapon.fireSound) {
+      scene.load.audio(weapon.fireSound, `audio/${weapon.fireSound}.mp3`)
+    }
+    if ('explodeSound' in weapon && weapon.explodeSound) {
+      scene.load.audio(weapon.explodeSound, `audio/${weapon.explodeSound}.mp3`)
+    }
+    if ('reloadSound' in weapon && weapon.reloadSound) {
+      scene.load.audio(weapon.reloadSound, `audio/${weapon.reloadSound}.mp3`)
+    }
+  })
+}
+
+export const loadProjectileAssets = (scene: Game) => {
+  scene.load.image('scorch1', 'scorch2.png')
+  loadAssets(scene, weaponConstants)
+  loadAssets(scene, enemyWeapons)
 }

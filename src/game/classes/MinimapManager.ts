@@ -1,6 +1,7 @@
 import { EnemySprite, Projectile } from '../interfaces'
 import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
+import { clipLineToRect } from '../utils'
 
 const MINIMAP_WIDTH = 200 // Width of the minimap in pixels
 const MINIMAP_HEIGHT = 200 // Height of the minimap in pixels
@@ -132,5 +133,52 @@ export class MinimapManager {
       }
       return true
     })
+    
+    // Draw beams on the minimap
+    for (const weaponIndexStr in this.scene.beamMgr.activeBeams) {
+      const beam = this.scene.beamMgr.activeBeams[weaponIndexStr]
+      const startX = beam.startX
+      const startY = beam.startY
+      const endX = beam.endX
+      const endY = beam.endY
+
+      // Calculate positions relative to the minimap
+      const relativeStartX = (startX - minimapX) * MINIMAP_SCALE
+      const relativeStartY = (startY - minimapY) * MINIMAP_SCALE
+      const relativeEndX = (endX - minimapX) * MINIMAP_SCALE
+      const relativeEndY = (endY - minimapY) * MINIMAP_SCALE
+
+      // Clipping rectangle corresponding to the minimap area
+      const rect = {
+        xMin: 0,
+        yMin: 0,
+        xMax: MINIMAP_WIDTH,
+        yMax: MINIMAP_HEIGHT,
+      }
+
+      // Clip the beam line to the minimap area
+      const clippedLine = clipLineToRect(
+        relativeStartX,
+        relativeStartY,
+        relativeEndX,
+        relativeEndY,
+        rect,
+      )
+
+      if (clippedLine) {
+        // Draw the clipped beam on the minimap
+        this.minimap.lineStyle(1, 0xffffff, 1) // Adjust color and thickness as needed
+        this.minimap.beginPath()
+        this.minimap.moveTo(
+          MINIMAP_X + clippedLine.x0,
+          MINIMAP_Y + clippedLine.y0,
+        )
+        this.minimap.lineTo(
+          MINIMAP_X + clippedLine.x1,
+          MINIMAP_Y + clippedLine.y1,
+        )
+        this.minimap.strokePath()
+      }
+    }
   }
 }

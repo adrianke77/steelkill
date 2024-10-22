@@ -1,12 +1,22 @@
 import { Game } from '../scenes/Game'
 import { WeaponSpec, EnemySprite } from '../interfaces'
 import { Constants as ct } from '../constants'
-import { destroyEnemyAndCreateCorpseDecals } from '../rendering'
+import {
+  destroyEnemyAndCreateCorpseDecals,
+  createLightFlash,
+} from '../rendering'
 import { EventBus } from '../../EventBus'
+import { calculateWeaponStartPosition } from './ProjectileManager'
 
 interface ActiveBeam {
   graphics: Phaser.GameObjects.Graphics
   lights: Phaser.GameObjects.Light[]
+  sound: Phaser.Sound.BaseSound
+  // store coordinates of the beam for minimap
+  startX: number
+  startY: number
+  endX: number
+  endY: number
 }
 
 export class BeamManager {
@@ -22,9 +32,10 @@ export class BeamManager {
     graphics.fillCircle(0, 0, 1)
     graphics.generateTexture('whiteParticle', 1, 1)
     graphics.destroy()
+    // Corrected the particle emitter creation
     this.beamParticleEmitter = scene.addParticles(0, 0, 'whiteParticle', {
       lifespan: 300,
-      scale: { start: 0.3, end: 0 },
+      scale: { start: 0.35, end: 0 },
       rotate: { start: 0, end: 360 },
       speed: { min: 20, max: 30 },
       emitting: false,
@@ -34,41 +45,75 @@ export class BeamManager {
   startBeam(weaponIndex: number): void {
     if (this.activeBeams[weaponIndex]) return
 
+    // Check for ammo before starting the beam
+    if (this.scene.magCount[weaponIndex] <= 0) return
+
+    const weapon = this.scene.player.weapons[weaponIndex]
+    const weaponPosition = ct.weaponPositions[weaponIndex]
+
     const beamGraphics = this.scene.add.graphics()
     beamGraphics.setDepth(ct.depths.projectile)
     beamGraphics.setBlendMode(Phaser.BlendModes.ADD)
     beamGraphics.setPipeline('Light2D')
 
-    const weapon = this.scene.player.weapons[weaponIndex]
-    const density = weapon.beamParticlesDensity!
+    const { startX, startY } = calculateWeaponStartPosition(
+      this.scene,
+      weaponPosition,
+      this.scene.player.mechContainer.rotation,
+      0,
+    )
 
+    const density = weapon.beamParticlesDensity!
     const lights: Phaser.GameObjects.Light[] = []
     for (let i = 0; i < density; i++) {
       // Create a light with desired properties
       const light = this.scene.lights
         .addLight(
-          0,
-          0,
-          weapon.beamLightRadius,
-          weapon.beamColor,
-          weapon.beamLightIntensity,
+          startX,
+          startY,
+          weapon.beamLightRadius!,
+          weapon.beamColor!,
+          weapon.beamLightIntensity!,
         )
         .setVisible(true)
       lights.push(light)
     }
 
-    this.activeBeams[weaponIndex] = { graphics: beamGraphics, lights }
+    let volume = weapon.fireSoundVol ?? 1.0
+    // check if same beam sound already playing, if so reduce the volume of new beam
+    if (Object.keys(this.activeBeams).length > 0) {
+      volume = volume * 0.4
+    }
+
+    const sound = this.scene.sound.add(weapon.fireSound, {
+      loop: true,
+      volume,
+    })
+    sound.play()
+
+    this.activeBeams[weaponIndex] = {
+      graphics: beamGraphics,
+      lights,
+      sound,
+      startX: 0,
+      startY: 0,
+      endX: 0,
+      endY: 0,
+    }
     this.beamTimers[weaponIndex] = this.scene.time.now
   }
 
   stopBeam(weaponIndex: number): void {
     const beam = this.activeBeams[weaponIndex]
     if (beam) {
-      // Destroy graphics
       beam.graphics.destroy()
-      // Destroy all associated lights
       beam.lights.forEach(light => this.scene.lights.removeLight(light))
-      // Remove beam from activeBeams and beamTimers
+      this.scene.tweens.add({
+        targets: beam.sound,
+        volume: 0,
+        duration: 500,
+        onComplete: () => beam.sound.stop(), // Stop the sound when the fade completes
+      })
       delete this.activeBeams[weaponIndex]
       delete this.beamTimers[weaponIndex]
     }
@@ -77,6 +122,7 @@ export class BeamManager {
   updateBeams(time: number): void {
     for (const weaponIndexStr in this.activeBeams) {
       const weaponIndex = Number(weaponIndexStr)
+      const weaponPosition = ct.weaponPositions[weaponIndex]
       const beam = this.activeBeams[weaponIndex]
       if (!beam) continue
 
@@ -84,14 +130,18 @@ export class BeamManager {
       const beamGraphics = beam.graphics
 
       // Handle fire delay
-      if (time - this.beamTimers[weaponIndex] < weapon.fireDelay) continue
+      if (time - this.beamTimers[weaponIndex] < weapon.fireDelay!) continue
       this.beamTimers[weaponIndex] = time
 
       const player = this.scene.player
       const rotation = player.mechContainer.rotation - Math.PI / 2
 
-      const startX = player.mechContainer.x
-      const startY = player.mechContainer.y
+      const { startX, startY } = calculateWeaponStartPosition(
+        this.scene,
+        weaponPosition,
+        this.scene.player.mechContainer.rotation,
+        0,
+      )
 
       const maxEndX = startX + Math.cos(rotation) * weapon.maxRange!
       const maxEndY = startY + Math.sin(rotation) * weapon.maxRange!
@@ -139,41 +189,34 @@ export class BeamManager {
         }
       }
 
-      // Add a glowing effect by drawing the beam multiple times with increasing width and decreasing alpha
+      beam.startX = startX
+      beam.startY = startY
+      beam.endX = beamEndX
+      beam.endY = beamEndY
+
+      // Draw beam layers
       const glowColor = weapon.beamColor!
       const glowWidth = weapon.beamGlowWidth!
 
-      // Draw the outer glow (first, widest, faintest)
-      beamGraphics.lineStyle(glowWidth, glowColor, 0.1)
-      beamGraphics.beginPath()
-      beamGraphics.moveTo(startX, startY)
-      beamGraphics.lineTo(beamEndX, beamEndY)
-      beamGraphics.closePath()
-      beamGraphics.strokePath()
+      const beamLayers = [
+        { width: glowWidth, alpha: 0.1 },
+        { width: glowWidth * 0.5, alpha: 0.1 },
+        { width: glowWidth * 0.3, alpha: 0.1 },
+        { width: weapon.beamWidth!, alpha: 1 },
+      ]
 
-      // Draw mid-layer glow (smaller, a bit brighter)
-      beamGraphics.lineStyle(glowWidth * 0.5, glowColor, 0.1)
-      beamGraphics.beginPath()
-      beamGraphics.moveTo(startX, startY)
-      beamGraphics.lineTo(beamEndX, beamEndY)
-      beamGraphics.closePath()
-      beamGraphics.strokePath()
-
-      // Draw inner glow (smallest, brightest)
-      beamGraphics.lineStyle(glowWidth * 0.3, glowColor, 0.1)
-      beamGraphics.beginPath()
-      beamGraphics.moveTo(startX, startY)
-      beamGraphics.lineTo(beamEndX, beamEndY)
-      beamGraphics.closePath()
-      beamGraphics.strokePath()
-
-      // Draw the main beam (core of the beam)
-      beamGraphics.lineStyle(weapon.beamWidth!, weapon.beamColor!, 1)
-      beamGraphics.beginPath()
-      beamGraphics.moveTo(startX, startY)
-      beamGraphics.lineTo(beamEndX, beamEndY)
-      beamGraphics.closePath()
-      beamGraphics.strokePath()
+      for (const layer of beamLayers) {
+        this.drawBeamLayer(
+          beamGraphics,
+          startX,
+          startY,
+          beamEndX,
+          beamEndY,
+          layer.width,
+          glowColor,
+          layer.alpha,
+        )
+      }
 
       // Emit particles along the beam
       const particleCount = beam.lights.length // Ensure this matches the number of lights
@@ -195,11 +238,16 @@ export class BeamManager {
         this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
         this.beamParticleEmitter.setParticleAlpha(0.9)
         this.beamParticleEmitter.emitParticleAt(particleX, particleY)
+        if (weapon.beamParticlesFadeTime) {
+          this.beamParticleEmitter.setParticleLifespan(
+            weapon.beamParticlesFadeTime,
+          )
+        }
 
         // Update corresponding light position
         const light = beam.lights[i]
         if (light) {
-          light.radius = weapon.beamLightRadius! * (Math.random() * 0.4 + 0.8);
+          light.radius = weapon.beamLightRadius! * (Math.random() * 0.4 + 0.8)
           light.x = particleX
           light.y = particleY
         }
@@ -239,9 +287,55 @@ export class BeamManager {
     }
   }
 
+  private drawBeamLayer(
+    graphics: Phaser.GameObjects.Graphics,
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    width: number,
+    color: number,
+    alpha: number,
+  ) {
+    const steps = 30 // Total number of segments for the beam
+    const halfway = steps / 2 // Halfway point
+    const dx = (endX - startX) / steps
+    const dy = (endY - startY) / steps
+
+    for (let i = 0; i < steps; i++) {
+      const segmentStartX = startX + dx * i
+      const segmentStartY = startY + dy * i
+      const segmentEndX = startX + dx * (i + 1)
+      const segmentEndY = startY + dy * (i + 1)
+
+      let segmentAlpha: number
+      if (i < halfway) {
+        segmentAlpha = alpha
+      } else {
+        const fadeProgress = (i - halfway) / halfway
+        segmentAlpha = alpha * (1 - fadeProgress)
+      }
+
+      graphics.lineStyle(width, color, segmentAlpha)
+      graphics.beginPath()
+      graphics.moveTo(segmentStartX, segmentStartY)
+      graphics.lineTo(segmentEndX, segmentEndY)
+      graphics.strokePath()
+    }
+  }
+
   private applyBeamDamage(enemy: EnemySprite, weapon: WeaponSpec): void {
+    createLightFlash(
+      this.scene,
+      enemy.x,
+      enemy.y,
+      weapon.beamColor!,
+      100,
+      1,
+      100,
+    )
     if (!enemy.active) return
-    enemy.health -= weapon.damage
+    enemy.health -= weapon.damage!
     if (enemy.health <= 0) {
       const directionRadians = Phaser.Math.Angle.Between(
         this.scene.player.mechContainer.x,
@@ -256,13 +350,14 @@ export class BeamManager {
         enemy.y,
         directionRadians,
       )
-      // Remove enemy from the group
-      this.scene.enemyMgr.enemies.remove(enemy, true, true)
+      // Remove enemy from the group (don't destroy again)
+      this.scene.enemyMgr.enemies.remove(enemy, true)
     }
   }
 
   stopAllBeams(): void {
     for (const weaponIndexStr in this.activeBeams) {
+      this.activeBeams[weaponIndexStr].sound.stop()
       this.stopBeam(Number(weaponIndexStr))
     }
   }

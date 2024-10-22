@@ -51,12 +51,12 @@ export const weapons = {
     isBeam: true,
     beamColor: 0xFFFF88,
     beamWidth: 3,
-    beamGlowWidth: 10,
-    beamParticlesDensity: 5,
+    beamGlowWidth: 6,
+    beamParticlesDensity: 15,
     beamParticlesColor: 0xFFFF00,
-    beamParticlesFadeTime: 500,
-    beamLightRadius: 150,
-    beamLightIntensity: 2,
+    beamParticlesFadeTime: 100,
+    beamLightRadius: 100,
+    beamLightIntensity: 1,
     renderAsLightning: true
   },
   boltAP: {

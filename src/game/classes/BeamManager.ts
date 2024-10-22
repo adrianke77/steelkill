@@ -23,7 +23,8 @@ export class BeamManager {
   private scene: Game
   public activeBeams: { [key: number]: ActiveBeam } = {}
   private beamTimers: { [key: number]: number } = {}
-  private particleEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  private beamParticleEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  private lightningParticleEmitter: Phaser.GameObjects.Particles.ParticleEmitter
 
   constructor(scene: Game) {
     this.scene = scene
@@ -32,9 +33,16 @@ export class BeamManager {
     graphics.fillCircle(0, 0, 1)
     graphics.generateTexture('whiteParticle', 1, 1)
     graphics.destroy()
-    this.particleEmitter = scene.addParticles(0, 0, 'whiteParticle', {
+    this.beamParticleEmitter = scene.addParticles(0, 0, 'whiteParticle', {
       lifespan: 300,
       scale: { start: 0.35, end: 0 },
+      rotate: { start: 0, end: 360 },
+      speed: { min: 20, max: 30 },
+      emitting: false,
+    })
+    this.lightningParticleEmitter = scene.addParticles(0, 0, 'whiteParticle', {
+      lifespan: 300,
+      scale: { start: 0.2, end: 0 },
       rotate: { start: 0, end: 360 },
       speed: { min: 20, max: 30 },
       emitting: false,
@@ -282,9 +290,10 @@ export class BeamManager {
       const particleY = Phaser.Math.Interpolation.Linear([startY, beamEndY], t)
 
       // Manually emit particles at calculated positions
-      this.particleEmitter.setParticleTint(weapon.beamParticlesColor!)
-      this.particleEmitter.setParticleAlpha(0.9)
-      this.particleEmitter.emitParticleAt(particleX, particleY)
+      this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
+      this.beamParticleEmitter.setParticleAlpha(0.9)
+      this.beamParticleEmitter.emitParticleAt(particleX, particleY)
+      this.beamParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
 
       // Update corresponding light position
       const light = beam.lights[i]
@@ -341,75 +350,93 @@ export class BeamManager {
     endY: number,
     scene: Game,
     beam: ActiveBeam,
-    segmentCount: number = 10,
+    segmentCount: number = 30,
     displacement: number = 10,
   ): void {
-    const points: Phaser.Math.Vector2[] = [new Phaser.Math.Vector2(startX, startY)];
-    const deltaX = (endX - startX) / segmentCount;
-    const deltaY = (endY - startY) / segmentCount;
-  
+    const points: Phaser.Math.Vector2[] = [
+      new Phaser.Math.Vector2(startX, startY),
+    ]
+    const deltaX = (endX - startX) / segmentCount
+    const deltaY = (endY - startY) / segmentCount
+
     for (let i = 1; i < segmentCount; i++) {
-      const prevPoint = points[i - 1];
-      const randomX = Phaser.Math.FloatBetween(-displacement, displacement);
-      const randomY = Phaser.Math.FloatBetween(-displacement, displacement);
+      const prevPoint = points[i - 1]
+
+      const segmentsBetweenAlignedPoints = 1 // at every Nth segment, the point is on the start/end line to align the lightning to the overall direction better
+
+      const randomX =
+        i % segmentsBetweenAlignedPoints === 0
+          ? 0
+          : Phaser.Math.FloatBetween(-displacement, displacement)
+      const randomY =
+        i % segmentsBetweenAlignedPoints === 0
+          ? 0
+          : Phaser.Math.FloatBetween(-displacement, displacement)
+
       points.push(
         new Phaser.Math.Vector2(
           prevPoint.x + deltaX + randomX,
           prevPoint.y + deltaY + randomY,
         ),
-      );
+      )
     }
-    points.push(new Phaser.Math.Vector2(endX, endY));
-  
+    points.push(new Phaser.Math.Vector2(endX, endY))
+
     // Define layers for the lightning glow effect
     const lightningLayers = [
       { width: weapon.beamGlowWidth!, alpha: 0.1 },
       { width: weapon.beamGlowWidth! * 0.7, alpha: 0.15 },
       { width: weapon.beamGlowWidth! * 0.4, alpha: 0.2 },
       { width: weapon.beamWidth!, alpha: 1 },
-    ];
-  
+    ]
+
     // Draw each layer with different widths and alpha values
     for (const layer of lightningLayers) {
-      const graphics = scene.add.graphics();
-      scene.addGraphicsFiltering(graphics);
-      graphics.lineStyle(layer.width, weapon.beamColor!, layer.alpha);
-  
-      graphics.beginPath();
-      graphics.moveTo(points[0].x, points[0].y);
+      const graphics = scene.add.graphics()
+      scene.addGraphicsFiltering(graphics)
+      graphics.lineStyle(layer.width, weapon.beamColor!, layer.alpha)
+
+      graphics.beginPath()
+      graphics.moveTo(points[0].x, points[0].y)
       for (let i = 1; i < points.length; i++) {
-        graphics.lineTo(points[i].x, points[i].y);
+        graphics.lineTo(points[i].x, points[i].y)
       }
-      graphics.strokePath();
-  
+      graphics.strokePath()
+
       // Destroy the graphics after rendering
-      scene.time.delayedCall(1, () => graphics.destroy());
+      scene.time.delayedCall(1, () => graphics.destroy())
     }
-  
+
     // Emit particles along the lightning path
-    const particleCount = beam.lights.length;
+    const particleCount = beam.lights.length
     for (let i = 0; i < particleCount; i++) {
-      const t = Phaser.Math.FloatBetween(0, 1);
-      const index = Math.floor(t * (points.length - 1));
-      const pointA = points[index];
-      const pointB = points[index + 1] || points[points.length - 1];
-      const localT = Phaser.Math.FloatBetween(0, 1);
-      const particleX = Phaser.Math.Interpolation.Linear([pointA.x, pointB.x], localT);
-      const particleY = Phaser.Math.Interpolation.Linear([pointA.y, pointB.y], localT);
-  
-      this.particleEmitter.setParticleTint(weapon.beamParticlesColor!);
-      this.particleEmitter.setParticleAlpha(0.9);
-      this.particleEmitter.emitParticleAt(particleX, particleY);
-  
-      const light = beam.lights[i];
+      const t = Phaser.Math.FloatBetween(0, 1)
+      const index = Math.floor(t * (points.length - 1))
+      const pointA = points[index]
+      const pointB = points[index + 1] || points[points.length - 1]
+      const localT = Phaser.Math.FloatBetween(0, 1)
+      const particleX = Phaser.Math.Interpolation.Linear(
+        [pointA.x, pointB.x],
+        localT,
+      )
+      const particleY = Phaser.Math.Interpolation.Linear(
+        [pointA.y, pointB.y],
+        localT,
+      )
+
+      this.lightningParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
+      this.lightningParticleEmitter.setParticleAlpha(0.9)
+      this.lightningParticleEmitter.emitParticleAt(particleX, particleY)
+      this.lightningParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
+
+      const light = beam.lights[i]
       if (light) {
-        light.radius = weapon.beamLightRadius! * (Math.random() * 0.4 + 0.8);
-        light.x = particleX;
-        light.y = particleY;
+        light.radius = weapon.beamLightRadius! * (Math.random() * 0.4 + 0.8)
+        light.x = particleX
+        light.y = particleY
       }
     }
   }
-  
 
   private applyBeamDamage(enemy: EnemySprite, weapon: WeaponSpec): void {
     createLightFlash(

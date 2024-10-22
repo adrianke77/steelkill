@@ -50,6 +50,7 @@ export interface WeaponSpec {
   tracerHitFadeTime?: number
   tracerHitLightRadius?: number
   tracerHitLightIntensity?: number
+  // beam attributes apply for both beam and lightning weapons
   isBeam?: boolean
   beamColor?: number
   beamWidth?: number
@@ -59,6 +60,7 @@ export interface WeaponSpec {
   beamGlowWidth?: number // width of the glow around the beam
   beamLightRadius?: number // radius of point lights along beam
   beamLightIntensity?: number // intensity of point lights along beam
+  renderAsLightning?: boolean
 }
 
 export interface EnemyWeaponSpec

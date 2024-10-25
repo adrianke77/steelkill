@@ -8,6 +8,14 @@ import {
 import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
 
+const baseEmitterConfig = {
+  lifespan: 300,
+  scale: { start: 0.35, end: 0 },
+  rotate: { start: 0, end: 360 },
+  speed: { min: 20, max: 30 },
+  emitting: false,
+}
+
 interface ActiveBeam {
   graphics: Phaser.GameObjects.Graphics
   lights: Phaser.GameObjects.Light[]
@@ -24,7 +32,6 @@ export class BeamManager {
   public activeBeams: { [key: number]: ActiveBeam } = {}
   private beamTimers: { [key: number]: number } = {}
   private beamParticleEmitter: Phaser.GameObjects.Particles.ParticleEmitter
-  private lightningParticleEmitter: Phaser.GameObjects.Particles.ParticleEmitter
 
   constructor(scene: Game) {
     this.scene = scene
@@ -33,20 +40,12 @@ export class BeamManager {
     graphics.fillCircle(0, 0, 1)
     graphics.generateTexture('whiteParticle', 1, 1)
     graphics.destroy()
-    this.beamParticleEmitter = scene.addParticles(0, 0, 'whiteParticle', {
-      lifespan: 300,
-      scale: { start: 0.35, end: 0 },
-      rotate: { start: 0, end: 360 },
-      speed: { min: 20, max: 30 },
-      emitting: false,
-    })
-    this.lightningParticleEmitter = scene.addParticles(0, 0, 'whiteParticle', {
-      lifespan: 300,
-      scale: { start: 0.2, end: 0 },
-      rotate: { start: 0, end: 360 },
-      speed: { min: 20, max: 30 },
-      emitting: false,
-    })
+    this.beamParticleEmitter = scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      baseEmitterConfig,
+    )
   }
 
   startBeam(weaponIndex: number): void {
@@ -71,9 +70,8 @@ export class BeamManager {
       0,
     )
 
-    const density = weapon.beamParticlesDensity!
     const lights: Phaser.GameObjects.Light[] = []
-    for (let i = 0; i < density; i++) {
+    for (let i = 0; i < weapon.beamParticlesDensity!; i++) {
       // Create a light with desired properties
       const light = this.scene.lights
         .addLight(
@@ -130,7 +128,6 @@ export class BeamManager {
   updateBeams(time: number): void {
     for (const weaponIndexStr in this.activeBeams) {
       const weaponIndex = Number(weaponIndexStr)
-      const weaponPosition = ct.weaponPositions[weaponIndex]
       const beam = this.activeBeams[weaponIndex]
       if (!beam) continue
 
@@ -140,6 +137,7 @@ export class BeamManager {
       if (time - this.beamTimers[weaponIndex] < weapon.fireDelay!) continue
       this.beamTimers[weaponIndex] = time
 
+      const weaponPosition = ct.weaponPositions[weaponIndex]
       const player = this.scene.player
       const rotation = player.mechContainer.rotation - Math.PI / 2
 
@@ -159,6 +157,7 @@ export class BeamManager {
       let closestDistance = weapon.maxRange!
       let beamEndX = maxEndX
       let beamEndY = maxEndY
+      const intersectionPoint = new Phaser.Geom.Point()
 
       const line = new Phaser.Geom.Line(startX, startY, maxEndX, maxEndY)
 
@@ -170,7 +169,6 @@ export class BeamManager {
           enemy.y,
           enemy.displayWidth / 2,
         )
-        const intersectionPoint = new Phaser.Geom.Point()
         const intersects = Phaser.Geom.Intersects.LineToCircle(
           line,
           enemyCircle,
@@ -201,38 +199,42 @@ export class BeamManager {
       // Reset graphics for redraw
       beam.graphics.clear()
 
-      if (weapon.renderAsLightning) {
-        this.drawLightning(
-          weapon,
-          startX,
-          startY,
-          beamEndX,
-          beamEndY,
-          this.scene,
-          beam,
-        )
-      } else {
-        this.drawBeam(weapon, beam, startX, startY, beamEndX, beamEndY)
-      }
+      // Use the unified draw method
+      this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
 
       // Apply damage if enemy is hit
       if (closestEnemy) {
-        this.applyBeamDamage(closestEnemy, weapon)
+        if (weapon.circleSpreadTargeting) {
+          const nearbyEnemies = enemies.filter(enemy => {
+            return (
+              Phaser.Math.Distance.Between(
+                closestEnemy.x,
+                closestEnemy.y,
+                enemy.x,
+                enemy.y,
+              ) <= weapon.circleSpreadTargetingRadius!
+            )
+          })
 
-        // Create hit spark
-        const directionRadians = Phaser.Math.Angle.Between(
-          startX,
-          startY,
-          beamEndX,
-          beamEndY,
-        )
-        this.scene.projectileMgr.hitSpark(
-          beamEndX,
-          beamEndY,
-          weapon.beamColor!,
-          directionRadians,
-          5,
-        )
+          // Select one enemy within that circle to damage
+          if (nearbyEnemies.length > 0) {
+            const targetEnemy =
+              nearbyEnemies[Phaser.Math.Between(0, nearbyEnemies.length - 1)]
+
+            // Adjust beam end to the new target enemy
+            beam.endX = targetEnemy.x
+            beam.endY = targetEnemy.y
+
+            // Redraw the beam to the new target
+            beam.graphics.clear()
+            this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
+
+            // Apply damage to the selected enemy
+            this.hittingFirstEnemy(targetEnemy, weapon, startX, startY)
+          }
+        } else {
+          this.hittingFirstEnemy(closestEnemy, weapon, startX, startY)
+        }
       }
 
       // Consume ammo
@@ -249,110 +251,19 @@ export class BeamManager {
 
   private drawBeam(
     weapon: WeaponSpec,
-    beam: ActiveBeam,
-    startX: number,
-    startY: number,
-    beamEndX: number,
-    beamEndY: number,
-  ): void {
-    // Draw beam layers
-    const glowColor = weapon.beamColor!
-    const glowWidth = weapon.beamGlowWidth!
-
-    const beamLayers = [
-      { width: glowWidth, alpha: 0.1 },
-      { width: glowWidth * 0.5, alpha: 0.1 },
-      { width: glowWidth * 0.3, alpha: 0.1 },
-      { width: weapon.beamWidth!, alpha: 1 },
-    ]
-
-    for (const layer of beamLayers) {
-      this.drawBeamLayer(
-        beam.graphics,
-        startX,
-        startY,
-        beamEndX,
-        beamEndY,
-        layer.width,
-        glowColor,
-        layer.alpha,
-      )
-    }
-
-    // Emit particles along the beam
-    const particleCount = beam.lights.length // Ensure this matches the number of lights
-    for (let i = 0; i < particleCount; i++) {
-      // Randomize the particle position up and down the beam
-      const maxOffset = 0.5 / particleCount
-      const randomOffset = (Math.random() - 0.5) * 2 * maxOffset
-      const t = Phaser.Math.Clamp(i / particleCount + randomOffset, 0, 1)
-      const particleX = Phaser.Math.Interpolation.Linear([startX, beamEndX], t)
-      const particleY = Phaser.Math.Interpolation.Linear([startY, beamEndY], t)
-
-      // Manually emit particles at calculated positions
-      this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
-      this.beamParticleEmitter.setParticleAlpha(0.9)
-      this.beamParticleEmitter.emitParticleAt(particleX, particleY)
-      this.beamParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
-
-      // Update corresponding light position
-      const light = beam.lights[i]
-      if (light) {
-        light.radius = weapon.beamLightRadius! * (Math.random() * 0.4 + 0.8)
-        light.x = particleX
-        light.y = particleY
-      }
-    }
-  }
-
-  private drawBeamLayer(
-    graphics: Phaser.GameObjects.Graphics,
     startX: number,
     startY: number,
     endX: number,
     endY: number,
-    width: number,
-    color: number,
-    alpha: number,
-  ) {
-    const steps = 30 // Total number of segments for the beam
-    const halfway = steps / 2 // Halfway point
-    const dx = (endX - startX) / steps
-    const dy = (endY - startY) / steps
-
-    for (let i = 0; i < steps; i++) {
-      const segmentStartX = startX + dx * i
-      const segmentStartY = startY + dy * i
-      const segmentEndX = startX + dx * (i + 1)
-      const segmentEndY = startY + dy * (i + 1)
-
-      let segmentAlpha: number
-      if (i < halfway) {
-        segmentAlpha = alpha
-      } else {
-        const fadeProgress = (i - halfway) / halfway
-        segmentAlpha = alpha * (1 - fadeProgress)
-      }
-
-      graphics.lineStyle(width, color, segmentAlpha)
-      graphics.beginPath()
-      graphics.moveTo(segmentStartX, segmentStartY)
-      graphics.lineTo(segmentEndX, segmentEndY)
-      graphics.strokePath()
-    }
-  }
-
-  private drawLightning(
-    weapon: WeaponSpec,
-    startX: number,
-    startY: number,
-    endX: number,
-    endY: number,
-    scene: Game,
-    beam: ActiveBeam,
-    segmentCount: number = 30,
-    displacement: number = 10,
+    beam?: ActiveBeam, // only for persistent beams
+    segmentCount: number = 100,
+    displacement: number = 5,
   ): void {
+    // for non-persistent beams, e.g., chained weapons' secondary beams/lightning
+    const isBeamFragment = !beam
+    // Determine the number of segments between aligned points
+    // 1 means all segments are aligned, thus is a straight line
+    const segmentsBetweenAlignedPoints = weapon.renderAsLightning ? 3 : 1
     const points: Phaser.Math.Vector2[] = [
       new Phaser.Math.Vector2(startX, startY),
     ]
@@ -361,9 +272,6 @@ export class BeamManager {
 
     for (let i = 1; i < segmentCount; i++) {
       const prevPoint = points[i - 1]
-
-      const segmentsBetweenAlignedPoints = 1 // at every Nth segment, the point is on the start/end line to align the lightning to the overall direction better
-
       const randomX =
         i % segmentsBetweenAlignedPoints === 0
           ? 0
@@ -382,74 +290,118 @@ export class BeamManager {
     }
     points.push(new Phaser.Math.Vector2(endX, endY))
 
-    // Define layers for the lightning glow effect
-    const lightningLayers = [
-      { width: weapon.beamGlowWidth!, alpha: 0.1 },
-      { width: weapon.beamGlowWidth! * 0.7, alpha: 0.15 },
-      { width: weapon.beamGlowWidth! * 0.4, alpha: 0.2 },
-      { width: weapon.beamWidth!, alpha: 1 },
+    // Define layers for the glow effect
+    const glowLayers = [
+      {
+        color: weapon.beamGlowColor!,
+        width: weapon.beamGlowWidth!,
+        alpha: 0.2,
+      },
+      {
+        color: weapon.beamGlowColor!,
+        width: weapon.beamGlowWidth! * 0.7,
+        alpha: 0.2,
+      },
+      {
+        color: weapon.beamGlowColor!,
+        width: weapon.beamGlowWidth! * 0.4,
+        alpha: 0.2,
+      },
+      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 1 },
     ]
 
-    // Draw each layer with different widths and alpha values
-    for (const layer of lightningLayers) {
-      const graphics = scene.add.graphics()
-      scene.addGraphicsFiltering(graphics)
-      graphics.lineStyle(layer.width, weapon.beamColor!, layer.alpha)
+    // Calculate the index where the fade should start
+    const fadeStartIndex = Math.floor(points.length * (2 / 3)) // Last third
 
-      graphics.beginPath()
-      graphics.moveTo(points[0].x, points[0].y)
-      for (let i = 1; i < points.length; i++) {
-        graphics.lineTo(points[i].x, points[i].y)
+    // Draw each layer
+    for (const layer of glowLayers) {
+      const graphics = this.scene.add.graphics()
+      this.scene.addGraphicsFiltering(graphics)
+      for (let i = 0; i < points.length - 1; i++) {
+        let segmentAlpha = layer.alpha
+        if (i >= fadeStartIndex) {
+          const fadeProgress =
+            (i - fadeStartIndex) / (points.length - 1 - fadeStartIndex)
+          segmentAlpha = layer.alpha * (1 - fadeProgress) // Linear fade to zero
+        }
+        graphics.lineStyle(layer.width, layer.color, segmentAlpha)
+        graphics.beginPath()
+        graphics.moveTo(points[i].x, points[i].y)
+        graphics.lineTo(points[i + 1].x, points[i + 1].y)
+        graphics.strokePath()
       }
-      graphics.strokePath()
-
       // Destroy the graphics after rendering
-      scene.time.delayedCall(1, () => graphics.destroy())
+      this.scene.time.delayedCall(2, () => graphics.destroy())
     }
 
-    // Emit particles along the lightning path
-    const particleCount = beam.lights.length
+    const particleCount = beam
+      ? beam.lights.length
+      : weapon.beamParticlesDensity!
     for (let i = 0; i < particleCount; i++) {
-      const t = Phaser.Math.FloatBetween(0, 1)
-      const index = Math.floor(t * (points.length - 1))
-      const pointA = points[index]
-      const pointB = points[index + 1] || points[points.length - 1]
-      const localT = Phaser.Math.FloatBetween(0, 1)
-      const particleX = Phaser.Math.Interpolation.Linear(
-        [pointA.x, pointB.x],
-        localT,
-      )
-      const particleY = Phaser.Math.Interpolation.Linear(
-        [pointA.y, pointB.y],
-        localT,
-      )
+      const maxOffset = 0.5 / particleCount
+      const randomOffset = (Math.random() - 0.5) * 2 * maxOffset
+      const t = Phaser.Math.Clamp(i / particleCount + randomOffset, 0, 1)
+      const particleX = Phaser.Math.Interpolation.Linear([startX, endX], t)
+      const particleY = Phaser.Math.Interpolation.Linear([startY, endY], t)
 
-      this.lightningParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
-      this.lightningParticleEmitter.setParticleAlpha(0.9)
-      this.lightningParticleEmitter.emitParticleAt(particleX, particleY)
-      this.lightningParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
+      this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
+      this.beamParticleEmitter.setParticleAlpha(isBeamFragment ? 0.5 : 0.9)
+      this.beamParticleEmitter.emitParticleAt(particleX, particleY)
+      this.beamParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
 
-      const light = beam.lights[i]
+      // only persistent beams have persistent lights
+      const lights = isBeamFragment ? [] : beam.lights
+
+      if (isBeamFragment) {
+        for (let i = 0; i < weapon.beamParticlesDensity! / 2; i++) {
+          const light = this.scene.lights
+            .addLight(
+              startX,
+              startY,
+              weapon.beamLightRadius! / 2,
+              weapon.beamColor!,
+              weapon.beamLightIntensity! / 2,
+            )
+            .setVisible(true)
+          lights.push(light)
+        }
+      }
+
+      // Update corresponding light position
+      const light = lights[i]
       if (light) {
         light.radius = weapon.beamLightRadius! * (Math.random() * 0.4 + 0.8)
         light.x = particleX
         light.y = particleY
       }
+
+      // clear particle lights if beam is not persistent
+      if (!beam) {
+        lights.forEach(light => this.scene.lights.removeLight(light))
+      }
     }
   }
 
-  private applyBeamDamage(enemy: EnemySprite, weapon: WeaponSpec): void {
+  private hittingFirstEnemy(
+    enemy: EnemySprite,
+    weapon: WeaponSpec,
+    startX: number,
+    startY: number,
+  ): void {
     createLightFlash(
       this.scene,
       enemy.x,
       enemy.y,
       weapon.beamColor!,
       100,
-      1,
-      100,
+      weapon.beamHitLightIntensity!,
+      weapon.beamHitLightRadius!,
     )
     if (!enemy.active) return
     enemy.health -= weapon.damage!
+    // Create hit spark
+    this.hitSpark(startX, startY, enemy.x, enemy.y, weapon)
+    
     if (enemy.health <= 0) {
       const directionRadians = Phaser.Math.Angle.Between(
         this.scene.player.mechContainer.x,
@@ -467,6 +419,91 @@ export class BeamManager {
       // Remove enemy from the group (don't destroy again)
       this.scene.enemyMgr.enemies.remove(enemy, true)
     }
+
+    // Handle chaining effect
+    if (weapon.chaining) {
+      const targets = this.scene.enemyMgr.enemies
+        .getChildren()
+        .filter(e => e !== enemy && e.active) as EnemySprite[]
+      const maxChainRange = weapon.chainRange!
+
+      const sortedTargets = targets
+        .map(e => ({
+          enemy: e,
+          distance: Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y),
+        }))
+        .filter(e => e.distance <= maxChainRange)
+        // sort targets with furthest first
+        .sort((a, b) => b.distance - a.distance)
+
+      // Select up to three furthest targets
+      const chainedTargets = sortedTargets.slice(0, 3)
+
+      for (const targetData of chainedTargets) {
+        const target = targetData.enemy
+        // Apply 50% of the weapon damage
+        target.health -= weapon.damage! * 0.5
+
+        this.hitSpark(enemy.x, enemy.y, target.x, target.y, weapon)
+
+        // Create light flash at the target
+        createLightFlash(
+          this.scene,
+          target.x,
+          target.y,
+          weapon.beamColor!,
+          100,
+          weapon.beamHitLightIntensity! * 0.66,
+          weapon.beamHitLightRadius! * 0.66,
+        )
+
+        // Draw beam from initial enemy to the target
+
+        this.drawBeam(weapon, enemy.x, enemy.y, target.x, target.y)
+
+        // Check if the target is dead
+        if (target.health <= 0) {
+          const directionRadians = Phaser.Math.Angle.Between(
+            enemy.x,
+            enemy.y,
+            target.x,
+            target.y,
+          )
+          destroyEnemyAndCreateCorpseDecals(
+            this.scene,
+            target,
+            target.x,
+            target.y,
+            directionRadians,
+          )
+          // Remove enemy from the group
+          this.scene.enemyMgr.enemies.remove(target, true)
+        }
+      }
+    }
+  }
+
+  hitSpark(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    weapon: WeaponSpec,
+  ): void {
+    // Create hit spark
+    const directionRadians = Phaser.Math.Angle.Between(
+      startX,
+      startY,
+      endX,
+      endY,
+    )
+    this.scene.projectileMgr.hitSpark(
+      endX,
+      endY,
+      weapon.beamColor!,
+      directionRadians,
+      5,
+    )
   }
 
   stopAllBeams(): void {

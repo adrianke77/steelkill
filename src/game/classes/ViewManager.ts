@@ -16,7 +16,7 @@ export class ViewManager {
   ) {
 
     this.scene = scene
-    scene.lights.enable().setAmbientColor(0xbbbbbb)
+    scene.lights.enable().setAmbientColor(0x888888)
     const renderer = scene.renderer as Phaser.Renderer.WebGL.WebGLRenderer
 
     renderer.pipelines.addPostPipeline(

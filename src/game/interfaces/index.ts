@@ -58,9 +58,16 @@ export interface WeaponSpec {
   beamParticlesDensity?: number // number of emitters along the length of the beam generating particles
   beamParticlesFadeTime?: number // time in ms for particles to fade out
   beamGlowWidth?: number // width of the glow around the beam
+  beamGlowColor?: number // color of the glow around the beam
   beamLightRadius?: number // radius of point lights along beam
   beamLightIntensity?: number // intensity of point lights along beam
+  beamHitLightRadius?: number // radius of point light at hit point
+  beamHitLightIntensity?: number // intensity of point light at hit point
   renderAsLightning?: boolean
+  circleSpreadTargeting?: boolean // if true, enemy targets are randomly selected from in a circle around the projected first hit point
+  circleSpreadTargetingRadius?: number
+  chaining?: boolean // if true, beam will chain to nearby enemies
+  chainRange?:number // max range of chain
 }
 
 export interface EnemyWeaponSpec

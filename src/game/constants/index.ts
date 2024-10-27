@@ -18,8 +18,9 @@ const depths = {
 }
 
 export const Constants = {
-  fieldWidth: 5000,
-  fieldHeight: 5000,
+  fieldWidth: 3000,
+  fieldHeight: 3000,
+  tileSize: 8,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1500,

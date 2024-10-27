@@ -38,7 +38,7 @@ export class ViewManager {
 
     this.mainCam = scene.cameras.main
     this.mainCam.setBackgroundColor(0x333333)
-    this.mainCam.setBounds(0, 0, 5000, 5000)
+    this.mainCam.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
     this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
     this.mainCam.setPostPipeline([
       'StaticPostFxPipeline',

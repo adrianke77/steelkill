@@ -13,11 +13,15 @@ import { ViewManager } from '../classes/ViewManager'
 import { MinimapManager } from '../classes/MinimapManager'
 import { BeamManager } from '../classes/BeamManager'
 import { WeaponSpec, EnemySprite, Projectile, EnemyData } from '../interfaces'
+import { drawOval } from '../utils'
 
 export class Game extends Scene {
   minimapLayer: Phaser.GameObjects.Layer
   mainLayer: Phaser.GameObjects.Layer
-  
+
+  private map!: Phaser.Tilemaps.Tilemap
+  private terrainLayer!: Phaser.Tilemaps.TilemapLayer
+
   viewMgr: ViewManager
   player: PlayerMech
   projectileMgr: ProjectileManager
@@ -57,14 +61,20 @@ export class Game extends Scene {
   preload() {
     this.sound.volume = 0.4
     this.load.setPath('assets')
+
+    // Load music files
     music.forEach(fileName => {
       this.load.audio(fileName, `audio/music/${fileName}.mp3`)
     })
+
+    // Load other assets
     loadProjectileAssets(this)
     loadRenderingAssets(this)
     loadEnemyAssets(this)
     loadMechAssets(this)
     this.load.image('background', 'darksand.jpg')
+
+    // Prevent default context menu
     this.game.canvas.addEventListener(
       'contextmenu',
       event => {
@@ -89,7 +99,7 @@ export class Game extends Scene {
     })
     createEmittersAndAnimations(this)
 
-    this.physics.world.setBounds(0, 0, 5000, 5000)
+    this.physics.world.setBounds(0, 0, ct.fieldHeight, ct.fieldWidth)
     this.decals = this.add.group({
       classType: Phaser.GameObjects.Image,
       runChildUpdate: false,
@@ -103,6 +113,63 @@ export class Game extends Scene {
     this.beamMgr = new BeamManager(this)
     this.inputMgr = new InputManager(this)
     this.minimapMgr = new MinimapManager(this)
+
+    // Generate the tileset dynamically
+    const tilesetCanvas = this.textures.createCanvas(
+      'dynamic-tileset',
+      ct.tileSize * 2,
+      ct.tileSize * 2,
+    )
+
+    // Get the drawing context
+    console.log(tilesetCanvas)
+    const context = tilesetCanvas!.context
+
+    // Define colors for different tiles
+    const colors = [
+      '#A9A9A9', // Stone (Index 1)
+      '#DEB887', // Wood  (Index 2)
+      '#DAA520', // Sand  (Index 3)
+    ]
+
+    // Draw colored squares onto the canvas
+    colors.forEach((color, index) => {
+      const x = (index % 2) * ct.tileSize
+      const y = Math.floor(index / 2) * ct.tileSize
+      context.fillStyle = color
+      context.fillRect(x, y, ct.tileSize, ct.tileSize)
+    })
+
+    // Refresh the canvas texture to update it
+    tilesetCanvas!.refresh()
+
+    // Create the tilemap
+    this.map = this.make.tilemap({
+      width: ct.fieldWidth / ct.tileSize,
+      height: ct.fieldHeight / ct.tileSize,
+      tileWidth: ct.tileSize,
+      tileHeight: ct.tileSize,
+    })
+
+    // Add the dynamically generated tileset to the map
+    const tileset = this.map.addTilesetImage(
+      'dynamic-tileset',
+      'dynamic-tileset',
+      ct.tileSize,
+      ct.tileSize,
+    )
+
+    // Create a layer and fill it with tiles
+    this.terrainLayer = this.map.createBlankLayer('Terrain', tileset!)!
+
+    // Set the layer depth
+    this.terrainLayer.setDepth(-1) // Behind everything else
+
+    // Populate the layer with sample terrain
+    this.populateTerrain(this.terrainLayer)
+
+    // Add the terrain layer to the main layer
+    this.mainLayer.add(this.terrainLayer)
 
     this.inputMgr.initializeInputs()
 
@@ -262,7 +329,10 @@ export class Game extends Scene {
           }
         } else {
           if (isActive) {
-            if (time - this.lastWeaponFireTime[weaponIndex] > weapon.fireDelay) {
+            if (
+              time - this.lastWeaponFireTime[weaponIndex] >
+              weapon.fireDelay
+            ) {
               this.playerWeaponFire(weaponIndex, time)
               this.lastWeaponFireTime[weaponIndex] = time
             }
@@ -311,7 +381,7 @@ export class Game extends Scene {
     this.mainLayer.add(particles)
     return particles
   }
-  
+
   addGraphicsFiltering(graphics: Phaser.GameObjects.Graphics) {
     this.mainLayer.add(graphics)
   }
@@ -328,6 +398,44 @@ export class Game extends Scene {
     const member = group.create(x, y, key, frame, visible, active)
     this.mainLayer.add(member)
     return member
+  }
+
+  private populateTerrain(layer: Phaser.Tilemaps.TilemapLayer) {
+    const numberOfRandomOvals = 200;
+    const MIN_DISTANCE_FROM_PLAYER = 20; // Minimum distance in tiles
+  
+    // Calculate player's position in tile coordinates
+    const playerTileX = Math.floor(this.player.mechContainer.x / ct.tileSize);
+    const playerTileY = Math.floor(this.player.mechContainer.y / ct.tileSize);
+  
+    for (let i = 0; i < numberOfRandomOvals; i++) {
+      // Randomly choose terrain type: 1 (Stone), 2 (Wood), 3 (Sand)
+      const tileType = Phaser.Math.Between(1, 3);
+  
+      // Generate random center coordinates within the tilemap boundaries
+      const centerX = Phaser.Math.Between(0, ct.fieldWidth / ct.tileSize);
+      const centerY = Phaser.Math.Between(0, ct.fieldHeight / ct.tileSize);
+  
+      // Generate random radii for the oval
+      const radiusX = Phaser.Math.Between(3, 7);
+      const radiusY = Phaser.Math.Between(2, 5);
+  
+      // Calculate distance from the oval center to the player's position
+      const distanceToPlayer = Phaser.Math.Distance.Between(
+        centerX,
+        centerY,
+        playerTileX,
+        playerTileY
+      );
+  
+      // Skip this oval if it's too close to the player
+      if (distanceToPlayer < MIN_DISTANCE_FROM_PLAYER) {
+        continue;
+      }
+  
+      // Place the oval on the tilemap layer
+      drawOval(layer, centerX, centerY, radiusX, radiusY, tileType);
+    }
   }
 
   playerWeaponFire(weaponIndex: number, time: number): void {

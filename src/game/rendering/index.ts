@@ -136,7 +136,7 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
 }
 
 function addCombinedDecal(scene: Game) {
-  const combinedTexture = scene.add.renderTexture(0, 0, 5000, 5000)
+  const combinedTexture = scene.add.renderTexture(0, 0, ct.fieldHeight, ct.fieldWidth)
   combinedTexture.setBlendMode(Phaser.BlendModes.NORMAL)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)

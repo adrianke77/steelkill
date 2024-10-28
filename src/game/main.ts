@@ -22,7 +22,10 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      debug: false,
+      fps: 240
+      // debug: true, // Enable debug
+      // debugShowBody: true, // Show physics bodies
+      // debugShowStaticBody: true, // Show static physics bodies
     },
   },
   scene: [ Preloader, MainMenu, MainGame, GameOver],

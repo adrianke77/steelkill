@@ -146,6 +146,7 @@ export function drawOval(
   radiusY: number,
   tileIndex: number
 ): void {
+  console.log(tileIndex)
   for (let x = centerX - radiusX; x <= centerX + radiusX; x++) {
     for (let y = centerY - radiusY; y <= centerY + radiusY; y++) {
       // Calculate the normalized distance from the center

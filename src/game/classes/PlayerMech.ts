@@ -35,7 +35,7 @@ export class PlayerMech {
   weapons: WeaponSpec[]
   lastMechStepTime: number
   playerSkidding: boolean
-  armor:number
+  armor: number
 
   constructor(scene: Game) {
     this.hitSoundNames = ['mechhit1', 'mechhit2', 'mechhit3', 'mechhit4']
@@ -105,9 +105,17 @@ export class PlayerMech {
     )
     this.scene.physics.world.enable(this.mechContainer)
     this.mechContainer.setDepth(ct.depths.player)
-    ;(
-      this.mechContainer.body as Phaser.Physics.Arcade.Body
-    ).setCollideWorldBounds(true)
+    const body = this.mechContainer.body as Phaser.Physics.Arcade.Body
+    body.setSize(this.playerMech.displayWidth, this.playerMech.displayHeight)
+
+    // 4. Center the physics body relative to the sprite
+    body.setOffset(
+      -this.playerMech.displayWidth / 2,
+      -this.playerMech.displayHeight / 2,
+    )
+
+    body.setCollideWorldBounds(true)
+
     this.boostSound = this.scene.sound.add('boost', {
       loop: true,
     }) as Phaser.Sound.WebAudioSound
@@ -199,10 +207,8 @@ export class PlayerMech {
     }
 
     // Apply acceleration to player's body
-    (this.mechContainer.body as Phaser.Physics.Arcade.Body).setAcceleration(
-      ax,
-      ay,
-    )
+    const body = this.mechContainer.body as Phaser.Physics.Arcade.Body
+    body.setAcceleration(ax, ay)
 
     // Normalize the acceleration vector
     const accelMag = Math.sqrt(ax * ax + ay * ay)
@@ -384,7 +390,9 @@ export class PlayerMech {
     if (enemyData.hitDamage && time - enemy.lastHitTime > enemyData.hitDelay) {
       enemy.lastHitTime = time
       this.playTwoRandomMechHitSounds()
-      this.damagePlayer(enemyData.hitDamage * Phaser.Math.FloatBetween(0.97, 1.03))
+      this.damagePlayer(
+        enemyData.hitDamage * Phaser.Math.FloatBetween(0.97, 1.03),
+      )
       const directionRadians = Phaser.Math.Angle.Between(
         enemy.x,
         enemy.y,
@@ -413,7 +421,7 @@ export class PlayerMech {
     return true
   }
 
-  damagePlayer(damage:number) {
+  damagePlayer(damage: number) {
     this.scene.player.health -= damage
     if (this.scene.player.health <= 0) {
       this.scene.player.health = 0

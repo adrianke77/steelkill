@@ -127,9 +127,9 @@ export class Game extends Scene {
 
     // Define colors for different tiles
     const colors = [
-      '#A9A9A9', // Stone (Index 1)
-      '#DEB887', // Wood  (Index 2)
-      '#DAA520', // Sand  (Index 3)
+      '#00FF00',
+      '#FF0000', 
+      '#DAA520',
     ]
 
     // Draw colored squares onto the canvas
@@ -161,6 +161,14 @@ export class Game extends Scene {
 
     // Create a layer and fill it with tiles
     this.terrainLayer = this.map.createBlankLayer('Terrain', tileset!)!
+
+    //DEBUG
+    const debugGraphics = this.add.graphics().setAlpha(0.75)
+    this.terrainLayer.renderDebug(debugGraphics, {
+      tileColor: null, // Non-colliding tiles will not be colored
+      collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Color for colliding tiles
+      faceColor: new Phaser.Display.Color(40, 39, 37, 255), // Color for collision face edges
+    })
 
     // Set the layer depth
     this.terrainLayer.setDepth(-1) // Behind everything else
@@ -242,6 +250,24 @@ export class Game extends Scene {
       this,
     )
 
+    this.terrainLayer.setCollisionBetween(0, 2)
+
+    // Add colliders between terrain and player
+    this.physics.add.collider(this.player.mechContainer, this.terrainLayer)
+
+    // Add colliders between terrain and enemies
+    this.physics.add.collider(this.enemyMgr.enemies, this.terrainLayer)
+
+    // Add colliders between terrain and projectiles
+    this.physics.add.collider(
+      this.projectileMgr.projectiles,
+      this.terrainLayer,
+      projectile => {
+        this.projectileMgr.destroyProjectile(projectile as Projectile)
+      },
+      undefined,
+      this,
+    )
     this.fpsText = this.add.text(10, 10, '', {
       fontSize: '16px',
       color: '#FFFFFF',
@@ -275,7 +301,8 @@ export class Game extends Scene {
           return true
         }
 
-        ['light', 'flameLight', 'tracerLight'].forEach(lightType => {
+        const lights = ['light', 'flameLight', 'tracerLight']
+        lights.forEach(lightType => {
           const light = projectileSprite[
             lightType as keyof Projectile
           ] as Phaser.GameObjects.Light
@@ -301,7 +328,7 @@ export class Game extends Scene {
     Object.entries(ct.enemyData).forEach(([enemyKey, enemyData]) => {
       if (
         time - enemyData.spawnPeriod > this.lastEnemySpawnTimes[enemyKey] &&
-        this.enemyMgr.enemies.getChildren().length < 300
+        this.enemyMgr.enemies.getChildren().length < ct.maxEnemies
       ) {
         this.lastEnemySpawnTimes[enemyKey] = time
         this.enemyMgr.createEnemy(
@@ -401,40 +428,39 @@ export class Game extends Scene {
   }
 
   private populateTerrain(layer: Phaser.Tilemaps.TilemapLayer) {
-    const numberOfRandomOvals = 200;
-    const MIN_DISTANCE_FROM_PLAYER = 20; // Minimum distance in tiles
-  
+    const numberOfRandomOvals = 200
+    const MIN_DISTANCE_FROM_PLAYER = 20 // Minimum distance in tiles
+
     // Calculate player's position in tile coordinates
-    const playerTileX = Math.floor(this.player.mechContainer.x / ct.tileSize);
-    const playerTileY = Math.floor(this.player.mechContainer.y / ct.tileSize);
-  
+    const playerTileX = Math.floor(this.player.mechContainer.x / ct.tileSize)
+    const playerTileY = Math.floor(this.player.mechContainer.y / ct.tileSize)
+
     for (let i = 0; i < numberOfRandomOvals; i++) {
-      // Randomly choose terrain type: 1 (Stone), 2 (Wood), 3 (Sand)
-      const tileType = Phaser.Math.Between(1, 3);
-  
+      const tileType = Phaser.Math.Between(0, 2)
+
       // Generate random center coordinates within the tilemap boundaries
-      const centerX = Phaser.Math.Between(0, ct.fieldWidth / ct.tileSize);
-      const centerY = Phaser.Math.Between(0, ct.fieldHeight / ct.tileSize);
-  
+      const centerX = Phaser.Math.Between(0, ct.fieldWidth / ct.tileSize)
+      const centerY = Phaser.Math.Between(0, ct.fieldHeight / ct.tileSize)
+
       // Generate random radii for the oval
-      const radiusX = Phaser.Math.Between(3, 7);
-      const radiusY = Phaser.Math.Between(2, 5);
-  
+      const radiusX = Phaser.Math.Between(3, 7)
+      const radiusY = Phaser.Math.Between(2, 5)
+
       // Calculate distance from the oval center to the player's position
       const distanceToPlayer = Phaser.Math.Distance.Between(
         centerX,
         centerY,
         playerTileX,
-        playerTileY
-      );
-  
+        playerTileY,
+      )
+
       // Skip this oval if it's too close to the player
       if (distanceToPlayer < MIN_DISTANCE_FROM_PLAYER) {
-        continue;
+        continue
       }
-  
+
       // Place the oval on the tilemap layer
-      drawOval(layer, centerX, centerY, radiusX, radiusY, tileType);
+      drawOval(layer, centerX, centerY, radiusX, radiusY, tileType)
     }
   }
 

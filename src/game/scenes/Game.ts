@@ -19,8 +19,8 @@ export class Game extends Scene {
   minimapLayer: Phaser.GameObjects.Layer
   mainLayer: Phaser.GameObjects.Layer
 
-  private map!: Phaser.Tilemaps.Tilemap
-  private terrainLayer!: Phaser.Tilemaps.TilemapLayer
+  map!: Phaser.Tilemaps.Tilemap
+  terrainLayer!: Phaser.Tilemaps.TilemapLayer
 
   viewMgr: ViewManager
   player: PlayerMech
@@ -122,7 +122,6 @@ export class Game extends Scene {
     )
 
     // Get the drawing context
-    console.log(tilesetCanvas)
     const context = tilesetCanvas!.context
 
     // Define colors for different tiles

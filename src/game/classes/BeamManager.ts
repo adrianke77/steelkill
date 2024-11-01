@@ -122,7 +122,7 @@ export class BeamManager {
       const { startX, startY, maxEndX, maxEndY } =
         this.calculateBeamPositions(weaponIndex)
 
-      const { beamEndX, beamEndY, closestEnemy } = this.detectBeamCollision(
+      const { beamEndX, beamEndY, hitObject } = this.detectBeamCollision(
         startX,
         startY,
         maxEndX,
@@ -137,7 +137,8 @@ export class BeamManager {
 
       this.resetAndDrawBeam(beam, weapon, startX, startY)
 
-      if (closestEnemy) {
+      if (hitObject && 'enemyData' in hitObject) {
+        const closestEnemy = hitObject as EnemySprite
         if (weapon.circleSpreadTargeting) {
           this.handleCircleSpreadTargeting(
             beam,
@@ -151,6 +152,8 @@ export class BeamManager {
         }
       }
 
+      // todo: handle hitting a tile, including effects and damage
+
       this.consumeAmmo(weaponIndex)
     }
   }
@@ -162,9 +165,12 @@ export class BeamManager {
     return true
   }
 
-  private calculateBeamPositions(
-    weaponIndex: number,
-  ): { startX: number; startY: number; maxEndX: number; maxEndY: number } {
+  private calculateBeamPositions(weaponIndex: number): {
+    startX: number
+    startY: number
+    maxEndX: number
+    maxEndY: number
+  } {
     const weapon = this.scene.player.weapons[weaponIndex]
     const weaponPosition = ct.weaponPositions[weaponIndex]
     const player = this.scene.player
@@ -192,16 +198,89 @@ export class BeamManager {
   ): {
     beamEndX: number
     beamEndY: number
-    closestEnemy: EnemySprite | null
+    hitObject: EnemySprite | Phaser.Tilemaps.Tile | null
   } {
+    const tileSize = this.scene.terrainMgr.map.tileWidth
+    const layer = this.scene.terrainMgr.terrainLayer
+    const map = this.scene.terrainMgr.map
+
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     let closestEnemy: EnemySprite | null = null
+    let closestTile: Phaser.Tilemaps.Tile | null = null
     let closestDistance = weapon.maxRange!
     let beamEndX = maxEndX
     let beamEndY = maxEndY
     const intersectionPoint = new Phaser.Geom.Point()
 
     const line = new Phaser.Geom.Line(startX, startY, maxEndX, maxEndY)
+
+    // --- Terrain Collision Detection using DDA Algorithm ---
+
+    // Convert start and end positions to tile coordinates
+    let x = Math.floor(startX / tileSize)
+    let y = Math.floor(startY / tileSize)
+
+    const deltaX = maxEndX - startX
+    const deltaY = maxEndY - startY
+
+    const stepX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0
+    const stepY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0
+
+    const gridDeltaX =
+      deltaX === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaX)
+    const gridDeltaY =
+      deltaY === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaY)
+
+    let tMaxX: number
+    let tMaxY: number
+
+    if (deltaX === 0) {
+      tMaxX = Number.MAX_VALUE
+    } else {
+      const xBound = stepX > 0 ? (x + 1) * tileSize : x * tileSize
+      tMaxX = Math.abs((xBound - startX) / deltaX)
+    }
+
+    if (deltaY === 0) {
+      tMaxY = Number.MAX_VALUE
+    } else {
+      const yBound = stepY > 0 ? (y + 1) * tileSize : y * tileSize
+      tMaxY = Math.abs((yBound - startY) / deltaY)
+    }
+
+    // Step through the grid
+    while (x >= 0 && x < map.width && y >= 0 && y < map.height) {
+      const tile = layer.getTileAt(x, y)
+      if (tile && tile.collides) {
+        // Collision with tile
+        const collisionT = Math.min(tMaxX, tMaxY)
+        const collisionX = startX + deltaX * collisionT
+        const collisionY = startY + deltaY * collisionT
+        const distance = Phaser.Math.Distance.Between(
+          startX,
+          startY,
+          collisionX,
+          collisionY,
+        )
+        if (distance < closestDistance) {
+          closestDistance = distance
+          beamEndX = collisionX
+          beamEndY = collisionY
+          closestTile = tile
+          closestEnemy = null // Beam hit tile before any enemy
+        }
+        break
+      }
+      if (tMaxX < tMaxY) {
+        tMaxX += gridDeltaX
+        x += stepX
+      } else {
+        tMaxY += gridDeltaY
+        y += stepY
+      }
+    }
+
+    // --- Enemy Collision Detection ---
 
     for (const enemy of enemies) {
       if (!enemy.active) continue
@@ -227,13 +306,17 @@ export class BeamManager {
         if (distance < closestDistance) {
           closestDistance = distance
           closestEnemy = enemy
+          closestTile = null // Beam hit enemy before any tile
           beamEndX = intersectionPoint.x
           beamEndY = intersectionPoint.y
         }
       }
     }
 
-    return { beamEndX, beamEndY, closestEnemy }
+    // Determine the object hit (enemy, tile, or null)
+    const hitObject = closestEnemy || closestTile || null
+
+    return { beamEndX, beamEndY, hitObject }
   }
 
   private resetAndDrawBeam(
@@ -441,12 +524,12 @@ export class BeamManager {
       ? beam.lights.length
       : weapon.beamParticlesDensity!
     const lights = isBeamFragment ? [] : beam!.lights
-  
+
     // Compute the direction vector of the straight line and its length
     const dir = new Phaser.Math.Vector2(endX - startX, endY - startY)
     const lineLength = dir.length()
     dir.normalize()
-  
+
     // Compute perpendicular offsets for each point in the points array
     const perpendicularOffsets = points.map(point => {
       const v = new Phaser.Math.Vector2(point.x - startX, point.y - startY)
@@ -454,39 +537,41 @@ export class BeamManager {
       const projection = dir.clone().scale(t)
       const perpendicular = v.clone().subtract(projection)
       const perpendicularDistance = perpendicular.length()
-  
+
       // Compute signed perpendicular distance using cross product
       const cross = dir.x * v.y - dir.y * v.x
       const sign = Math.sign(cross)
       const signedPerpendicularDistance = perpendicularDistance * sign
-  
+
       const tNormalized = t / lineLength
-  
+
       return {
         t: tNormalized,
         offset: signedPerpendicularDistance,
       }
     })
-  
+
     // Sort the offsets by their normalized t values along the line
     perpendicularOffsets.sort((a, b) => a.t - b.t)
-  
+
     // Normal vector perpendicular to the line direction
     const normal = new Phaser.Math.Vector2(-dir.y, dir.x)
-  
+
     for (let i = 0; i < particleCount; i++) {
       const maxOffset = 0.5 / particleCount
       const randomOffset = (Math.random() - 0.5) * 2 * maxOffset
       const t = Phaser.Math.Clamp(i / particleCount + randomOffset, 0, 1)
       const baseX = Phaser.Math.Interpolation.Linear([startX, endX], t)
       const baseY = Phaser.Math.Interpolation.Linear([startY, endY], t)
-  
+
       // Interpolate the perpendicular offset at this t value
       let offset = 0
       if (perpendicularOffsets.length > 0) {
         if (t <= perpendicularOffsets[0].t) {
           offset = perpendicularOffsets[0].offset
-        } else if (t >= perpendicularOffsets[perpendicularOffsets.length - 1].t) {
+        } else if (
+          t >= perpendicularOffsets[perpendicularOffsets.length - 1].t
+        ) {
           offset = perpendicularOffsets[perpendicularOffsets.length - 1].offset
         } else {
           for (let j = 0; j < perpendicularOffsets.length - 1; j++) {
@@ -500,20 +585,20 @@ export class BeamManager {
           }
         }
       }
-  
+
       // Apply the perpendicular offset
       const offsetX = normal.x * offset
       const offsetY = normal.y * offset
-  
+
       const particleX = baseX + offsetX
       const particleY = baseY + offsetY
-  
+
       // Emit the particle at the computed position
       this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
       this.beamParticleEmitter.setParticleAlpha(isBeamFragment ? 0.5 : 0.9)
       this.beamParticleEmitter.emitParticleAt(particleX, particleY)
       this.beamParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
-  
+
       // Handle lights for beam fragments
       if (isBeamFragment) {
         for (let j = 0; j < weapon.beamParticlesDensity! / 2; j++) {
@@ -529,7 +614,7 @@ export class BeamManager {
           lights.push(light)
         }
       }
-  
+
       // Update light positions for persistent beams
       const light = lights[i]
       if (light) {
@@ -537,14 +622,13 @@ export class BeamManager {
         light.x = particleX
         light.y = particleY
       }
-  
+
       // Remove lights for non-persistent beams
       if (!beam) {
         lights.forEach(light => this.scene.lights.removeLight(light))
       }
     }
   }
-  
 
   private hittingFirstEnemy(
     enemy: EnemySprite,

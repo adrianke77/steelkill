@@ -158,3 +158,8 @@ type SoundTuple = [
 export type SoundTracker = { [key: string]: SoundTuple[] }
 
 export type DataFromReact = [string, any]
+
+export interface TerrainTile extends Phaser.Tilemaps.Tile {
+  health: number
+  armor: number
+}

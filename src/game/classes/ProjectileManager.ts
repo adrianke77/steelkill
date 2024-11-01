@@ -2,6 +2,7 @@
 import { Game } from '../scenes/Game'
 import { Constants as ct, weaponConstants } from '../constants'
 import { enemyWeapons } from '../constants/weapons'
+import { tileProperties } from '../constants/tileProperties'
 import {
   EnemySprite,
   Projectile,
@@ -11,6 +12,7 @@ import {
   SoundTracker,
   EnemyData,
   EnemyWeaponSpec,
+  TerrainTile
 } from '../interfaces'
 import {
   addFlameToProjectile,
@@ -298,33 +300,45 @@ export class ProjectileManager {
     projectile.flameLight = light
   }
 
-  projectileHitsEnemy(projectile: Projectile, enemy: EnemySprite): boolean {
+  projectileHitsTarget(
+    projectile: Projectile,
+    target: EnemySprite | TerrainTile,
+  ): boolean {
     const weapon = projectile.weapon
-    // Handle explosion
+  
     if (weapon?.explodeRadius) {
       this.playExplosionSound(projectile)
-      this.createExplosionHittingEnemy(
-        (projectile.x + enemy.x) / 2,
-        (projectile.y + enemy.y) / 2,
-        weapon,
-      )
+      if (projectile.enemySource) {
+        this.createExplosionHittingPlayer(projectile.x, projectile.y, weapon)
+      } else {
+        this.createExplosionHittingEnemy(projectile.x, projectile.y, weapon)
+      }
       this.destroyProjectile(projectile)
       return true
     }
-
-    // Handle penetration
-    if (projectile!.penetration > enemy.armor) {
-      this.applyProjectileDamageAndEffectsToEnemy(projectile, enemy, 1)
-      projectile.penetration -= enemy.armor / 2
+  
+    let targetArmor: number
+    if (target instanceof Phaser.Tilemaps.Tile) {
+      const properties = tileProperties[target.index as keyof typeof tileProperties]
+      targetArmor = properties.armor
+    } else {
+      targetArmor = target.armor
+    }
+  
+    if (projectile!.penetration > targetArmor) {
+      this.applyProjectileDamageAndEffectsToTarget(projectile, target, 1)
+      projectile.penetration -= targetArmor / 2
       return false
-    } else if (projectile!.penetration > enemy.armor / 2) {
-      this.applyProjectileDamageAndEffectsToEnemy(projectile, enemy, 0.5)
+    } else if (projectile!.penetration > targetArmor / 2) {
+      this.applyProjectileDamageAndEffectsToTarget(projectile, target, 0.5)
       this.destroyProjectile(projectile)
-    } else if (projectile!.penetration < enemy.armor / 2) {
+    } else if (projectile!.penetration < targetArmor / 2) {
+      this.applyProjectileDamageAndEffectsToTarget(projectile, target, 0)
       this.destroyProjectile(projectile)
     }
     return true
   }
+  
 
   projectileHitsPlayer(projectile: Projectile): boolean {
     const player = this.scene.player.mechContainer
@@ -353,6 +367,47 @@ export class ProjectileManager {
       this.destroyProjectile(projectile)
     }
     return true
+  }
+
+   isEnemySprite(target: any): target is EnemySprite {
+    return target && 'enemyData' in target
+  }
+
+  private applyProjectileDamageAndEffectsToTarget(
+    projectile: Projectile,
+    target: EnemySprite | TerrainTile,
+    damageFactor: number,
+  ): void {
+    const damage = projectile.damage * damageFactor
+    if (target instanceof Phaser.Tilemaps.Tile) {
+      const properties = tileProperties[target.index as keyof typeof tileProperties]
+      if (!target.health) {
+        target.health = properties.health
+      }
+      target.health -= damage
+      if (target.health <= 0) {
+        this.scene.terrainMgr.destroyTile(target)
+      } 
+      
+      const directionRadians = Phaser.Math.Angle.Between(
+        projectile.x,
+        projectile.y,
+        target.getCenterX(),
+        target.getCenterY(),
+      )
+      this.projectileSpark(
+        projectile.x,
+        projectile.y,
+        projectile,
+        directionRadians,
+      )
+    } else {
+      this.applyProjectileDamageAndEffectsToEnemy(
+        projectile,
+        target,
+        damageFactor,
+      )
+    }
   }
 
   private applyProjectileDamageAndEffectsToEnemy(

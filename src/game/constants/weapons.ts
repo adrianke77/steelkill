@@ -62,7 +62,7 @@ export const weapons = {
     beamParticlesFadeTime: 200,
     beamLightRadius: 150,
     beamLightIntensity: 0.8,
-    beamHitLightRadius: 200,
+    beamHitLightRadius: 100,
     beamHitLightIntensity: 1.5,
     // circleSpreadTargeting:true,
     // circleSpreadTargetingRadius: 100,

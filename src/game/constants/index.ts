@@ -15,7 +15,8 @@ const depths = {
   explosion: 10000,
   decals: 7500,
   projectileSpark: 10000,
-  terrain: 1
+  terrain: 1,
+  dustClouds:7999
 }
 
 export const Constants = {

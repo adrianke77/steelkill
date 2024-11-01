@@ -136,7 +136,12 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
 }
 
 function addCombinedDecal(scene: Game) {
-  const combinedTexture = scene.add.renderTexture(0, 0, ct.fieldHeight, ct.fieldWidth)
+  const combinedTexture = scene.add.renderTexture(
+    0,
+    0,
+    ct.fieldHeight,
+    ct.fieldWidth,
+  )
   combinedTexture.setBlendMode(Phaser.BlendModes.NORMAL)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
@@ -211,21 +216,40 @@ export function createDustCloud(
   directionX: number,
   directionY: number,
   opacity: number,
+  duration?: number,
+  size?: number,
 ): void {
   const dustCloud = scene.addSprite(x, y, 'dust')
-  dustCloud.setRotation(Phaser.Math.Between(0, 2 * Math.PI))
+  const initialSize = size ? size : 50
+  const finalSize = initialSize * 2
 
+  const initialRotation = Phaser.Math.Between(0, 2 * Math.PI)
+  const finalRotation =
+    initialRotation + Phaser.Math.Between(-Math.PI / 8, Math.PI / 8)
+
+  dustCloud.setRotation(initialRotation)
   dustCloud.setAlpha(opacity)
-  dustCloud.setDisplaySize(50, 50)
+  dustCloud.setDisplaySize(initialSize, initialSize)
   dustCloud.setVelocity(directionX / 2, directionY / 2)
   dustCloud.setPipeline('Light2D')
+  dustCloud.setDepth(ct.depths.dustClouds)
+
+  scene.tweens.add({
+    targets: dustCloud,
+    displayWidth: { from: initialSize, to: finalSize },
+    displayHeight: { from: initialSize, to: finalSize },
+    rotation:{from: initialRotation, to: finalRotation},
+    duration: 1000, // Duration for the expansion in milliseconds
+    ease: 'Cubic.easeOut', // Easing function for smooth expansion
+  })
 
   scene.tweens.add({
     targets: dustCloud,
     alpha: 0,
-    displayWidth: 100,
-    displayHeight: 100,
-    duration: 1000,
+    displayWidth: initialSize,
+    displayHeight: initialSize,
+    duration: duration ? duration : 1000,
+    ease: 'Linear',
     onComplete: () => {
       dustCloud.destroy()
     },
@@ -334,7 +358,7 @@ export function tweenFade(
     texture: Phaser.GameObjects.RenderTexture
     image: Phaser.GameObjects.Image
   },
-) {
+) {sssss
   scene.tweens.add({
     targets: combinedDecal.image,
     alpha: 0,
@@ -395,6 +419,8 @@ export function renderExplosion(
     damage / 3,
     diameter * 2,
   )
+  createDustCloud(scene, x, y, 0, 0, 0.5, 2000, diameter * 2)
+
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(
       scene,
@@ -413,8 +439,8 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
   const currentPosY = scene.player.mechContainer.body!.position.y
   createDustCloud(
     scene,
-    currentPosX + scene.player.mechContainer.width,
-    currentPosY + scene.player.mechContainer.height,
+    currentPosX + scene.player.playerMech.displayWidth / 2,
+    currentPosY + scene.player.playerMech.displayHeight / 2,
     scene.player.mechContainer.body!.velocity.x,
     scene.player.mechContainer.body!.velocity.y,
     opacity,

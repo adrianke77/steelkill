@@ -12,7 +12,7 @@ import {
   SoundTracker,
   EnemyData,
   EnemyWeaponSpec,
-  TerrainTile
+  TerrainTile,
 } from '../interfaces'
 import {
   addFlameToProjectile,
@@ -305,7 +305,7 @@ export class ProjectileManager {
     target: EnemySprite | TerrainTile,
   ): boolean {
     const weapon = projectile.weapon
-  
+
     if (weapon?.explodeRadius) {
       this.playExplosionSound(projectile)
       if (projectile.enemySource) {
@@ -316,15 +316,16 @@ export class ProjectileManager {
       this.destroyProjectile(projectile)
       return true
     }
-  
+
     let targetArmor: number
     if (target instanceof Phaser.Tilemaps.Tile) {
-      const properties = tileProperties[target.index as keyof typeof tileProperties]
+      const properties =
+        tileProperties[target.index as keyof typeof tileProperties]
       targetArmor = properties.armor
     } else {
       targetArmor = target.armor
     }
-  
+
     if (projectile!.penetration > targetArmor) {
       this.applyProjectileDamageAndEffectsToTarget(projectile, target, 1)
       projectile.penetration -= targetArmor / 2
@@ -338,7 +339,6 @@ export class ProjectileManager {
     }
     return true
   }
-  
 
   projectileHitsPlayer(projectile: Projectile): boolean {
     const player = this.scene.player.mechContainer
@@ -369,7 +369,7 @@ export class ProjectileManager {
     return true
   }
 
-   isEnemySprite(target: any): target is EnemySprite {
+  isEnemySprite(target: any): target is EnemySprite {
     return target && 'enemyData' in target
   }
 
@@ -380,24 +380,28 @@ export class ProjectileManager {
   ): void {
     const damage = projectile.damage * damageFactor
     if (target instanceof Phaser.Tilemaps.Tile) {
-      const properties = tileProperties[target.index as keyof typeof tileProperties]
+      const properties =
+        tileProperties[target.index as keyof typeof tileProperties]
       if (!target.health) {
         target.health = properties.health
       }
       target.health -= damage
       if (target.health <= 0) {
         this.scene.terrainMgr.destroyTile(target)
-      } 
-      
+      }
+
+      const tileX = target.getCenterX()
+      const tileY = target.getCenterY()
+
       const directionRadians = Phaser.Math.Angle.Between(
         projectile.x,
         projectile.y,
-        target.getCenterX(),
-        target.getCenterY(),
+        tileX,
+        tileY,
       )
       this.projectileSpark(
-        projectile.x,
-        projectile.y,
+        (projectile.x + tileX) / 2,
+        (projectile.y + tileY) / 2,
         projectile,
         directionRadians,
       )
@@ -477,6 +481,7 @@ export class ProjectileManager {
   ): void {
     const radius = weapon.explodeRadius!
     const baseDamage = weapon.explodeDamage!
+
     renderExplosion(this.scene, x, y, radius * 2, baseDamage, {
       color: weapon.explodeColor,
       scorchTint: weapon.scorchTint,
@@ -485,6 +490,8 @@ export class ProjectileManager {
       explodeAfterGlowIntensity: weapon.explodeAfterGlowIntensity,
       explodeAfterGlowRadius: weapon.explodeAfterGlowRadius,
     })
+
+    // Damage enemies within the explosion radius
     this.scene.enemyMgr.enemies.children.each(
       (enemy: Phaser.GameObjects.GameObject) => {
         const enemySprite = enemy as EnemySprite
@@ -496,7 +503,8 @@ export class ProjectileManager {
         )
         if (distance <= radius) {
           const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
-          enemySprite.health -= Math.max(damage - enemySprite.armor, 0)
+          const effectiveDamage = Math.max(damage - enemySprite.armor, 0)
+          enemySprite.health -= effectiveDamage
           createBloodSplat(this.scene, enemySprite, 30)
           if (enemySprite.health <= 0) {
             const directionRadians = Phaser.Math.Angle.Between(
@@ -526,6 +534,68 @@ export class ProjectileManager {
         return true
       },
     )
+
+    // **New code to damage tiles within the explosion radius**
+    // Get all tiles within the bounding rectangle of the explosion
+    const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
+      x - radius,
+      y - radius,
+      radius * 2,
+      radius * 2,
+      { isColliding: true }, // Only consider collidable tiles,
+      undefined,
+      this.scene.terrainMgr.terrainLayer,
+    )
+
+    if (tiles) {
+      tiles.forEach((tileObject: Phaser.Tilemaps.Tile) => {
+        const tile = tileObject as TerrainTile
+        // Calculate the distance from the explosion center to the tile's center
+        const tileCenterX = tile.getCenterX()
+        const tileCenterY = tile.getCenterY()
+        const distance = Phaser.Math.Distance.Between(
+          x,
+          y,
+          tileCenterX,
+          tileCenterY,
+        )
+
+        if (distance <= radius) {
+          const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+          const properties =
+            tileProperties[tile.index as keyof typeof tileProperties]
+
+          // Initialize tile health if not already set
+          if (tile.health === undefined) {
+            tile.health = properties.health
+          }
+
+          // Apply damage considering tile's armor
+          if (damage > properties.armor / 2) {
+            const effectiveDamage = damage - properties.armor / 2
+            tile.health -= effectiveDamage
+
+            if (tile.health <= 0) {
+              this.scene.terrainMgr.destroyTile(tile)
+            } 
+
+            // Create spark effect at the tile
+            const directionRadians = Phaser.Math.Angle.Between(
+              x,
+              y,
+              tileCenterX,
+              tileCenterY,
+            )
+            this.projectileSpark(
+              (x + tileCenterX) / 2,
+              (y + tileCenterY) / 2,
+              undefined,
+              directionRadians,
+            )
+          }
+        }
+      })
+    }
   }
 
   createExplosionHittingPlayer(
@@ -575,7 +645,7 @@ export class ProjectileManager {
   projectileSpark(
     x: number,
     y: number,
-    projectile: Projectile,
+    projectile: Projectile|undefined,
     radDirection?: number,
     enemyData?: EnemyData,
   ): void {
@@ -612,7 +682,7 @@ export class ProjectileManager {
       y,
       particles ? 5 : particles,
     )
-    if (projectile?.hasTracer) {
+    if (projectile && projectile?.hasTracer) {
       const weapon = projectile.weapon
       createLightFlash(
         this.scene,

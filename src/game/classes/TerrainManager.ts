@@ -2,8 +2,8 @@
 
 import { Game } from '../scenes/Game'
 import { Projectile, TerrainTile } from '../interfaces'
-import { renderExplosion } from '../rendering'
-import { Constants as ct} from '../constants'
+import { createDustCloud } from '../rendering'
+import { Constants as ct } from '../constants'
 import { drawOval } from '../utils'
 
 export class TerrainManager {
@@ -21,6 +21,10 @@ export class TerrainManager {
 
   createTerrain() {
     // Generate the tileset dynamically
+
+    // Remove the old tileset if it exists, this happens if the player restarts the game
+    this.scene.textures.remove('dynamic-tileset')
+
     const tilesetCanvas = this.scene.textures.createCanvas(
       'dynamic-tileset',
       ct.tileSize * 2,
@@ -32,9 +36,9 @@ export class TerrainManager {
 
     // Define colors for different tiles
     const colors = [
-      '#00FF00', // Tile index 0
-      '#FF0000', // Tile index 1
-      '#0000FF', // Tile index 2
+      '#E2CA76', // Tile index 0
+      '#B58447', // Tile index 1
+      '#888C8D', // Tile index 2
     ]
 
     // Draw colored squares onto the canvas
@@ -144,22 +148,22 @@ export class TerrainManager {
     )
   }
 
-handleProjectileTileCollision(
-  item1:
-    | Phaser.Tilemaps.Tile
-    | Phaser.Types.Physics.Arcade.GameObjectWithBody
-    | Phaser.Physics.Arcade.Body,
-  item2:
-    | Phaser.Tilemaps.Tile
-    | Phaser.Types.Physics.Arcade.GameObjectWithBody
-    | Phaser.Physics.Arcade.Body,
-) {
-  const projectileSprite = item1 as Phaser.GameObjects.GameObject
-  const tile = item2 as TerrainTile
-  const projectile = projectileSprite as Projectile
+  handleProjectileTileCollision(
+    item1:
+      | Phaser.Tilemaps.Tile
+      | Phaser.Types.Physics.Arcade.GameObjectWithBody
+      | Phaser.Physics.Arcade.Body,
+    item2:
+      | Phaser.Tilemaps.Tile
+      | Phaser.Types.Physics.Arcade.GameObjectWithBody
+      | Phaser.Physics.Arcade.Body,
+  ) {
+    const projectileSprite = item1 as Phaser.GameObjects.GameObject
+    const tile = item2 as TerrainTile
+    const projectile = projectileSprite as Projectile
 
-  return this.scene.projectileMgr.projectileHitsTarget(projectile, tile)
-}
+    return this.scene.projectileMgr.projectileHitsTarget(projectile, tile)
+  }
 
   destroyTile(tile: Phaser.Tilemaps.Tile) {
     // Remove the tile from the layer
@@ -174,8 +178,6 @@ handleProjectileTileCollision(
     const worldY = tile.getCenterY()
 
     // Create an effect at the tile's position
-    renderExplosion(this.scene, worldX, worldY, 50, 50, {
-      color: 0x888888, // Grey color for debris
-    })
+    createDustCloud(this.scene, worldX, worldY, 0, 0, 1,3000,100)
   }
 }

@@ -224,9 +224,9 @@ export const weapons = {
     tracerProjectileColor: 0x2c75ff,
     tracerLightRadius: 150,
     tracerScaleUp: 1,
-    tracerHitFadeTime: 8000,
-    tracerHitLightRadius: 70,
-    tracerHitLightIntensity: 15,
+    tracerHitFadeTime: 2000,
+    tracerHitLightRadius: 50,
+    tracerHitLightIntensity: 10,
   },
 } as WeaponsList
 

@@ -358,7 +358,7 @@ export function tweenFade(
     texture: Phaser.GameObjects.RenderTexture
     image: Phaser.GameObjects.Image
   },
-) {sssss
+) {
   scene.tweens.add({
     targets: combinedDecal.image,
     alpha: 0,

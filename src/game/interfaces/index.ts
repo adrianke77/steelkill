@@ -54,6 +54,7 @@ export interface WeaponSpec {
   isBeam?: boolean
   beamColor?: number
   beamWidth?: number
+  beamParticleInitialSize?: number
   beamParticlesColor?: number
   beamParticlesDensity?: number // number of emitters along the length of the beam generating particles
   beamParticlesFadeTime?: number // time in ms for particles to fade out
@@ -64,10 +65,11 @@ export interface WeaponSpec {
   beamHitLightRadius?: number // radius of point light at hit point
   beamHitLightIntensity?: number // intensity of point light at hit point
   renderAsLightning?: boolean
-  circleSpreadTargeting?: boolean // if true, enemy targets are randomly selected from in a circle around the projected first hit point
-  circleSpreadTargetingRadius?: number
+  arcTargeting?: boolean // if true, enemy targets is selected from nearest one within an arc in front of the player
+  arcTargetingAngle?: number // angle of the arc in front of the player in degrees
   chaining?: boolean // if true, beam will chain to nearby enemies
   chainRange?:number // max range of chain
+  terrainDamageMultiplier?: number
 }
 
 export interface EnemyWeaponSpec
@@ -162,4 +164,10 @@ export type DataFromReact = [string, any]
 export interface TerrainTile extends Phaser.Tilemaps.Tile {
   health: number
   armor: number
+}
+
+export interface TerrainChunk {
+  sprite: Phaser.Physics.Arcade.Sprite;
+  health: number;
+  armor: number;
 }

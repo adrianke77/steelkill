@@ -10,7 +10,7 @@ export const enemies = {
     displaySize: 40,
     collisionSize: 35,
     bloodColor: 0x00dd00,
-    color: 0x220505,
+    color: 0x200505,
     walkAnimation: 'whiteant8',
     corpseImage: 'blood',
     corpseSize: 50,

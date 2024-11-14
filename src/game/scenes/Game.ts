@@ -12,7 +12,7 @@ import { ViewManager } from '../classes/ViewManager';
 import { MinimapManager } from '../classes/MinimapManager';
 import { BeamManager } from '../classes/BeamManager';
 import { WeaponSpec, EnemySprite, Projectile } from '../interfaces';
-import { TerrainManager } from '../classes/TerrainManager'; // Import TerrainManager
+import { TerrainManager, loadTerrainAssets } from '../classes/TerrainManager'; // Import TerrainManager
 
 export class Game extends Scene {
   minimapLayer: Phaser.GameObjects.Layer;
@@ -70,6 +70,7 @@ export class Game extends Scene {
     loadRenderingAssets(this);
     loadEnemyAssets(this);
     loadMechAssets(this);
+    loadTerrainAssets(this)
     this.load.image('background', 'darksand.jpg');
 
     // Prevent default context menu

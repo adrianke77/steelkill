@@ -16,7 +16,7 @@ export class ViewManager {
   ) {
 
     this.scene = scene
-    scene.lights.enable().setAmbientColor(0x888888)
+    scene.lights.enable().setAmbientColor(ct.ambientLightColor)
     const renderer = scene.renderer as Phaser.Renderer.WebGL.WebGLRenderer
 
     renderer.pipelines.addPostPipeline(
@@ -55,7 +55,6 @@ export class ViewManager {
       'ScanlinesPostFxPipeline',
       'CurvedScreenPostFxPipeline',
     ])
-    this.miniMapCam.startFollow(this.scene.player.mechContainer, true, 0.03, 0.03)
 
     const background = scene.add.tileSprite(
       ct.fieldWidth / 2,

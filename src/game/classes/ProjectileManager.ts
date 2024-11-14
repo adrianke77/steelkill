@@ -527,16 +527,17 @@ export class ProjectileManager {
               x,
               y,
             )
-            enemySprite.x -= Math.cos(angle) * 5
-            enemySprite.y -= Math.sin(angle) * 5
+            // knockback by pixels
+            const knockback = (effectiveDamage/enemySprite.health) * 5
+            enemySprite.x -= Math.cos(angle) * knockback
+            enemySprite.y -= Math.sin(angle) * knockback
           }
         }
         return true
       },
     )
 
-    // **New code to damage tiles within the explosion radius**
-    // Get all tiles within the bounding rectangle of the explosion
+    // Damaging tiles
     const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
       x - radius,
       y - radius,
@@ -578,20 +579,6 @@ export class ProjectileManager {
             if (tile.health <= 0) {
               this.scene.terrainMgr.destroyTile(tile)
             } 
-
-            // Create spark effect at the tile
-            const directionRadians = Phaser.Math.Angle.Between(
-              x,
-              y,
-              tileCenterX,
-              tileCenterY,
-            )
-            this.projectileSpark(
-              (x + tileCenterX) / 2,
-              (y + tileCenterY) / 2,
-              undefined,
-              directionRadians,
-            )
           }
         }
       })
@@ -614,6 +601,8 @@ export class ProjectileManager {
       explodeAfterGlowIntensity: weapon.explodeAfterGlowIntensity,
       explodeAfterGlowRadius: weapon.explodeAfterGlowRadius,
     })
+
+    // Player damage
     const distance = Phaser.Math.Distance.Between(
       x,
       y,
@@ -623,6 +612,45 @@ export class ProjectileManager {
     if (distance <= radius) {
       const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
       player.damagePlayer(damage - player.armor)
+    }
+
+    // Add terrain damage
+    const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
+      x - radius,
+      y - radius,
+      radius * 2,
+      radius * 2,
+      { isColliding: true },
+      undefined,
+      this.scene.terrainMgr.terrainLayer,
+    )
+
+    if (tiles) {
+      tiles.forEach((tileObject: Phaser.Tilemaps.Tile) => {
+        const tile = tileObject as TerrainTile
+        const tileCenterX = tile.getCenterX()
+        const tileCenterY = tile.getCenterY()
+        const distance = Phaser.Math.Distance.Between(x, y, tileCenterX, tileCenterY)
+
+        if (distance <= radius) {
+          const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+          const properties = tileProperties[tile.index as keyof typeof tileProperties]
+
+          if (tile.health === undefined) {
+            tile.health = properties.health
+          }
+
+          if (damage > properties.armor / 2) {
+            // enemy projectiles damage to terrain is multipled to have more frequent terrain damage
+            const effectiveDamage = damage * 10 - properties.armor / 2
+            tile.health -= effectiveDamage
+            
+            if (tile.health <= 0) {
+              this.scene.terrainMgr.destroyTile(tile)
+            }
+          }
+        }
+      })
     }
   }
 

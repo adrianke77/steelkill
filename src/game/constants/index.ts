@@ -20,9 +20,10 @@ const depths = {
 }
 
 export const Constants = {
+  ambientLightColor:0x999999,
   fieldWidth: 3000,
   fieldHeight: 3000,
-  tileSize: 8,
+  tileSize: 32,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1500,

@@ -15,16 +15,16 @@ void main() {
 
     vec4 infraredColor = vec4(0.0, 0.0, 0.0, color.a);
 
-    if (average > 0.8) {
-        infraredColor = vec4(1.0, 0.0, 0.0, color.a); // Red
+    if (average > 0.9) {
+        infraredColor = vec4(0.7, 0.0, 0.0, color.a); // Red
     } else if (average > 0.65) {
-        infraredColor = vec4(1.0, 0.5, 0.0, color.a); // Orange
+        infraredColor = vec4(0.7, 0.3, 0.0, color.a); // Orange
     } else if (average > 0.55) {
-        infraredColor = vec4(0.7, 0.7, 0.0, color.a); // Yellow
+        infraredColor = vec4(0.5, 0.5, 0.0, color.a); // Yellow
     } else if (average > 0.40) {
         infraredColor = vec4(0.5, 0.7, 0.0, color.a); // Yellow-Green
     } else if (average > 0.35) {
-        infraredColor = vec4(0.0, 0.7, 0.0, color.a); // Green
+        infraredColor = vec4(0.0, 0.5, 0.0, color.a); // Green
     } else if (average > 0.20) {
         infraredColor = vec4(0.0, 0.7, 0.5, color.a); // Green-Blue
     } else if (average > 0.125) {

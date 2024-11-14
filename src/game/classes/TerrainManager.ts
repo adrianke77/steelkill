@@ -4,12 +4,27 @@ import { Game } from '../scenes/Game'
 import { Projectile, TerrainTile } from '../interfaces'
 import { createDustCloud } from '../rendering'
 import { Constants as ct } from '../constants'
-import { drawOval } from '../utils'
+import { tileProperties } from '../constants/tileProperties'
+
+export const loadTerrainAssets = (scene: Game) => {
+  Object.values(tileProperties).forEach(prop => {
+    scene.load.image(prop.imageName, `${prop.imageName}.png`)
+  })
+}
+
+const debrisSprayEmitterConfig = {
+  lifespan: 100,
+  speed: { start: 100, end: 10 },
+  scale: { start: 0.4, end: 0 },
+  rotate: { start: 0, end: 360 },
+  emitting: false,
+} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export class TerrainManager {
   scene: Game
   map: Phaser.Tilemaps.Tilemap
   terrainLayer: Phaser.Tilemaps.TilemapLayer
+  debrisSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
 
   constructor(scene: Game) {
     this.scene = scene
@@ -17,12 +32,16 @@ export class TerrainManager {
     // Create the terrain when the manager is instantiated
     this.createTerrain()
     this.setupCollision()
+    this.debrisSprayEmitter = this.scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      debrisSprayEmitterConfig,
+    )
   }
 
   createTerrain() {
-    // Generate the tileset dynamically
-
-    // Remove the old tileset if it exists, this happens if the player restarts the game
+    // Remove the old tileset if it exists, such as from app hot reload
     this.scene.textures.remove('dynamic-tileset')
 
     const tilesetCanvas = this.scene.textures.createCanvas(
@@ -30,23 +49,26 @@ export class TerrainManager {
       ct.tileSize * 2,
       ct.tileSize * 2,
     )
-
-    // Get the drawing context
     const context = tilesetCanvas!.context
 
-    // Define colors for different tiles
-    const colors = [
-      '#E2CA76', // Tile index 0
-      '#B58447', // Tile index 1
-      '#888C8D', // Tile index 2
+    // First load your terrain textures in the preload function
+    const textures = [
+      'terrainTile1', // Tile index 0
+      'terrainTile2', // Tile index 1
+      'terrainTile3', // Tile index 2
     ]
 
-    // Draw colored squares onto the canvas
-    colors.forEach((color, index) => {
+    textures.forEach((textureName, index) => {
       const x = (index % 2) * ct.tileSize
       const y = Math.floor(index / 2) * ct.tileSize
-      context.fillStyle = color
-      context.fillRect(x, y, ct.tileSize, ct.tileSize)
+      const texture = this.scene.textures.get(textureName)
+      context.drawImage(
+        texture.getSourceImage() as HTMLImageElement,
+        x,
+        y,
+        ct.tileSize,
+        ct.tileSize,
+      )
     })
 
     // Refresh the canvas texture to update it
@@ -60,19 +82,16 @@ export class TerrainManager {
       tileHeight: ct.tileSize,
     })
 
-    // Add the dynamically generated tileset to the map
     const tileset = this.map.addTilesetImage(
       'dynamic-tileset',
       'dynamic-tileset',
       ct.tileSize,
       ct.tileSize,
-    )
+    ) as Phaser.Tilemaps.Tileset
 
-    // Create a layer and fill it with tiles
-    this.terrainLayer = this.map.createBlankLayer('Terrain', tileset!)!
+    this.terrainLayer = this.map.createBlankLayer('Terrain', tileset)!
 
-    // Set the layer depth
-    this.terrainLayer.setDepth(ct.depths.terrain) // Behind everything else
+    this.terrainLayer.setDepth(ct.depths.terrain)
 
     // Populate the layer with sample terrain
     this.populateTerrain()
@@ -82,6 +101,7 @@ export class TerrainManager {
 
     // Set collision properties
     this.terrainLayer.setCollisionBetween(0, 2)
+    this.terrainLayer.setPipeline('Light2D')
   }
 
   populateTerrain() {
@@ -97,7 +117,7 @@ export class TerrainManager {
     )
 
     for (let i = 0; i < numberOfRandomOvals; i++) {
-      const tileType = Phaser.Math.Between(0, 2)
+      const tileType = Phaser.Math.Between(1, 3)
 
       // Generate random center coordinates within the tilemap boundaries
       const centerX = Phaser.Math.Between(0, ct.fieldWidth / ct.tileSize)
@@ -121,7 +141,7 @@ export class TerrainManager {
       }
 
       // Place the oval on the tilemap layer
-      drawOval(this.terrainLayer, centerX, centerY, radiusX, radiusY, tileType)
+      this.drawOval(this.terrainLayer, centerX, centerY, radiusX, radiusY, tileType)
     }
   }
 
@@ -178,6 +198,27 @@ export class TerrainManager {
     const worldY = tile.getCenterY()
 
     // Create an effect at the tile's position
-    createDustCloud(this.scene, worldX, worldY, 0, 0, 1,3000,100)
+    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.5, 3000, 100)
+  }
+
+  drawOval(
+    layer: Phaser.Tilemaps.TilemapLayer,
+    centerX: number,
+    centerY: number,
+    radiusX: number,
+    radiusY: number,
+    tileIndex: number
+  ): void {
+    for (let x = centerX - radiusX; x <= centerX + radiusX; x++) {
+      for (let y = centerY - radiusY; y <= centerY + radiusY; y++) {
+        // Calculate the normalized distance from the center
+        const normalizedX = ((x - centerX) ** 2) / (radiusX ** 2);
+        const normalizedY = ((y - centerY) ** 2) / (radiusY ** 2);
+  
+        if (normalizedX + normalizedY <= 1) {
+          layer.putTileAt(tileIndex, x, y);
+        }
+      }
+    }
   }
 }

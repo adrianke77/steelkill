@@ -142,6 +142,7 @@ function addCombinedDecal(scene: Game) {
     ct.fieldHeight,
     ct.fieldWidth,
   )
+  scene.mainLayer.add(combinedTexture)
   combinedTexture.setBlendMode(Phaser.BlendModes.NORMAL)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
@@ -231,7 +232,7 @@ export function createDustCloud(
   dustCloud.setAlpha(opacity)
   dustCloud.setDisplaySize(initialSize, initialSize)
   dustCloud.setVelocity(directionX / 2, directionY / 2)
-  dustCloud.setPipeline('Light2D')
+  dustCloud.setPipeline('Light2D', { lightFactor: 0.1 })
   dustCloud.setDepth(ct.depths.dustClouds)
 
   scene.tweens.add({
@@ -239,7 +240,7 @@ export function createDustCloud(
     displayWidth: { from: initialSize, to: finalSize },
     displayHeight: { from: initialSize, to: finalSize },
     rotation:{from: initialRotation, to: finalRotation},
-    duration: 1000, // Duration for the expansion in milliseconds
+    duration: 500, // Duration for the expansion in milliseconds
     ease: 'Cubic.easeOut', // Easing function for smooth expansion
   })
 
@@ -398,13 +399,13 @@ export function renderExplosion(
   if (optionals && optionals.color) {
     explosion.setTint(optionals.color)
   }
-  explosion.setAlpha(Phaser.Math.FloatBetween(0.7, 0.9))
+  explosion.setAlpha(Phaser.Math.FloatBetween(0.4, 0.8))
   explosion.play('explosion')
-  const scorch = scene.addSprite(x, y, 'scorch1')
+  const scorch = scene.addImage(x, y, 'scorch1')
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.8)
+  scorch.setAlpha(0.5)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )

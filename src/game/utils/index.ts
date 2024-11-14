@@ -137,24 +137,3 @@ export function clipLineToRect(
 
   return { x0: clippedX0, y0: clippedY0, x1: clippedX1, y1: clippedY1 }
 }
-
-export function drawOval(
-  layer: Phaser.Tilemaps.TilemapLayer,
-  centerX: number,
-  centerY: number,
-  radiusX: number,
-  radiusY: number,
-  tileIndex: number
-): void {
-  for (let x = centerX - radiusX; x <= centerX + radiusX; x++) {
-    for (let y = centerY - radiusY; y <= centerY + radiusY; y++) {
-      // Calculate the normalized distance from the center
-      const normalizedX = ((x - centerX) ** 2) / (radiusX ** 2);
-      const normalizedY = ((y - centerY) ** 2) / (radiusY ** 2);
-
-      if (normalizedX + normalizedY <= 1) {
-        layer.putTileAt(tileIndex, x, y);
-      }
-    }
-  }
-}

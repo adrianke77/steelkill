@@ -4,10 +4,10 @@ import { Constants as ct } from '../constants'
 import {
   destroyEnemyAndCreateCorpseDecals,
   createLightFlash,
+  createDustCloud
 } from '../rendering'
 import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
-import { tileProperties } from '../constants/tileProperties'
 
 const baseEmitterConfig = {
   lifespan: 300,
@@ -116,13 +116,14 @@ export class BeamManager {
       const weaponIndex = Number(weaponIndexStr)
       const beam = this.activeBeams[weaponIndex]
       if (!beam) continue
-  
+
       const weapon = this.scene.player.weapons[weaponIndex]
-  
+
       if (!this.handleFireDelay(weaponIndex, time)) continue
-  
-      const { startX, startY, maxEndX, maxEndY } = this.calculateBeamPositions(weaponIndex)
-  
+
+      const { startX, startY, maxEndX, maxEndY } =
+        this.calculateBeamPositions(weaponIndex)
+
       if (weapon.arcTargeting) {
         this.handleArcTargeting(beam, weapon, startX, startY)
       } else {
@@ -133,14 +134,14 @@ export class BeamManager {
           maxEndY,
           weapon,
         )
-  
+
         beam.startX = startX
         beam.startY = startY
         beam.endX = beamEndX
         beam.endY = beamEndY
-  
+
         this.resetAndDrawBeam(beam, weapon, startX, startY)
-  
+
         if (hitObject && 'enemyData' in hitObject) {
           this.beamHitEnemy(hitObject, weapon, startX, startY)
         } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
@@ -148,7 +149,7 @@ export class BeamManager {
           this.damageTerrainTile(tile, weapon, startX, startY)
         }
       }
-  
+
       this.consumeAmmo(weaponIndex)
     }
   }
@@ -159,18 +160,19 @@ export class BeamManager {
     beamStartX: number,
     beamStartY: number,
   ): void {
-    const properties =
-      tileProperties[tile.index as keyof typeof tileProperties]
-    if (!tile.health) {
-      tile.health = properties.health
-    }
-    tile.health -= weapon.damage
+    const tileX = tile.getCenterX()
+    const tileY = tile.getCenterY()
+    const damage = weapon.terrainDamageMultiplier
+      ? weapon.damage * weapon.terrainDamageMultiplier
+      : weapon.damage
+    createDustCloud(this.scene, tileX, tileY, 0, 0, 0.8, 1000, weapon.damage*10)
+    
+    tile.health -= damage
     if (tile.health <= 0) {
       this.scene.terrainMgr.destroyTile(tile)
     }
 
-    const tileX = tile.getCenterX()
-    const tileY = tile.getCenterY()
+
 
     this.beamHitSpark(beamStartX, beamStartY, tileX, tileY, weapon)
     createLightFlash(
@@ -355,77 +357,89 @@ export class BeamManager {
     this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
   }
 
-private handleArcTargeting(
-  beam: ActiveBeam,
-  weapon: WeaponSpec,
-  startX: number,
-  startY: number,
-): void {
-  const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
-  const mechRotation = this.scene.player.mechContainer.rotation - Math.PI/2
-  
-  const nearbyEnemies = enemies.filter(enemy => {
-    const angleToEnemy = Phaser.Math.Angle.Between(
-      startX,
-      startY,
-      enemy.x,
-      enemy.y
-    )
-    
-    const angleDiff = Phaser.Math.Angle.ShortestBetween(
-      Phaser.Math.RadToDeg(mechRotation),
-      Phaser.Math.RadToDeg(angleToEnemy)
-    )
+  private handleArcTargeting(
+    beam: ActiveBeam,
+    weapon: WeaponSpec,
+    startX: number,
+    startY: number,
+  ): void {
+    const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
+    const mechRotation = this.scene.player.mechContainer.rotation - Math.PI / 2
 
-    const { hitObject } = this.detectBeamCollision(
-      startX,
-      startY,
-      enemy.x,
-      enemy.y,
-      weapon
-    )
-    
-    return Math.abs(angleDiff) <= weapon.arcTargetingAngle!/2 && 
-      Phaser.Math.Distance.Between(startX, startY, enemy.x, enemy.y) <= weapon.maxRange! &&
-      (!hitObject || 'enemyData' in hitObject)
-  })
+    const nearbyEnemies = enemies.filter(enemy => {
+      const angleToEnemy = Phaser.Math.Angle.Between(
+        startX,
+        startY,
+        enemy.x,
+        enemy.y,
+      )
 
-  if (nearbyEnemies.length > 0) {
-    const targetEnemy = nearbyEnemies.reduce((closest, current) => {
-      const closestDist = Phaser.Math.Distance.Between(startX, startY, closest.x, closest.y)
-      const currentDist = Phaser.Math.Distance.Between(startX, startY, current.x, current.y)
-      return currentDist < closestDist ? current : closest
+      const angleDiff = Phaser.Math.Angle.ShortestBetween(
+        Phaser.Math.RadToDeg(mechRotation),
+        Phaser.Math.RadToDeg(angleToEnemy),
+      )
+
+      const { hitObject } = this.detectBeamCollision(
+        startX,
+        startY,
+        enemy.x,
+        enemy.y,
+        weapon,
+      )
+
+      return (
+        Math.abs(angleDiff) <= weapon.arcTargetingAngle! / 2 &&
+        Phaser.Math.Distance.Between(startX, startY, enemy.x, enemy.y) <=
+          weapon.maxRange! &&
+        (!hitObject || 'enemyData' in hitObject)
+      )
     })
 
-    beam.endX = targetEnemy.x
-    beam.endY = targetEnemy.y
-    this.beamHitEnemy(targetEnemy, weapon, startX, startY)
-  } else {
-    // Fire straight ahead if no valid targets
-    const maxEndX = startX + Math.cos(mechRotation) * weapon.maxRange!
-    const maxEndY = startY + Math.sin(mechRotation) * weapon.maxRange!
-    const { beamEndX, beamEndY, hitObject } = this.detectBeamCollision(
-      startX,
-      startY,
-      maxEndX,
-      maxEndY,
-      weapon
-    )
-    beam.endX = beamEndX
-    beam.endY = beamEndY
+    if (nearbyEnemies.length > 0) {
+      const targetEnemy = nearbyEnemies.reduce((closest, current) => {
+        const closestDist = Phaser.Math.Distance.Between(
+          startX,
+          startY,
+          closest.x,
+          closest.y,
+        )
+        const currentDist = Phaser.Math.Distance.Between(
+          startX,
+          startY,
+          current.x,
+          current.y,
+        )
+        return currentDist < closestDist ? current : closest
+      })
 
-    if (hitObject && 'enemyData' in hitObject) {
-      this.beamHitEnemy(hitObject, weapon, startX, startY)
-    } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
-      const tile = hitObject as TerrainTile
-      this.damageTerrainTile(tile, weapon, startX, startY)
+      beam.endX = targetEnemy.x
+      beam.endY = targetEnemy.y
+      this.beamHitEnemy(targetEnemy, weapon, startX, startY)
+    } else {
+      // Fire straight ahead if no valid targets
+      const maxEndX = startX + Math.cos(mechRotation) * weapon.maxRange!
+      const maxEndY = startY + Math.sin(mechRotation) * weapon.maxRange!
+      const { beamEndX, beamEndY, hitObject } = this.detectBeamCollision(
+        startX,
+        startY,
+        maxEndX,
+        maxEndY,
+        weapon,
+      )
+      beam.endX = beamEndX
+      beam.endY = beamEndY
+
+      if (hitObject && 'enemyData' in hitObject) {
+        this.beamHitEnemy(hitObject, weapon, startX, startY)
+      } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
+        const tile = hitObject as TerrainTile
+        this.damageTerrainTile(tile, weapon, startX, startY)
+      }
     }
-  }
 
-  beam.graphics.clear()
-  this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
-}
-  
+    beam.graphics.clear()
+    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
+  }
 
   private consumeAmmo(weaponIndex: number): void {
     this.scene.magCount[weaponIndex] -= 1
@@ -661,7 +675,10 @@ private handleArcTargeting(
       // Emit the particle at the computed position
       const adjustedConfig = baseEmitterConfig
       if (weapon.beamParticleInitialSize) {
-        adjustedConfig.scale = {start: weapon.beamParticleInitialSize!, end:0} 
+        adjustedConfig.scale = {
+          start: weapon.beamParticleInitialSize!,
+          end: 0,
+        }
       }
       this.beamParticleEmitter.setConfig(adjustedConfig)
       this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
@@ -752,60 +769,60 @@ private handleArcTargeting(
     )
     this.scene.enemyMgr.enemies.remove(enemy, true)
   }
-    private handleChainingEffect(enemy: EnemySprite, weapon: WeaponSpec): void {
-      const targets = this.scene.enemyMgr.enemies
-        .getChildren()
-        .filter(e => e !== enemy && e.active) as EnemySprite[]
-      const maxChainRange = weapon.chainRange!
+  private handleChainingEffect(enemy: EnemySprite, weapon: WeaponSpec): void {
+    const targets = this.scene.enemyMgr.enemies
+      .getChildren()
+      .filter(e => e !== enemy && e.active) as EnemySprite[]
+    const maxChainRange = weapon.chainRange!
 
-      const validTargets = targets
-        .map(e => ({
-          enemy: e,
-          distance: Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y),
-        }))
-        .filter(e => {
-          // Check if target is in range
-          if (e.distance > maxChainRange) return false
-        
-          // Check line of sight between chain source and potential target
-          const { hitObject } = this.detectBeamCollision(
-            enemy.x,
-            enemy.y,
-            e.enemy.x,
-            e.enemy.y,
-            weapon
-          )
-        
-          // Only allow chaining if there's direct line of sight or if hitting another enemy
-          return !hitObject || 'enemyData' in hitObject
-        })
-        .sort((a, b) => a.distance - b.distance)
+    const validTargets = targets
+      .map(e => ({
+        enemy: e,
+        distance: Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y),
+      }))
+      .filter(e => {
+        // Check if target is in range
+        if (e.distance > maxChainRange) return false
 
-      const chainedTargets = validTargets.slice(0, 3)
+        // Check line of sight between chain source and potential target
+        const { hitObject } = this.detectBeamCollision(
+          enemy.x,
+          enemy.y,
+          e.enemy.x,
+          e.enemy.y,
+          weapon,
+        )
 
-      for (const targetData of chainedTargets) {
-          const target = targetData.enemy
-          target.health -= weapon.damage! * 0.5
+        // Only allow chaining if there's direct line of sight or if hitting another enemy
+        return !hitObject || 'enemyData' in hitObject
+      })
+      .sort((a, b) => a.distance - b.distance)
 
-          this.beamHitSpark(enemy.x, enemy.y, target.x, target.y, weapon)
+    const chainedTargets = validTargets.slice(0, 3)
 
-          createLightFlash(
-              this.scene,
-              target.x,
-              target.y,
-              weapon.beamColor!,
-              100,
-              weapon.beamHitLightIntensity! * 0.66,
-              weapon.beamHitLightRadius! * 0.66,
-          )
+    for (const targetData of chainedTargets) {
+      const target = targetData.enemy
+      target.health -= weapon.damage! * 0.5
 
-          this.drawBeam(weapon, enemy.x, enemy.y, target.x, target.y)
+      this.beamHitSpark(enemy.x, enemy.y, target.x, target.y, weapon)
 
-          if (target.health <= 0) {
-              this.handleEnemyDeath(target, enemy.x, enemy.y)
-          }
+      createLightFlash(
+        this.scene,
+        target.x,
+        target.y,
+        weapon.beamColor!,
+        100,
+        weapon.beamHitLightIntensity! * 0.66,
+        weapon.beamHitLightRadius! * 0.66,
+      )
+
+      this.drawBeam(weapon, enemy.x, enemy.y, target.x, target.y)
+
+      if (target.health <= 0) {
+        this.handleEnemyDeath(target, enemy.x, enemy.y)
       }
     }
+  }
   beamHitSpark(
     startX: number,
     startY: number,

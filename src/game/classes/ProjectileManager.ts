@@ -21,6 +21,7 @@ import {
   renderExplosion,
   playMuzzleFlare,
   baseProjectileSparkConfig,
+  createDustCloud
 } from '../rendering'
 import { generateUniqueId, getSoundPan } from '../utils'
 
@@ -344,17 +345,20 @@ export class ProjectileManager {
   ): void {
     const damage = projectile.damage * damageFactor
     if (target instanceof Phaser.Tilemaps.Tile) {
+      // pixel coords
+      const tileX = target.getCenterX()
+      const tileY = target.getCenterY()
+      // tile coords
       const x = target.x
       const y = target.y
       target.health -= damage
+      console.log(target.health, damage)
+      createDustCloud(this.scene, tileX, tileY, 0, 0, 0.8, 500, damage*5)
       if (target.health <= 0) {
         this.scene.terrainMgr.destroyTile(target)
         // Update autotiling around the destroyed tile
         this.scene.terrainMgr.updateAutotileAt(x, y, target.type)
       }
-
-      const tileX = target.getCenterX()
-      const tileY = target.getCenterY()
 
       const directionRadians = Phaser.Math.Angle.Between(
         projectile.x,

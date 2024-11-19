@@ -64,9 +64,9 @@ export const Constants = {
   // front left is -15, -15
   weaponPositions: [
     [-12, -10], // far left
+    [-5.5, -10], // mid left
+    [5.5, -10], // mid right
     [12, -10], // far right
-    [-7.5, -10], // mid left
-    [7.5, -10], // mid right
   ],
   boostCapacity: 15000,
   boostRegeneration: 20,

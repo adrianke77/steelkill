@@ -221,8 +221,8 @@ export function createDustCloud(
   size?: number,
 ): void {
   const dustCloud = scene.addSprite(x, y, 'dust')
-  const initialSize = size ? size : 50
-  const finalSize = initialSize * 2
+  const initialSize = size !== undefined? size / 2 : 50
+  const finalSize = initialSize * 4
 
   const initialRotation = Phaser.Math.Between(0, 2 * Math.PI)
   const finalRotation =
@@ -239,16 +239,16 @@ export function createDustCloud(
     targets: dustCloud,
     displayWidth: { from: initialSize, to: finalSize },
     displayHeight: { from: initialSize, to: finalSize },
-    rotation:{from: initialRotation, to: finalRotation},
+    rotation: { from: initialRotation, to: finalRotation },
     duration: 1000, // Duration for the expansion in milliseconds
-    ease: 'Cubic.easeOut', // Easing function for smooth expansion
+    ease: 'Quad.easeOut', // Easing function for smooth expansion
   })
 
   scene.tweens.add({
     targets: dustCloud,
     alpha: 0,
-    displayWidth: initialSize,
-    displayHeight: initialSize,
+    displayWidth: finalSize,
+    displayHeight: finalSize,
     duration: duration ? duration : 1000,
     ease: 'Quad.easeOut',
     onComplete: () => {

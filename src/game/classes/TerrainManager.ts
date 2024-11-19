@@ -32,7 +32,7 @@ const TILE_CORNER_MAP: { [key: number]: number } = {
   15: CORNER_BITS.TL | CORNER_BITS.TR | CORNER_BITS.BL | CORNER_BITS.BR,
 }
 export const loadTerrainAssets = (scene: Game) => {
-  scene.load.image('terrainTile', 'terrainTile.png')
+  scene.load.image('terrainTile', 'terrainTile2.png')
 }
 
 const debrisSprayEmitterConfig = {
@@ -281,7 +281,7 @@ export class TerrainManager {
     )
 
     // Add colliders between projectiles and terrain
-    this.scene.physics.add.collider(
+    this.scene.physics.add.overlap(
       this.scene.projectileMgr.projectiles,
       this.terrainLayer,
       undefined,
@@ -348,7 +348,7 @@ export class TerrainManager {
     const worldY = tile.getCenterY()
 
     // Create an effect at the tile's position
-    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.5, 5000, 200)
+    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 3000, 200)
   }
 
   computeTileIndex(x: number, y: number): number {
@@ -468,6 +468,7 @@ export class TerrainManager {
     const properties = tileProperties[tileType as keyof typeof tileProperties]
     tile.armor = properties.armor
     tile.health = properties.health
+    tile.tint = properties.color
   }
 
   isTerrainNear(tileX: number, tileY: number, minDistanceInTiles: number): boolean {

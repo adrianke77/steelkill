@@ -2,7 +2,6 @@
 import { Game } from '../scenes/Game'
 import { Constants as ct, weaponConstants } from '../constants'
 import { enemyWeapons } from '../constants/weapons'
-import { tileProperties } from '../constants/tileProperties'
 import {
   EnemySprite,
   Projectile,
@@ -25,44 +24,19 @@ import {
 } from '../rendering'
 import { generateUniqueId, getSoundPan } from '../utils'
 
-export const calculateWeaponStartPosition = (
-  scene: Game,
-  weaponPosition: WeaponPosition,
-  rotation: number,
-  forwardOffset: number,
-): { startX: number; startY: number } => {
-  const offsetX =
-    weaponPosition[0] * Math.cos(rotation) -
-    weaponPosition[1] * Math.sin(rotation)
-  const offsetY =
-    weaponPosition[0] * Math.sin(rotation) +
-    weaponPosition[1] * Math.cos(rotation)
-  const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2)
-  const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2)
-  const startX = scene.player.mechContainer.x + offsetX + forwardX
-  const startY = scene.player.mechContainer.y + offsetY + forwardY
-
-  return { startX, startY }
-}
-
-export const calculateProjectileStartPosition = (
-  x: number,
-  y: number,
-  angle: number,
-  roundHeight: number,
-) => {
-  const halfLength = roundHeight / 4
-  const offsetX = halfLength * Math.cos(angle - Math.PI / 2)
-  const offsetY = halfLength * Math.sin(angle - Math.PI / 2)
-  return { startX: x + offsetX, startY: y + offsetY }
-}
-
 export class ProjectileManager {
   private scene: Game
   projectiles: Phaser.GameObjects.Group
   playerTracers: { [key: number]: number } = {}
   sounds: SoundTracker = {}
   soundInstances: { [key: string]: Phaser.Sound.BaseSound } = {}
+  repeatingFireSoundActive: [boolean, boolean, boolean, boolean] = [
+    false,
+    false,
+    false,
+    false,
+  ]
+  repeatingFireSounds: (Phaser.Sound.BaseSound | null)[] = [null, null, null, null];
 
   constructor(scene: Game) {
     this.scene = scene
@@ -316,24 +290,14 @@ export class ProjectileManager {
       this.destroyProjectile(projectile)
       return true
     }
-
-    let targetArmor: number
-    if (target instanceof Phaser.Tilemaps.Tile) {
-      const properties =
-        tileProperties[target.index as keyof typeof tileProperties]
-      targetArmor = properties.armor
-    } else {
-      targetArmor = target.armor
-    }
-
-    if (projectile!.penetration > targetArmor) {
+    if (projectile!.penetration > target.armor) {
       this.applyProjectileDamageAndEffectsToTarget(projectile, target, 1)
-      projectile.penetration -= targetArmor / 2
+      projectile.penetration -= target.armor / 2
       return false
-    } else if (projectile!.penetration > targetArmor / 2) {
+    } else if (projectile!.penetration > target.armor / 2) {
       this.applyProjectileDamageAndEffectsToTarget(projectile, target, 0.5)
       this.destroyProjectile(projectile)
-    } else if (projectile!.penetration < targetArmor / 2) {
+    } else if (projectile!.penetration < target.armor / 2) {
       this.applyProjectileDamageAndEffectsToTarget(projectile, target, 0)
       this.destroyProjectile(projectile)
     }
@@ -380,14 +344,13 @@ export class ProjectileManager {
   ): void {
     const damage = projectile.damage * damageFactor
     if (target instanceof Phaser.Tilemaps.Tile) {
-      const properties =
-        tileProperties[target.index as keyof typeof tileProperties]
-      if (!target.health) {
-        target.health = properties.health
-      }
+      const x = target.x
+      const y = target.y
       target.health -= damage
       if (target.health <= 0) {
         this.scene.terrainMgr.destroyTile(target)
+        // Update autotiling around the destroyed tile
+        this.scene.terrainMgr.updateAutotileAt(x, y, target.type)
       }
 
       const tileX = target.getCenterX()
@@ -528,7 +491,7 @@ export class ProjectileManager {
               y,
             )
             // knockback by pixels
-            const knockback = (effectiveDamage/enemySprite.health) * 5
+            const knockback = (effectiveDamage / enemySprite.health) * 5
             enemySprite.x -= Math.cos(angle) * knockback
             enemySprite.y -= Math.sin(angle) * knockback
           }
@@ -563,22 +526,14 @@ export class ProjectileManager {
 
         if (distance <= radius) {
           const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
-          const properties =
-            tileProperties[tile.index as keyof typeof tileProperties]
-
-          // Initialize tile health if not already set
-          if (tile.health === undefined) {
-            tile.health = properties.health
-          }
-
           // Apply damage considering tile's armor
-          if (damage > properties.armor / 2) {
-            const effectiveDamage = damage - properties.armor / 2
+          if (damage > tile.armor / 2) {
+            const effectiveDamage = damage - tile.armor / 2
             tile.health -= effectiveDamage
 
             if (tile.health <= 0) {
               this.scene.terrainMgr.destroyTile(tile)
-            } 
+            }
           }
         }
       })
@@ -630,21 +585,20 @@ export class ProjectileManager {
         const tile = tileObject as TerrainTile
         const tileCenterX = tile.getCenterX()
         const tileCenterY = tile.getCenterY()
-        const distance = Phaser.Math.Distance.Between(x, y, tileCenterX, tileCenterY)
+        const distance = Phaser.Math.Distance.Between(
+          x,
+          y,
+          tileCenterX,
+          tileCenterY,
+        )
 
         if (distance <= radius) {
           const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
-          const properties = tileProperties[tile.index as keyof typeof tileProperties]
-
-          if (tile.health === undefined) {
-            tile.health = properties.health
-          }
-
-          if (damage > properties.armor / 2) {
+          if (damage > tile.armor / 2) {
             // enemy projectiles damage to terrain is multipled to have more frequent terrain damage
-            const effectiveDamage = damage * 10 - properties.armor / 2
+            const effectiveDamage = damage * 10 - tile.armor / 2
             tile.health -= effectiveDamage
-            
+
             if (tile.health <= 0) {
               this.scene.terrainMgr.destroyTile(tile)
             }
@@ -673,7 +627,7 @@ export class ProjectileManager {
   projectileSpark(
     x: number,
     y: number,
-    projectile: Projectile|undefined,
+    projectile: Projectile | undefined,
     radDirection?: number,
     enemyData?: EnemyData,
   ): void {
@@ -780,6 +734,10 @@ export class ProjectileManager {
     weapon: WeaponSpec | EnemyWeaponSpec,
     projectile: Projectile,
   ) => {
+    // for repeatingContinuousFireSound weapons, sound is started and stopped elsewhere
+    if (weapon.repeatingContinuousFireSound) {
+      return
+    }
     // if same sound was played very recently,
     // increase the sound's volume instead of playing another copy
     // usually only catches weapons firing simultaneously
@@ -882,6 +840,65 @@ export class ProjectileManager {
       )
     })
   }
+
+  handleRepeatingFireSound(weaponIndex: number, isActive: boolean): void {
+    if (isActive) {
+      this.startSound(weaponIndex)
+    } else {
+      this.endSound(weaponIndex)
+    }
+  }
+
+  startSound(weaponIndex: number): void {
+    const weapon = this.scene.player.weapons[weaponIndex]
+    const fireSoundKey = weapon.fireSound
+
+    // Check if the sound is already active for this weapon
+    if (this.repeatingFireSoundActive[weaponIndex]) {
+      return
+    }
+
+    const soundInstance = this.scene.sound.add(fireSoundKey, { loop: true })
+    if (weapon.fireSoundVol) {
+      soundInstance.setVolume(weapon.fireSoundVol)
+    }
+    soundInstance.play()
+    this.repeatingFireSounds[weaponIndex] = soundInstance
+    this.repeatingFireSoundActive[weaponIndex] = true
+  }
+
+  endSound(weaponIndex: number): void {
+    const soundInstance = this.repeatingFireSounds[weaponIndex] as Phaser.Sound.WebAudioSound
+    if (!soundInstance) {
+      return
+    }
+  
+    // Create a tween to fade out the sound over 250ms
+    const fadeOutTween = this.scene.tweens.add({
+      targets: soundInstance,
+      volume: 0,
+      duration: 250,
+      onComplete: () => {
+        soundInstance.stop()
+        soundInstance.destroy()
+        this.repeatingFireSoundActive[weaponIndex] = false
+        this.repeatingFireSounds[weaponIndex] = null
+      }
+    })
+  
+    // Handle if the sound ends before the tween completes
+    const onSoundEnd = () => {
+      fadeOutTween.stop()
+      soundInstance.destroy()
+      this.repeatingFireSoundActive[weaponIndex] = false
+      this.repeatingFireSounds[weaponIndex] = null
+    }
+  
+    soundInstance.once('stop', onSoundEnd)
+    soundInstance.once('complete', onSoundEnd)
+  
+    this.repeatingFireSounds[weaponIndex] = null
+  }
 }
 
 // asset loading
@@ -909,4 +926,38 @@ export const loadProjectileAssets = (scene: Game) => {
   scene.load.image('scorch1', 'scorch2.png')
   loadAssets(scene, weaponConstants)
   loadAssets(scene, enemyWeapons)
+}
+
+// these two functions outside ProjectileManager as BeamManager also uses them
+
+export const calculateWeaponStartPosition = (
+  scene: Game,
+  weaponPosition: WeaponPosition,
+  rotation: number,
+  forwardOffset: number,
+): { startX: number; startY: number } => {
+  const offsetX =
+    weaponPosition[0] * Math.cos(rotation) -
+    weaponPosition[1] * Math.sin(rotation)
+  const offsetY =
+    weaponPosition[0] * Math.sin(rotation) +
+    weaponPosition[1] * Math.cos(rotation)
+  const forwardX = forwardOffset * Math.cos(rotation - Math.PI / 2)
+  const forwardY = forwardOffset * Math.sin(rotation - Math.PI / 2)
+  const startX = scene.player.mechContainer.x + offsetX + forwardX
+  const startY = scene.player.mechContainer.y + offsetY + forwardY
+
+  return { startX, startY }
+}
+
+export const calculateProjectileStartPosition = (
+  x: number,
+  y: number,
+  angle: number,
+  roundHeight: number,
+) => {
+  const halfLength = roundHeight / 4
+  const offsetX = halfLength * Math.cos(angle - Math.PI / 2)
+  const offsetY = halfLength * Math.sin(angle - Math.PI / 2)
+  return { startX: x + offsetX, startY: y + offsetY }
 }

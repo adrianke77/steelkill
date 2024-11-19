@@ -89,7 +89,7 @@ export class EnemyManager {
     const [playerX, playerY] = this.scene.player.getPlayerCoords()
     const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
     const direction = enemy.direction
-
+  
     const time = this.scene.game.loop.time
     const distanceToPlayer = Phaser.Math.Distance.Between(
       enemy.x,
@@ -97,7 +97,47 @@ export class EnemyManager {
       playerX,
       playerY,
     )
+  
+    // Proceed only if the enemy has weapons
     if (enemy.enemyData.weapons && enemy.enemyData.weapons.length > 0) {
+      // Initialize properties if they don't exist
+      if (!enemy.previousPosition) {
+        enemy.previousPosition = { x: enemy.x, y: enemy.y }
+        enemy.positionTimestamp = time
+        enemy.hasFiredOnStuck = false
+      }
+  
+      // Check if (randomly selected) 2 to 5 seconds seconds have passed since last position update
+      if (time - enemy.positionTimestamp! >= Math.random() * 3000 + 2000) {
+        // Calculate distance from previous position
+        const distanceFromPreviousPosition = Phaser.Math.Distance.Between(
+          enemy.x,
+          enemy.y,
+          enemy.previousPosition.x,
+          enemy.previousPosition.y,
+        )
+  
+        // Check if enemy is within 20 pixels of its position 5 seconds ago
+        if (
+          distanceFromPreviousPosition <= 20 &&
+          !enemy.hasFiredOnStuck
+        ) {
+          // Fire the weapon once
+          const weaponIndex = 0 // Assuming we fire the first weapon
+          const weapon = enemy.enemyData.weapons[weaponIndex]
+          this.enemyWeaponFire(enemy, weapon, weaponIndex)
+          enemy.hasFiredOnStuck = true // Prevent multiple firings
+        } else if (distanceFromPreviousPosition > 20) {
+          // Reset the fired flag if the enemy moved beyond 20 pixels
+          enemy.hasFiredOnStuck = false
+        }
+  
+        // Update previous position and timestamp
+        enemy.previousPosition = { x: enemy.x, y: enemy.y }
+        enemy.positionTimestamp = time
+      }
+  
+      // Existing weapon firing logic
       enemy.enemyData.weapons.forEach((weapon, index) => {
         if (
           distanceToPlayer < weapon.maxRange! &&
@@ -108,13 +148,15 @@ export class EnemyManager {
         }
       })
     }
-
+  
     enemy.rotation = angle + Math.PI / 2
+  
+    // Movement logic remains unchanged
     switch (direction) {
       case 'charge':
         enemy.setVelocity(
           speed * 4 * Math.cos(angle),
-          speed * 3 * Math.sin(angle),
+          speed * 4 * Math.sin(angle),
         )
         break
       case 'stop':
@@ -124,7 +166,7 @@ export class EnemyManager {
         const leftAngle = angle - Math.PI / 4
         enemy.setVelocity(
           speed * 2 * Math.cos(leftAngle),
-          speed * Math.sin(leftAngle),
+          speed * 2 * Math.sin(leftAngle),
         )
         break
       }
@@ -132,12 +174,21 @@ export class EnemyManager {
         const rightAngle = angle + Math.PI / 4
         enemy.setVelocity(
           speed * 2 * Math.cos(rightAngle),
-          speed * Math.sin(rightAngle),
+          speed * 2 * Math.sin(rightAngle),
+        )
+        break
+      }
+      case 'back': {
+        const backAngle = angle + Math.PI
+        enemy.setVelocity(
+          speed * 2 * Math.cos(backAngle),
+          speed * 2 * Math.sin(backAngle),
         )
         break
       }
     }
   }
+  
 
   enemyWeaponFire(enemy: EnemySprite, weapon: EnemyWeaponSpec, index: number) {
     const projectileMgr = this.scene.projectileMgr
@@ -221,10 +272,11 @@ export class EnemyManager {
   // only for ants now, need to refactor for other enemies
   getRandomDirection(): string {
     const randomValue = Math.random()
-    if (randomValue < 0.25) return 'charge'
-    if (randomValue < 0.5) return 'stop'
-    if (randomValue < 0.75) return 'angled-left'
-    return 'angled-right'
+    if (randomValue < 0.2) return 'charge'
+    if (randomValue < 0.4) return 'stop'
+    if (randomValue < 0.6) return 'angled-left'
+    if (randomValue < 0.8) return 'angled-right'
+    return 'back'
   }
 
   playEnemyHitPlayerSound(enemyData: EnemyData): void {

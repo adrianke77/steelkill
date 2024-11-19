@@ -226,7 +226,7 @@ export function createDustCloud(
 
   const initialRotation = Phaser.Math.Between(0, 2 * Math.PI)
   const finalRotation =
-    initialRotation + Phaser.Math.Between(-Math.PI / 8, Math.PI / 8)
+    initialRotation + Phaser.Math.Between(-Math.PI / 16, Math.PI / 16)
 
   dustCloud.setRotation(initialRotation)
   dustCloud.setAlpha(opacity)
@@ -240,7 +240,7 @@ export function createDustCloud(
     displayWidth: { from: initialSize, to: finalSize },
     displayHeight: { from: initialSize, to: finalSize },
     rotation:{from: initialRotation, to: finalRotation},
-    duration: 500, // Duration for the expansion in milliseconds
+    duration: 1000, // Duration for the expansion in milliseconds
     ease: 'Cubic.easeOut', // Easing function for smooth expansion
   })
 
@@ -250,7 +250,7 @@ export function createDustCloud(
     displayWidth: initialSize,
     displayHeight: initialSize,
     duration: duration ? duration : 1000,
-    ease: 'Linear',
+    ease: 'Quad.easeOut',
     onComplete: () => {
       dustCloud.destroy()
     },

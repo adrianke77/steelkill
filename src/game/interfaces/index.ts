@@ -38,6 +38,7 @@ export interface WeaponSpec {
   trailTint?: number
   fireSound: string
   fireSoundVol?: number
+  repeatingContinuousFireSound?: boolean
   stopFireSoundOnHit?: boolean
   reloadSound: string
   reloadSoundVol?: number
@@ -122,6 +123,9 @@ export interface EnemySprite extends Phaser.Physics.Arcade.Sprite {
   lastHitTime: number
   tracerTracking?: number[]
   lastWeaponFireTime?: number[]
+  previousPosition?: { x: number; y: number }
+  positionTimestamp?: number
+  hasFiredOnStuck?: boolean
 }
 
 export interface Projectile extends Phaser.Physics.Arcade.Sprite {
@@ -162,6 +166,7 @@ export type SoundTracker = { [key: string]: SoundTuple[] }
 export type DataFromReact = [string, any]
 
 export interface TerrainTile extends Phaser.Tilemaps.Tile {
+  type: number // see tileProperties for different terrain types and properties
   health: number
   armor: number
 }

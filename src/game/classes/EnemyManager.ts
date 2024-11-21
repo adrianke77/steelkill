@@ -155,8 +155,8 @@ export class EnemyManager {
     switch (direction) {
       case 'charge':
         enemy.setVelocity(
-          speed * 4 * Math.cos(angle),
-          speed * 4 * Math.sin(angle),
+          speed * 2 * Math.cos(angle),
+          speed * 2 * Math.sin(angle),
         )
         break
       case 'stop':
@@ -165,24 +165,24 @@ export class EnemyManager {
       case 'angled-left': {
         const leftAngle = angle - Math.PI / 4
         enemy.setVelocity(
-          speed * 2 * Math.cos(leftAngle),
-          speed * 2 * Math.sin(leftAngle),
+          speed * 1 * Math.cos(leftAngle),
+          speed * 1 * Math.sin(leftAngle),
         )
         break
       }
       case 'angled-right': {
         const rightAngle = angle + Math.PI / 4
         enemy.setVelocity(
-          speed * 2 * Math.cos(rightAngle),
-          speed * 2 * Math.sin(rightAngle),
+          speed * 1 * Math.cos(rightAngle),
+          speed * 1 * Math.sin(rightAngle),
         )
         break
       }
       case 'back': {
         const backAngle = angle + Math.PI
         enemy.setVelocity(
-          speed * 2 * Math.cos(backAngle),
-          speed * 2 * Math.sin(backAngle),
+          speed * 1 * Math.cos(backAngle),
+          speed * 1 * Math.sin(backAngle),
         )
         break
       }

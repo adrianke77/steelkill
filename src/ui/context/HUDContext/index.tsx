@@ -21,9 +21,9 @@ export const EventDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [playerHealthLeft, setPlayerHealthLeft] = useState(0)
 
   useEffect(() => {
-    const handleMagCount = (data: number[]) => setMagCount(data)
-    const handleRemainingAmmo = (data: number[]) => setRemainingAmmo(data)
-    const handleReloadStatus = (data: boolean[]) => setIsReloading(data)
+    const handleMagCount = (data: number[]) => setMagCount([...data])
+    const handleRemainingAmmo = (data: number[]) => setRemainingAmmo([...data])
+    const handleReloadStatus = (data: boolean[]) => setIsReloading([...data])
     const handleBoostStatus = (data: number) => setBoostLeft(data)
     const handlePlayerHealth = (data: number) => setPlayerHealthLeft(data)
 

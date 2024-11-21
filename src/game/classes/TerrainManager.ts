@@ -51,13 +51,19 @@ export class TerrainManager {
   map: Phaser.Tilemaps.Tilemap
   terrainLayer: Phaser.Tilemaps.TilemapLayer
   debrisSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  // Margin variables (in tiles)
+  marginTop: number = 10 // Adjust as needed
+  marginBottom: number = 2 // Adjust as needed
+  marginLeft: number = 2 // Adjust as needed
+  marginRight: number = 2 // Adjust as
+  playerSafeRadius: number = 5
 
   constructor(scene: Game) {
     this.scene = scene
 
     // Create the terrain when the manager is instantiated
     this.createTerrain()
-    this.setupCollision()
+    this.setupColliders()
     this.debrisSprayEmitter = this.scene.addParticles(
       0,
       0,
@@ -144,8 +150,8 @@ export class TerrainManager {
     size: number,
     cornerMask: number,
   ) {
-    const cornerSize = size * 0.3 // Adjust the size of the corner cutouts
-    const jitter = cornerSize * 0.6 // Jitter amount
+    const cornerSize = size * 0.25 // Adjust the size of the corner cutouts
+    const jitter = cornerSize * 0.4 // Jitter amount
     context.save()
 
     // Set composite operation to 'destination-out' to erase the corners
@@ -215,55 +221,297 @@ export class TerrainManager {
   }
 
   populateTerrain() {
-    const numberOfRandomOvals = Math.sqrt(ct.fieldWidth / ct.tileSize) *4
-    const MIN_DISTANCE_FROM_PLAYER = 10 // Minimum distance in tiles
-
-    // Calculate player's position in tile coordinates
-    const playerTileX = Math.floor(
-      this.scene.player.mechContainer.x / ct.tileSize,
-    )
-    const playerTileY = Math.floor(
-      this.scene.player.mechContainer.y / ct.tileSize,
-    )
-
-    for (let i = 0; i < numberOfRandomOvals; i++) {
-      const tileType = Phaser.Math.Between(1, 3)
-
-      // Generate random center coordinates within the tilemap boundaries
-      const centerX = Phaser.Math.Between(0, ct.fieldWidth / ct.tileSize)
-      const centerY = Phaser.Math.Between(
-        200 / ct.tileSize,
-        ct.fieldHeight / ct.tileSize,
-      )
-
-      // Generate random radii for the oval
-      let radiusX = Phaser.Math.Between(6, 9)
-      let radiusY = Phaser.Math.Between(2, 4)
-
-      if (Math.random() < 0.5) {
-        const temp = radiusX
-        radiusX = radiusY
-        radiusY = temp
+    // Calculate the player's starting tile coordinates
+    const playerStartTileX = Math.floor(ct.playerStartingX / ct.tileSize);
+    const playerStartTileY = Math.floor(ct.playerStartingY / ct.tileSize);
+  
+    // Increase to make terrain denser, decrease for sparser terrain
+    const fillProbability = 0.46; // Probability of a tile being solid
+    // Increasing iterations: Can smooth out the terrain and potentially make it more filled in or homogeneous.
+    // Decreasing iterations: May result in more random, rugged, or fragmented terrain patterns.
+    const iterations = 6; // Number of cellular automata iterations
+  
+    // Generate a temporary grid for the initial state, including margins
+    let tempGrid: boolean[][] = [];
+  
+    for (let x = 0; x < this.map.width; x++) {
+      tempGrid[x] = [];
+      for (let y = 0; y < this.map.height; y++) {
+        // Calculate the distance from the player's starting position
+        const dx = x - playerStartTileX;
+        const dy = y - playerStartTileY;
+        const distanceSquared = dx * dx + dy * dy;
+  
+        if (distanceSquared <= this.playerSafeRadius * this.playerSafeRadius) {
+          // Within the safe radius, set tile to empty
+          tempGrid[x][y] = false;
+        } else {
+          const isSolid = Math.random() < fillProbability;
+          tempGrid[x][y] = isSolid;
+        }
       }
-
-      // Calculate distance from the oval center to the player's position
-      const distanceToPlayer = Phaser.Math.Distance.Between(
-        centerX,
-        centerY,
-        playerTileX,
-        playerTileY,
-      )
-
-      // Skip this oval if it's too close to the player
-      if (distanceToPlayer < MIN_DISTANCE_FROM_PLAYER) {
-        continue
-      }
-
-      // Place the oval on the tilemap layer
-      this.drawOval(centerX, centerY, radiusX, radiusY, tileType)
-
-      this.applyAutotiling()
     }
+  
+    // Apply the cellular automata rules
+    for (let i = 0; i < iterations; i++) {
+      tempGrid = this.runAutomataStep(tempGrid);
+    }
+  
+    // Apply the generated terrain, excluding margins
+    for (let x = this.marginLeft; x < this.map.width - this.marginRight; x++) {
+      for (
+        let y = this.marginTop;
+        y < this.map.height - this.marginBottom;
+        y++
+      ) {
+        if (tempGrid[x][y]) {
+          // Set all initial solid tiles to a default type (e.g., 1)
+          this.setAutotileAt(x, y, 1);
+        } else {
+          this.terrainLayer.removeTileAt(x, y);
+        }
+      }
+    }
+  
+    // Assign terrain types to each clump after cellular automata
+    this.assignTerrainTypesToClumps();
+  
+    // Apply autotiling to update tile graphics
+    this.applyAutotiling();
+  }
+
+  assignTerrainTypesToClumps() {
+    const visited = new Set<string>();
+    const terrainTypes = [1, 2, 3]; // Available terrain types
+  
+    // Define clump weight per terrain type (adjust these values as needed)
+    const terrainTypeClumpWeight = {
+      1: 1.0, 
+      2: 1.0,
+      3: 1.0, 
+    };
+  
+    // Collect all clumps
+    const allClumps: TerrainTile[][] = [];
+  
+    for (let x = 0; x < this.map.width; x++) {
+      for (let y = 0; y < this.map.height; y++) {
+        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile;
+        if (tile && tile.index !== -1 && !visited.has(`${x},${y}`)) {
+          // Start a new clump
+          const clumpTiles: TerrainTile[] = [];
+          const stack = [{ x, y }];
+          visited.add(`${x},${y}`);
+  
+          while (stack.length > 0) {
+            const { x: cx, y: cy } = stack.pop()!;
+            const currentTile = this.terrainLayer.getTileAt(
+              cx,
+              cy,
+            ) as TerrainTile;
+            if (currentTile && currentTile.index !== -1) {
+              clumpTiles.push(currentTile);
+  
+              // Check neighbors (up, down, left, right)
+              const neighbors = [
+                { x: cx - 1, y: cy },
+                { x: cx + 1, y: cy },
+                { x: cx, y: cy - 1 },
+                { x: cx, y: cy + 1 },
+              ];
+  
+              for (const neighbor of neighbors) {
+                const key = `${neighbor.x},${neighbor.y}`;
+                if (
+                  neighbor.x >= 0 &&
+                  neighbor.x < this.map.width &&
+                  neighbor.y >= 0 &&
+                  neighbor.y < this.map.height &&
+                  !visited.has(key)
+                ) {
+                  const neighborTile = this.terrainLayer.getTileAt(
+                    neighbor.x,
+                    neighbor.y,
+                  ) as TerrainTile;
+                  if (neighborTile && neighborTile.index !== -1) {
+                    stack.push(neighbor);
+                    visited.add(key);
+                  }
+                }
+              }
+            }
+          }
+  
+          // Store the clump for later processing
+          allClumps.push(clumpTiles);
+        }
+      }
+    }
+  
+    // Now, assign terrain types to clumps based on their sizes and weights
+    for (const clumpTiles of allClumps) {
+      const clumpSize = clumpTiles.length;
+  
+      // Compute weighted probabilities for each terrain type
+      const terrainTypeProbabilities = terrainTypes.map((terrainType) => {
+        // Use weights to influence the probability
+        const weight = terrainTypeClumpWeight[terrainType];
+        return Math.pow(clumpSize, weight);
+      });
+  
+      // Normalize probabilities
+      const sumProbabilities = terrainTypeProbabilities.reduce((a, b) => a + b, 0);
+      const normalizedProbabilities = terrainTypeProbabilities.map(
+        (p) => p / sumProbabilities,
+      );
+  
+      // Choose a terrain type based on the probabilities
+      const chosenTerrainType = this.weightedRandomChoice(
+        terrainTypes,
+        normalizedProbabilities,
+      );
+  
+      // Assign the chosen terrain type to the clump
+      for (const clumpTile of clumpTiles) {
+        clumpTile.type = chosenTerrainType;
+        // Update the tile's visual appearance based on the new type
+        this.updateAutotileAt(clumpTile.x, clumpTile.y, chosenTerrainType);
+      }
+    }
+  }
+
+  weightedRandomChoice(items: number[], weights: number[]): number {
+    let cumulativeWeight = 0;
+    const random = Math.random();
+    for (let i = 0; i < items.length; i++) {
+      cumulativeWeight += weights[i];
+      if (random < cumulativeWeight) {
+        return items[i];
+      }
+    }
+    return items[items.length - 1];
+  }
+
+  runAutomataStep(grid: boolean[][]): boolean[][] {
+    const newGrid: boolean[][] = []
+
+    for (let x = 0; x < this.map.width; x++) {
+      newGrid[x] = []
+      for (let y = 0; y < this.map.height; y++) {
+        const aliveNeighbors = this.countAliveNeighborsInGrid(grid, x, y)
+        const isSolid = grid[x][y]
+
+        if (isSolid) {
+          // Survival rule: A solid tile remains solid if it has 4 or more solid neighbors
+          newGrid[x][y] = aliveNeighbors >= 4
+        } else {
+          // Birth rule: An empty tile becomes solid if it has 5 or more solid neighbors
+          newGrid[x][y] = aliveNeighbors >= 5
+        }
+      }
+    }
+
+    return newGrid
+  }
+
+  decideTileTypeBasedOnNeighbors(x: number, y: number): number {
+    const neighborTypes: number[] = []
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue // Skip the tile itself
+
+        const nx = x + dx
+        const ny = y + dy
+
+        if (nx < 0 || nx >= this.map.width || ny < 0 || ny >= this.map.height) {
+          continue // Skip out-of-bounds
+        }
+
+        const neighborTileType = this.getTileTypeAt(nx, ny)
+        if (neighborTileType > 0) {
+          neighborTypes.push(neighborTileType)
+        }
+      }
+    }
+
+    if (neighborTypes.length > 0) {
+      // Return the most common tile type among neighbors
+      const counts = neighborTypes.reduce(
+        (acc, type) => {
+          acc[type] = (acc[type] || 0) + 1
+          return acc
+        },
+        {} as { [key: number]: number },
+      )
+
+      const mostCommonType = Object.keys(counts).reduce((a, b) =>
+        counts[a] > counts[b] ? a : b,
+      )
+
+      return parseInt(mostCommonType, 10)
+    } else {
+      // Default to a random tile type if no solid neighbors
+      return Phaser.Math.Between(1, 3)
+    }
+  }
+
+  countAliveNeighborsInGrid(grid: boolean[][], x: number, y: number): number {
+    let count = 0
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) {
+          continue // Skip the tile itself
+        }
+
+        const nx = x + dx
+        const ny = y + dy
+
+        if (nx >= 0 && nx < this.map.width && ny >= 0 && ny < this.map.height) {
+          if (grid[nx][ny]) {
+            count++
+          }
+        }
+        // Treat out-of-bounds as empty (do not increment count)
+      }
+    }
+
+    return count
+  }
+
+  countAliveNeighbors(x: number, y: number): number {
+    let count = 0
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) {
+          continue // Skip the tile itself
+        }
+
+        const nx = x + dx
+        const ny = y + dy
+
+        // Skip neighbors outside the map boundaries or within margins
+        if (
+          nx < 0 ||
+          nx >= this.map.width ||
+          ny < 0 ||
+          ny >= this.map.height ||
+          nx < this.marginLeft ||
+          nx >= this.map.width - this.marginRight ||
+          ny < this.marginTop ||
+          ny >= this.map.height - this.marginBottom
+        ) {
+          // Optionally, treat out-of-bounds or margin tiles as solid to favor enclosed shapes
+          count++
+        } else if (this.isSolidTileAt(nx, ny)) {
+          count++
+        }
+      }
+    }
+
+    return count
   }
 
   applyAutotiling() {
@@ -279,7 +527,7 @@ export class TerrainManager {
     }
   }
 
-  setupCollision() {
+  setupColliders() {
     // Add colliders between terrain and player
     this.scene.physics.add.collider(
       this.scene.player.mechContainer,
@@ -355,7 +603,7 @@ export class TerrainManager {
 
   getTileTypeAt(x: number, y: number): number {
     const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
-    return tile ? tile.type : -1 // Return -1 if tile doesn't exist
+    return tile ? tile.type : 0 // Return 0 if tile doesn't exist
   }
 
   renderTileDestructionEffect(tile: Phaser.Tilemaps.Tile) {
@@ -412,6 +660,10 @@ export class TerrainManager {
   }
 
   isSolidTileAt(x: number, y: number, tileType?: number): boolean {
+    if (x < 0 || x >= this.map.width || y < 0 || y >= this.map.height) {
+      return false // Treat out-of-bounds as empty
+    }
+
     const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
     if (tileType !== undefined) {
       return tile !== null && tile.index !== -1 && tile.type === tileType
@@ -527,6 +779,7 @@ export class TerrainManager {
   }
 
   displayTilesetForDebug() {
+    console.log('here')
     const { width, height } = this.scene.cameras.main
     const textureKey = 'generated-tileset'
 

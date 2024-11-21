@@ -93,8 +93,8 @@ export class PlayerMech {
     this.boostFlames.back.setRotation(Math.PI / 2)
 
     this.mechContainer = this.scene.addContainer(
-      this.scene.cameras.main.centerX,
-      this.scene.cameras.main.centerY,
+      ct.playerStartingX,
+      ct.playerStartingY,
       [
         this.playerMech,
         this.boostFlames.front,

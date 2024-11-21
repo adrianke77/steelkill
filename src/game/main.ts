@@ -22,7 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      fps: 240,
+      fps: 300,
     },
   },
   scene: [ Preloader, MainMenu, MainGame, GameOver],

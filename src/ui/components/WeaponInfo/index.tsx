@@ -7,7 +7,6 @@ export const WeaponsInfo = ({
   weapons: WeaponSpec[]
 }): React.JSX.Element => {
   const { magCount, remainingAmmo, isReloading } = useHUDData()
-
   return (
     <div className="hudFont">
       {weapons.map((weapon, index) => {

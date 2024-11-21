@@ -74,7 +74,7 @@ export class BeamManager {
 
     let volume = weapon.fireSoundVol ?? 1.0
     if (Object.keys(this.activeBeams).length > 0) {
-      volume *= 0.4
+      volume *= 0.6
     }
 
     const sound = this.scene.sound.add(weapon.fireSound, {
@@ -176,8 +176,8 @@ export class BeamManager {
       : weapon.damage
     createDustCloud(
       this.scene,
-      (beamEndX+tileX)/2,
-      (beamEndY+tileY)/2,
+      beamEndX,
+      beamEndY,
       0,
       0,
       0.8,
@@ -247,7 +247,7 @@ export class BeamManager {
     const tileSize = this.scene.terrainMgr.map.tileWidth
     const layer = this.scene.terrainMgr.terrainLayer
     const map = this.scene.terrainMgr.map
-
+  
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     let closestEnemy: EnemySprite | null = null
     let closestTile: Phaser.Tilemaps.Tile | null = null
@@ -255,65 +255,85 @@ export class BeamManager {
     let beamEndX = maxEndX
     let beamEndY = maxEndY
     const intersectionPoint = new Phaser.Geom.Point()
-
+  
     const line = new Phaser.Geom.Line(startX, startY, maxEndX, maxEndY)
-
+  
     // --- Terrain Collision Detection using DDA Algorithm ---
-
+  
     // Convert start and end positions to tile coordinates
     let x = Math.floor(startX / tileSize)
     let y = Math.floor(startY / tileSize)
-
+  
     const deltaX = maxEndX - startX
     const deltaY = maxEndY - startY
-
+  
     const stepX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0
     const stepY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0
-
+  
     const gridDeltaX =
       deltaX === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaX)
     const gridDeltaY =
       deltaY === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaY)
-
+  
     let tMaxX: number
     let tMaxY: number
-
+  
     if (deltaX === 0) {
       tMaxX = Number.MAX_VALUE
     } else {
       const xBound = stepX > 0 ? (x + 1) * tileSize : x * tileSize
       tMaxX = Math.abs((xBound - startX) / deltaX)
     }
-
+  
     if (deltaY === 0) {
       tMaxY = Number.MAX_VALUE
     } else {
       const yBound = stepY > 0 ? (y + 1) * tileSize : y * tileSize
       tMaxY = Math.abs((yBound - startY) / deltaY)
     }
-
+  
     // Step through the grid
     while (x >= 0 && x < map.width && y >= 0 && y < map.height) {
-      const tile = layer.getTileAt(x, y)
+      const tile = layer.getTileAt(x, y) as TerrainTile
       if (tile && tile.collides) {
-        // Collision with tile
-        const collisionT = Math.min(tMaxX, tMaxY)
-        const collisionX = startX + deltaX * collisionT
-        const collisionY = startY + deltaY * collisionT
-        const distance = Phaser.Math.Distance.Between(
-          startX,
-          startY,
-          collisionX,
-          collisionY,
+        // Compute the exact intersection point with the tile boundary
+        const tileBounds = new Phaser.Geom.Rectangle(
+          tile.getLeft(),
+          tile.getTop(),
+          tileSize,
+          tileSize
         )
-        if (distance < closestDistance) {
-          closestDistance = distance
-          beamEndX = collisionX
-          beamEndY = collisionY
-          closestTile = tile
-          closestEnemy = null // Beam hit tile before any enemy
+  
+        const sides = [
+          new Phaser.Geom.Line(tileBounds.left, tileBounds.top, tileBounds.right, tileBounds.top), // Top
+          new Phaser.Geom.Line(tileBounds.right, tileBounds.top, tileBounds.right, tileBounds.bottom), // Right
+          new Phaser.Geom.Line(tileBounds.right, tileBounds.bottom, tileBounds.left, tileBounds.bottom), // Bottom
+          new Phaser.Geom.Line(tileBounds.left, tileBounds.bottom, tileBounds.left, tileBounds.top) // Left
+        ]
+  
+        let collisionFound = false
+        for (const side of sides) {
+          if (Phaser.Geom.Intersects.LineToLine(line, side, intersectionPoint)) {
+            const distance = Phaser.Math.Distance.Between(
+              startX,
+              startY,
+              intersectionPoint.x,
+              intersectionPoint.y
+            )
+            if (distance < closestDistance) {
+              closestDistance = distance
+              beamEndX = intersectionPoint.x
+              beamEndY = intersectionPoint.y
+              closestTile = tile
+              closestEnemy = null // Beam hit tile before any enemy
+              collisionFound = true
+              break 
+            }
+          }
         }
-        break
+        if (collisionFound) {
+          break 
+        }
       }
       if (tMaxX < tMaxY) {
         tMaxX += gridDeltaX
@@ -323,12 +343,10 @@ export class BeamManager {
         y += stepY
       }
     }
-
-    // --- Enemy Collision Detection ---
-
+  
     for (const enemy of enemies) {
       if (!enemy.active) continue
-
+  
       const enemyCircle = new Phaser.Geom.Circle(
         enemy.x,
         enemy.y,
@@ -339,7 +357,7 @@ export class BeamManager {
         enemyCircle,
         intersectionPoint,
       )
-
+  
       if (intersects) {
         const distance = Phaser.Math.Distance.Between(
           startX,
@@ -356,12 +374,13 @@ export class BeamManager {
         }
       }
     }
-
+  
     // Determine the object hit (enemy, tile, or null)
     const hitObject = closestEnemy || closestTile || null
-
+  
     return { beamEndX, beamEndY, hitObject }
   }
+  
 
   private resetAndDrawBeam(
     beam: ActiveBeam,

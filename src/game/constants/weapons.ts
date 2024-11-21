@@ -19,7 +19,7 @@ export const weapons = {
     reloadDelay: 0,
     maxRange: 1000,
     fireSound: 'beamsound6',
-    fireSoundVol: 2.5,
+    fireSoundVol: 2,
     reloadSound: '',
     isBeam: true,
     beamColor: 0xff0033,
@@ -36,7 +36,7 @@ export const weapons = {
     terrainDamageMultiplier: 4
   },
   arc1: {
-    name: 'ARC CANNON',
+    name: 'CHANNELLED ARC CANNON',
     fireDelay: 30,
     image: '',
     initialSpeed: 0,
@@ -45,20 +45,20 @@ export const weapons = {
     roundWidth: 0,
     damage: 1.5, // dps: 50
     penetration: 0,
-    totalAmmo: 5000,
-    magSize: 5000,
+    totalAmmo: 3500,
+    magSize: 3500,
     reloadDelay: 0,
     maxRange: 800,
-    fireSound: 'lightning9',
-    fireSoundVol: 3,
+    fireSound: 'lightning14',
+    fireSoundVol: 1.5,
     reloadSound: '',
     isBeam: true,
     renderAsLightning: true,
     beamColor: 0x00ffff,
-    beamWidth: 1.5,
+    beamWidth: 1,
     beamGlowWidth: 20,
     beamGlowColor: 0x0066ff,
-    beamParticleInitialSize: 0.25,
+    beamParticleInitialSize: 0.2,
     beamParticlesDensity: 3,
     beamParticlesColor: 0x00DDff,
     beamParticlesFadeTime: 1000,
@@ -70,7 +70,7 @@ export const weapons = {
     arcTargetingAngle: 40,
     chaining: true,
     chainRange: 300,
-    randomFlash: 0.002
+    randomFlash: 0.005
   },
   boltAP: {
     name: '40MM CANNON ARMOR PIERCING',

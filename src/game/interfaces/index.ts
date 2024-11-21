@@ -71,6 +71,7 @@ export interface WeaponSpec {
   chaining?: boolean // if true, beam will chain to nearby enemies
   chainRange?:number // max range of chain
   terrainDamageMultiplier?: number
+  randomFlash?: number // chance of particles producing a random flash, only for beam weapons
 }
 
 export interface EnemyWeaponSpec

@@ -273,7 +273,7 @@ export class PlayerMech {
 
     if (!isBoosting && velocMag > 0) {
       if (timeSinceLastMechStep > adjustedMechStepPeriod) {
-        addCloudAtPlayermech(this.scene, 0.9)
+        addCloudAtPlayermech(this.scene, 0.5)
         this.playMechstepSound()
         this.lastMechStepTime = time
       }

@@ -160,7 +160,7 @@ export class Game extends Scene {
       this,
     )
 
-    this.physics.add.overlap(
+    this.physics.add.collider(
       this.projectileMgr.projectiles,
       this.enemyMgr.enemies,
       undefined,

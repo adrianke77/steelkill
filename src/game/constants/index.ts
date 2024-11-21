@@ -16,20 +16,20 @@ const depths = {
   decals: 7500,
   projectileSpark: 10000,
   terrain: 1,
-  dustClouds:7999
+  dustClouds:11000
 }
 
 export const Constants = {
-  ambientLightColor:0xAAAAAA,
+  ambientLightColor:0xBBBBBB,
   fieldWidth: 3000,
   fieldHeight: 3000,
-  tileSize: 20,
+  tileSize: 30,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1500,
   DecalFadeTime: 60000,
   musicVolume: 1,
-  maxEnemies: 0,
+  maxEnemies: 50,
   mechStepPeriod: 500,
   mechStepSoundVol: 3,
   mechStartingHealth: 500,
@@ -64,8 +64,8 @@ export const Constants = {
   // front left is -15, -15
   weaponPositions: [
     [-12, -10], // far left
-    [-5.5, -10], // mid left
-    [5.5, -10], // mid right
+    [-7.5, -10], // mid left
+    [7.5, -10], // mid right
     [12, -10], // far right
   ],
   boostCapacity: 15000,

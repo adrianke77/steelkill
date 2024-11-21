@@ -249,7 +249,7 @@ export function createDustCloud(
     alpha: 0,
     displayWidth: finalSize,
     displayHeight: finalSize,
-    duration: duration ? duration : 1000,
+    duration: duration ? duration : 500,
     ease: 'Quad.easeOut',
     onComplete: () => {
       dustCloud.destroy()
@@ -417,10 +417,10 @@ export function renderExplosion(
     y,
     optionals && optionals.color ? optionals.color : ct.explosionColor,
     200,
-    damage / 3,
-    diameter * 2,
+    damage / 10,
+    diameter * 3,
   )
-  createDustCloud(scene, x, y, 0, 0, 0.5, 2000, diameter * 2)
+  createDustCloud(scene, x, y, 0, 0, 0.5, 4000, diameter * 1.4)
 
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(
@@ -445,5 +445,7 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
     scene.player.mechContainer.body!.velocity.x,
     scene.player.mechContainer.body!.velocity.y,
     opacity,
+    1000,
+    100
   )
 }

@@ -4,7 +4,7 @@ import { Constants as ct } from '../constants'
 import {
   destroyEnemyAndCreateCorpseDecals,
   createLightFlash,
-  createDustCloud
+  createDustCloud,
 } from '../rendering'
 import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
@@ -146,7 +146,14 @@ export class BeamManager {
           this.beamHitEnemy(hitObject, weapon, startX, startY)
         } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
           const tile = hitObject as TerrainTile
-          this.damageTerrainTile(tile, weapon, startX, startY)
+          this.damageTerrainTile(
+            tile,
+            weapon,
+            startX,
+            startY,
+            beamEndX,
+            beamEndY,
+          )
         }
       }
 
@@ -159,20 +166,29 @@ export class BeamManager {
     weapon: WeaponSpec,
     beamStartX: number,
     beamStartY: number,
+    beamEndX: number,
+    beamEndY: number,
   ): void {
     const tileX = tile.getCenterX()
     const tileY = tile.getCenterY()
     const damage = weapon.terrainDamageMultiplier
       ? weapon.damage * weapon.terrainDamageMultiplier
       : weapon.damage
-    createDustCloud(this.scene, tileX, tileY, 0, 0, 0.8, 1000, weapon.damage*10)
-    
+    createDustCloud(
+      this.scene,
+      (beamEndX+tileX)/2,
+      (beamEndY+tileY)/2,
+      0,
+      0,
+      0.8,
+      1500,
+      Math.min(weapon.damage * 10,100),
+    )
+
     tile.health -= damage
     if (tile.health <= 0) {
       this.scene.terrainMgr.destroyTile(tile)
     }
-
-
 
     this.beamHitSpark(beamStartX, beamStartY, tileX, tileY, weapon)
     createLightFlash(
@@ -433,7 +449,7 @@ export class BeamManager {
         this.beamHitEnemy(hitObject, weapon, startX, startY)
       } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
         const tile = hitObject as TerrainTile
-        this.damageTerrainTile(tile, weapon, startX, startY)
+        this.damageTerrainTile(tile, weapon, startX, startY, beamEndX, beamEndY)
       }
     }
 
@@ -501,12 +517,12 @@ export class BeamManager {
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.7,
+        width: weapon.beamGlowWidth! * 0.7*Phaser.Math.Between(0.5, 1.5),
         alpha: 0.2,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.4,
+        width: weapon.beamGlowWidth! * 0.4*Phaser.Math.Between(0.5, 1.5),
         alpha: 0.2,
       },
       { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 1 },
@@ -680,11 +696,36 @@ export class BeamManager {
           end: 0,
         }
       }
+      adjustedConfig.lifespan = weapon.beamParticlesFadeTime!
       this.beamParticleEmitter.setConfig(adjustedConfig)
       this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
       this.beamParticleEmitter.setParticleAlpha(isBeamFragment ? 0.5 : 0.9)
       this.beamParticleEmitter.emitParticleAt(particleX, particleY)
-      this.beamParticleEmitter.lifespan = weapon.beamParticlesFadeTime!
+
+      // generate large light flash occasionally
+
+      if (weapon.randomFlash && Math.random() < weapon.randomFlash) {
+        const radius = weapon.beamLightRadius! * 5
+        const intensity = weapon.beamLightIntensity! * 5
+        const bigFlash = this.scene.lights.addLight(
+          particleX,
+          particleY,
+          radius,
+          weapon.beamColor!,
+          intensity,
+        )
+        this.scene.tweens.add({
+          targets: bigFlash,
+          intensity: { from: intensity, to: 0 },
+          radius: { from: radius, to: radius / 2 },
+          duration: 200,
+          onComplete: () => {
+            this.scene.lights.removeLight(bigFlash)
+          },
+        })
+
+
+      }
 
       // Handle lights for beam fragments
       if (isBeamFragment) {

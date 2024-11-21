@@ -31,8 +31,11 @@ const TILE_CORNER_MAP: { [key: number]: number } = {
   14: CORNER_BITS.TR | CORNER_BITS.BL | CORNER_BITS.BR,
   15: CORNER_BITS.TL | CORNER_BITS.TR | CORNER_BITS.BL | CORNER_BITS.BR,
 }
+
+const NUM_VARIANTS = 5 // Number of tileset variants
+
 export const loadTerrainAssets = (scene: Game) => {
-  scene.load.image('terrainTile', 'terrainTile2.png')
+  scene.load.image('terrainTile', 'terrainTile3.png')
 }
 
 const debrisSprayEmitterConfig = {
@@ -67,8 +70,8 @@ export class TerrainManager {
     // Remove the old tileset if it exists
     this.scene.textures.remove('generated-tileset')
 
-    const tilesetColumns = 4
-    const tilesetRows = 4
+    const tilesetColumns = 16 // There are 16 unique tile configurations
+    const tilesetRows = NUM_VARIANTS // Number of variants
     const tileSize = ct.tileSize
     const tilesetWidth = tilesetColumns * tileSize
     const tilesetHeight = tilesetRows * tileSize
@@ -86,19 +89,23 @@ export class TerrainManager {
     const baseTexture = this.scene.textures.get('terrainTile')
     const baseImage = baseTexture.getSourceImage() as HTMLImageElement
 
-    // Draw the 16 tiles onto the canvas
-    for (let tileIndex = 0; tileIndex <= 15; tileIndex++) {
-      const col = tileIndex % tilesetColumns
-      const row = Math.floor(tileIndex / tilesetColumns)
-      const x = col * tileSize
-      const y = row * tileSize
+    // Draw the tiles with variants onto the canvas
+    for (let variant = 0; variant < NUM_VARIANTS; variant++) {
+      for (let tileIndex = 0; tileIndex <= 15; tileIndex++) {
+        const col = tileIndex
+        const row = variant
+        const x = col * tileSize
+        const y = row * tileSize
 
-      // Draw the base tile
-      context.drawImage(baseImage, x, y, tileSize, tileSize)
+        // Draw the base tile
+        context.drawImage(baseImage, x, y, tileSize, tileSize)
 
-      // Apply rounded corners based on the bitmask
-      const cornerMask = TILE_CORNER_MAP[tileIndex] || 0 // Default to 0 if undefined
-      this.addCorners(context, x, y, tileSize, cornerMask)
+        // Apply rounded corners based on the bitmask
+        const cornerMask = TILE_CORNER_MAP[tileIndex] || 0
+
+        // Apply randomized corners for each variant
+        this.addCorners(context, x, y, tileSize, cornerMask)
+      }
     }
 
     // Refresh the canvas texture to update it
@@ -120,14 +127,11 @@ export class TerrainManager {
 
     this.terrainLayer.setDepth(ct.depths.terrain)
 
-    // Populate the layer with sample terrain
     this.populateTerrain()
 
-    // Add the terrain layer to the main layer
     this.scene.mainLayer.add(this.terrainLayer)
 
-    // Set collision for all tile indices
-    this.terrainLayer.setCollisionBetween(0, 15)
+    this.terrainLayer.setCollisionBetween(0, tilesetColumns * tilesetRows - 1)
     this.terrainLayer.setPipeline('Light2D')
 
     // this.displayTilesetForDebug()
@@ -140,8 +144,8 @@ export class TerrainManager {
     size: number,
     cornerMask: number,
   ) {
-    const cornerSize = size * 0.4 // Adjust the size of the corner cutouts
-    const jitter = cornerSize * 0.8 // Jitter amount
+    const cornerSize = size * 0.3 // Adjust the size of the corner cutouts
+    const jitter = cornerSize * 0.6 // Jitter amount
     context.save()
 
     // Set composite operation to 'destination-out' to erase the corners
@@ -211,8 +215,8 @@ export class TerrainManager {
   }
 
   populateTerrain() {
-    const numberOfRandomOvals = 200
-    const MIN_DISTANCE_FROM_PLAYER = 20 // Minimum distance in tiles
+    const numberOfRandomOvals = Math.sqrt(ct.fieldWidth / ct.tileSize) *4
+    const MIN_DISTANCE_FROM_PLAYER = 10 // Minimum distance in tiles
 
     // Calculate player's position in tile coordinates
     const playerTileX = Math.floor(
@@ -227,11 +231,20 @@ export class TerrainManager {
 
       // Generate random center coordinates within the tilemap boundaries
       const centerX = Phaser.Math.Between(0, ct.fieldWidth / ct.tileSize)
-      const centerY = Phaser.Math.Between(200/ct.tileSize, ct.fieldHeight / ct.tileSize)
+      const centerY = Phaser.Math.Between(
+        200 / ct.tileSize,
+        ct.fieldHeight / ct.tileSize,
+      )
 
       // Generate random radii for the oval
-      const radiusX = Phaser.Math.Between(3, 7)
-      const radiusY = Phaser.Math.Between(2, 5)
+      let radiusX = Phaser.Math.Between(6, 9)
+      let radiusY = Phaser.Math.Between(2, 4)
+
+      if (Math.random() < 0.5) {
+        const temp = radiusX
+        radiusX = radiusY
+        radiusY = temp
+      }
 
       // Calculate distance from the oval center to the player's position
       const distanceToPlayer = Phaser.Math.Distance.Between(
@@ -256,12 +269,11 @@ export class TerrainManager {
   applyAutotiling() {
     for (let x = 0; x < this.map.width; x++) {
       for (let y = 0; y < this.map.height; y++) {
-        if (this.isSolidTileAt(x, y)) {
-          const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
+        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
+        if (tile) {
           const tileType = tile.type
-          const tileIndex = this.computeTileIndex(x, y)
+          const tileIndex = this.computeTileIndex(x, y, tileType)
           this.terrainLayer.putTileAt(tileIndex, x, y)
-          this.updateAutotileAt(x, y, tileType)
         }
       }
     }
@@ -281,7 +293,7 @@ export class TerrainManager {
     )
 
     // Add colliders between projectiles and terrain
-    this.scene.physics.add.overlap(
+    this.scene.physics.add.collider(
       this.scene.projectileMgr.projectiles,
       this.terrainLayer,
       undefined,
@@ -330,8 +342,11 @@ export class TerrainManager {
 
       // Ensure the neighbor is within map boundaries
       if (nx >= 0 && nx < this.map.width && ny >= 0 && ny < this.map.height) {
-        // Update the autotiling for the neighboring tile
-        this.updateAutotileAt(nx, ny, this.getTileTypeAt(nx, ny))
+        const neighborTile = this.terrainLayer.getTileAt(nx, ny) as TerrainTile
+        if (neighborTile) {
+          // Update the autotiling for the neighboring tile
+          this.updateAutotileAt(nx, ny, neighborTile.type)
+        }
       }
     }
 
@@ -348,18 +363,18 @@ export class TerrainManager {
     const worldY = tile.getCenterY()
 
     // Create an effect at the tile's position
-    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 3000, 200)
+    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 5000, 250)
   }
 
-  computeTileIndex(x: number, y: number): number {
-    const above = this.isSolidTileAt(x, y - 1)
-    const below = this.isSolidTileAt(x, y + 1)
-    const left = this.isSolidTileAt(x - 1, y)
-    const right = this.isSolidTileAt(x + 1, y)
-    const aboveLeft = this.isSolidTileAt(x - 1, y - 1)
-    const aboveRight = this.isSolidTileAt(x + 1, y - 1)
-    const belowLeft = this.isSolidTileAt(x - 1, y + 1)
-    const belowRight = this.isSolidTileAt(x + 1, y + 1)
+  computeTileIndex(x: number, y: number, tileType: number): number {
+    const above = this.isSolidTileAt(x, y - 1, tileType)
+    const below = this.isSolidTileAt(x, y + 1, tileType)
+    const left = this.isSolidTileAt(x - 1, y, tileType)
+    const right = this.isSolidTileAt(x + 1, y, tileType)
+    const aboveLeft = this.isSolidTileAt(x - 1, y - 1, tileType)
+    const aboveRight = this.isSolidTileAt(x + 1, y - 1, tileType)
+    const belowLeft = this.isSolidTileAt(x - 1, y + 1, tileType)
+    const belowRight = this.isSolidTileAt(x + 1, y + 1, tileType)
 
     let cornerMask = 0
 
@@ -396,9 +411,13 @@ export class TerrainManager {
     return tileIndex || 0
   }
 
-  isSolidTileAt(x: number, y: number): boolean {
-    const tile = this.terrainLayer.getTileAt(x, y)
-    return tile !== null && tile.index !== -1
+  isSolidTileAt(x: number, y: number, tileType?: number): boolean {
+    const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
+    if (tileType !== undefined) {
+      return tile !== null && tile.index !== -1 && tile.type === tileType
+    } else {
+      return tile !== null && tile.index !== -1
+    }
   }
 
   drawOval(
@@ -429,7 +448,8 @@ export class TerrainManager {
 
   setAutotileAt(x: number, y: number, tileType: number): void {
     // Set the tile at (x, y)
-    this.terrainLayer.putTileAt(0, x, y)
+    const tile = this.terrainLayer.putTileAt(0, x, y) as TerrainTile
+    tile.type = tileType
 
     // Update the tile at (x, y)
     this.updateAutotileAt(x, y, tileType)
@@ -450,28 +470,45 @@ export class TerrainManager {
       const nx = x + neighbor.dx
       const ny = y + neighbor.dy
       if (nx >= 0 && nx < this.map.width && ny >= 0 && ny < this.map.height) {
-        if (this.isSolidTileAt(nx, ny)) {
-          this.updateAutotileAt(nx, ny, tileType)
+        const neighborTile = this.terrainLayer.getTileAt(nx, ny) as TerrainTile
+        if (neighborTile) {
+          this.updateAutotileAt(nx, ny, neighborTile.type)
         }
       }
     }
   }
 
   updateAutotileAt(x: number, y: number, tileType: number): void {
-    if (!this.isSolidTileAt(x, y)) {
+    const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
+    if (!tile) {
       return
     }
 
-    const tileIndex = this.computeTileIndex(x, y)
-    const tile = this.terrainLayer.putTileAt(tileIndex, x, y) as TerrainTile
+    const baseTileIndex = this.computeTileIndex(x, y, tileType)
+    const tilesetColumns = 16
+
+    // Randomly select a variant index between 0 and NUM_VARIANTS - 1
+    const variant = Phaser.Math.Between(0, NUM_VARIANTS - 1)
+
+    // Compute the tile index with the variant offset
+    const tileIndex = baseTileIndex + variant * tilesetColumns
+
+    tile.index = tileIndex
     tile.type = tileType
+
+    // Update tile properties based on tile type
     const properties = tileProperties[tileType as keyof typeof tileProperties]
     tile.armor = properties.armor
     tile.health = properties.health
     tile.tint = properties.color
+    tile.alpha = 0.5
   }
 
-  isTerrainNear(tileX: number, tileY: number, minDistanceInTiles: number): boolean {
+  isTerrainNear(
+    tileX: number,
+    tileY: number,
+    minDistanceInTiles: number,
+  ): boolean {
     const startX = tileX - minDistanceInTiles
     const startY = tileY - minDistanceInTiles
     const endX = tileX + minDistanceInTiles
@@ -507,6 +544,4 @@ export class TerrainManager {
 
     this.scene.mainLayer.add(tilesetImage)
   }
-
-  
 }

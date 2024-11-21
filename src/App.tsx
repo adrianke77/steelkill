@@ -83,6 +83,11 @@ function App() {
               <div>
                 <b>MOVE KEY + BOOST</b> : &nbsp;&nbsp;rocket boosted drifting
               </div>
+              <br />
+              <br />
+              <div style={{ fontSize: 20, fontStyle: 'italic' }}>
+                <b>Every weapon is different. Try them all against the hordes.</b>
+              </div>
             </div>
             <WeaponSelector />
             <br/>

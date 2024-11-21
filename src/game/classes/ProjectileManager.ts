@@ -21,7 +21,7 @@ import {
   renderExplosion,
   playMuzzleFlare,
   baseProjectileSparkConfig,
-  createDustCloud
+  createDustCloud,
 } from '../rendering'
 import { generateUniqueId, getSoundPan } from '../utils'
 
@@ -37,7 +37,12 @@ export class ProjectileManager {
     false,
     false,
   ]
-  repeatingFireSounds: (Phaser.Sound.BaseSound | null)[] = [null, null, null, null];
+  repeatingFireSounds: (Phaser.Sound.BaseSound | null)[] = [
+    null,
+    null,
+    null,
+    null,
+  ]
 
   constructor(scene: Game) {
     this.scene = scene
@@ -76,7 +81,7 @@ export class ProjectileManager {
     )
     const projectile = this.createProjectileSprite(startX, startY, weapon.image)
     projectile.weapon = weapon
-    projectile.start = [x, y]
+    projectile.start = [startX, startY]
     if (enemySource) {
       projectile.enemySource = true
     }
@@ -352,19 +357,11 @@ export class ProjectileManager {
       const x = target.x
       const y = target.y
       target.health -= damage
-      console.log(target.health, damage)
-      createDustCloud(this.scene, tileX, tileY, 0, 0, 0.8, 500, damage*5)
-      if (target.health <= 0) {
-        this.scene.terrainMgr.destroyTile(target)
-        // Update autotiling around the destroyed tile
-        this.scene.terrainMgr.updateAutotileAt(x, y, target.type)
-      }
-
       const directionRadians = Phaser.Math.Angle.Between(
-        projectile.x,
-        projectile.y,
         tileX,
         tileY,
+        projectile.x,
+        projectile.y,
       )
       this.projectileSpark(
         (projectile.x + tileX) / 2,
@@ -372,6 +369,21 @@ export class ProjectileManager {
         projectile,
         directionRadians,
       )
+      createDustCloud(
+        this.scene,
+        (projectile.x + tileX) / 2,
+        (projectile.y + tileY) / 2,
+        0,
+        0,
+        0.8,
+        1500,
+        Math.min(damage * 5, 100),
+      )
+      if (target.health <= 0) {
+        this.scene.terrainMgr.destroyTile(target)
+        // Update autotiling around the destroyed tile
+        this.scene.terrainMgr.updateAutotileAt(x, y, target.type)
+      }
     } else {
       this.applyProjectileDamageAndEffectsToEnemy(
         projectile,
@@ -529,7 +541,10 @@ export class ProjectileManager {
         )
 
         if (distance <= radius) {
-          const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+          let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+          if (weapon.terrainDamageMultiplier) {
+            damage = damage * weapon.terrainDamageMultiplier
+          }
           // Apply damage considering tile's armor
           if (damage > tile.armor / 2) {
             const effectiveDamage = damage - tile.armor / 2
@@ -597,7 +612,10 @@ export class ProjectileManager {
         )
 
         if (distance <= radius) {
-          const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+          let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+          if (weapon.terrainDamageMultiplier) {
+            damage = damage * weapon.terrainDamageMultiplier
+          }
           if (damage > tile.armor / 2) {
             // enemy projectiles damage to terrain is multipled to have more frequent terrain damage
             const effectiveDamage = damage * 10 - tile.armor / 2
@@ -872,11 +890,13 @@ export class ProjectileManager {
   }
 
   endSound(weaponIndex: number): void {
-    const soundInstance = this.repeatingFireSounds[weaponIndex] as Phaser.Sound.WebAudioSound
+    const soundInstance = this.repeatingFireSounds[
+      weaponIndex
+    ] as Phaser.Sound.WebAudioSound
     if (!soundInstance) {
       return
     }
-  
+
     // Create a tween to fade out the sound over 250ms
     const fadeOutTween = this.scene.tweens.add({
       targets: soundInstance,
@@ -887,9 +907,9 @@ export class ProjectileManager {
         soundInstance.destroy()
         this.repeatingFireSoundActive[weaponIndex] = false
         this.repeatingFireSounds[weaponIndex] = null
-      }
+      },
     })
-  
+
     // Handle if the sound ends before the tween completes
     const onSoundEnd = () => {
       fadeOutTween.stop()
@@ -897,10 +917,10 @@ export class ProjectileManager {
       this.repeatingFireSoundActive[weaponIndex] = false
       this.repeatingFireSounds[weaponIndex] = null
     }
-  
+
     soundInstance.once('stop', onSoundEnd)
     soundInstance.once('complete', onSoundEnd)
-  
+
     this.repeatingFireSounds[weaponIndex] = null
   }
 }

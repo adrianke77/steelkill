@@ -1,4 +1,3 @@
-66 // renderUtils.ts
 import { Game } from '../scenes/Game'
 import { brightMuzzleFrames, Constants as ct } from '../constants'
 import {
@@ -32,19 +31,33 @@ export function loadRenderingAssets(scene: Game) {
 
 export const baseProjectileSparkConfig = {
   lifespan: 100,
-  speed: { min: 250, max: 500 },
+  speed: { min: 0, max: 1000 },
   scale: { start: 0.4, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export const baseDeathBurstConfig = {
-  lifespan: 500,
-  speed: { min: 200, max: 400 },
-  scale: { start: 0.4, end: 0 },
+  lifespan: 1000,
+  speed: { min: 0, max: 250 },
+  scale: { start: 0.3, end: 0 },
   rotate: { start: 0, end: 360 },
-  accelerationX: 50,
-  accelerationY: 50,
+  accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
+    -particle.velocityX, // Decelerate X
+  accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
+    -particle.velocityY, // Decelerate Y
+  emitting: false,
+} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
+
+export const secondaryEnemyDeathBurstConfig = {
+  lifespan: 1000,
+  speed: { min: 0, max: 100 },
+  scale: { start: 0.3, end: 0 },
+  rotate: { start: 0, end: 360 },
+  accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
+    -particle.velocityX, // Decelerate X
+  accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
+    -particle.velocityY, // Decelerate Y
   emitting: false,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
@@ -70,8 +83,17 @@ export function createEmittersAndAnimations(scene: Game) {
     'whiteParticle',
     baseDeathBurstConfig,
   )
-  scene.enemyDeathBurstEmitter.setDepth(ct.depths.projectileSpark)
+  scene.enemyDeathBurstEmitter.setDepth(ct.depths.bloodSpray)
   scene.enemyDeathBurstEmitter.setPipeline('Light2D')
+
+  scene.secondaryEnemyDeathBurstEmitter = scene.addParticles(
+    0,
+    0,
+    'whiteParticle',
+    baseDeathBurstConfig,
+  )
+  scene.secondaryEnemyDeathBurstEmitter.setDepth(ct.depths.bloodSpray)
+  scene.secondaryEnemyDeathBurstEmitter.setPipeline('Light2D')
 
   scene.anims.create({
     key: 'whiteant8',
@@ -127,10 +149,11 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
     addCombinedDecal(scene)
   }
   if (scene.decalCount >= ct.decalsPerCombinedDecal) {
-    tweenFade(scene, scene.combinedDecals.shift()!)
+    tweenFadeDecal(scene, scene.combinedDecals.shift()!)
     addCombinedDecal(scene)
   }
-  scene.combinedDecals.slice(-1)[0].texture.draw(image, image.x, image.y)
+  const currentTexture = scene.combinedDecals.slice(-1)[0].texture
+  currentTexture.draw(image, image.x, image.y)
   image.destroy()
   scene.decalCount++
 }
@@ -143,7 +166,6 @@ function addCombinedDecal(scene: Game) {
     ct.fieldWidth,
   )
   scene.mainLayer.add(combinedTexture)
-  combinedTexture.setBlendMode(Phaser.BlendModes.NORMAL)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
   combinedDecalsImage.setPipeline('Light2D')
@@ -221,8 +243,8 @@ export function createDustCloud(
   size?: number,
 ): void {
   const dustCloud = scene.addSprite(x, y, 'dust')
-  const initialSize = size !== undefined? size / 2 : 50
-  const finalSize = initialSize * 4
+  const initialSize = size !== undefined ? size / 2 : 50
+  const finalSize = size
 
   const initialRotation = Phaser.Math.Between(0, 2 * Math.PI)
   const finalRotation =
@@ -234,6 +256,10 @@ export function createDustCloud(
   dustCloud.setVelocity(directionX / 2, directionY / 2)
   dustCloud.setPipeline('Light2D', { lightFactor: 0.1 })
   dustCloud.setDepth(ct.depths.dustClouds)
+  scene.viewMgr.dustClouds.add(dustCloud)
+  if (scene.viewMgr.infraredIsOn) {
+    dustCloud.visible = false
+  }
 
   scene.tweens.add({
     targets: dustCloud,
@@ -281,26 +307,36 @@ export function createLightFlash(
 
 export function createBloodSplat(
   scene: Game,
-  enemy: EnemySprite,
+  x: number,
+  y: number,
+  bloodColor: number,
   splatSize: number,
 ) {
-  const enemyData = enemy.enemyData as EnemyData
   const bloodSplat = scene.addImage(
-    enemy.x,
-    enemy.y,
+    x,
+    y,
     'blood',
     Phaser.Utils.Array.GetRandom(scene.bloodFrameNames),
   )
   bloodSplat.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   bloodSplat.displayHeight = splatSize
   bloodSplat.displayWidth = splatSize
-  bloodSplat.setTint(enemyData.bloodColor)
+  bloodSplat.setTint(bloodColor)
   bloodSplat.setPipeline('Light2D')
-  bloodSplat.setAlpha(0.8)
-  drawDecal(scene, bloodSplat)
-  // tweenFade(scene, bloodSplat)
-}
+  bloodSplat.setAlpha(0) // Start from alpha 0
 
+  // Fade in the decal from alpha 0 to 0.8 over 1 second
+  scene.tweens.add({
+    targets: bloodSplat,
+    alpha: 0.8,
+    duration: 1000, // Duration in milliseconds
+    ease: 'easeOut',
+    onComplete: () => {
+      // After the fade-in, draw the decal
+      drawDecal(scene, bloodSplat)
+    },
+  })
+}
 export function destroyEnemyAndCreateCorpseDecals(
   scene: Game,
   enemy: EnemySprite,
@@ -308,17 +344,24 @@ export function destroyEnemyAndCreateCorpseDecals(
   deathCauseY: number,
   radDirection?: number,
 ): void {
+  const enemyData = enemy.enemyData as EnemyData
   if (!!enemy.randomSoundId && !!enemy.randomSound) {
     scene.enemyMgr.untrackRandomSound(enemy)
     enemy.randomSound.destroy()
   }
   enemy.destroy()
-  createBloodSplat(scene, enemy, enemy.enemyData.corpseSize * 2)
-  const enemyData = enemy.enemyData as EnemyData
+  createBloodSplat(
+    scene,
+    enemy.x,
+    enemy.y,
+    enemyData.bloodColor,
+    enemyData.corpseSize,
+  )
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   deadEnemy.displayHeight = enemyData.corpseSize
   deadEnemy.displayWidth = enemyData.corpseSize
+  deadEnemy.alpha = 1
   deadEnemy.setTint(enemyData.color)
   deadEnemy.setPipeline('Light2D')
   drawDecal(scene, deadEnemy)
@@ -339,21 +382,33 @@ function enemyDeathBurst(
   enemyData: EnemyData,
   radDirection?: number,
 ): void {
-  const config = baseDeathBurstConfig
+  // const particleSpeed = enemyData.collisionSize /75 * 
   if (radDirection) {
     const degDirection = Phaser.Math.RadToDeg(radDirection)
-    config.angle = { min: degDirection - 30, max: degDirection + 30 }
-  } else {
-    config.angle = { min: 0, max: 360 }
+    baseDeathBurstConfig.angle = { min: degDirection - 30, max: degDirection + 30 }
+    scene.enemyDeathBurstEmitter.setConfig(baseDeathBurstConfig)
+    scene.enemyDeathBurstEmitter.setParticleTint(
+      blendColors(
+        enemyData.bloodColor,
+        0x000000,
+        Phaser.Math.FloatBetween(0.5, 0.7),
+      ),
+    )
+    scene.enemyDeathBurstEmitter.emitParticleAt(x, y, 100)
   }
-  scene.enemyDeathBurstEmitter.setConfig(config)
-  scene.enemyDeathBurstEmitter.setParticleTint(
-    blendColors(enemyData.bloodColor, 0x000000, Math.random()),
+  // always do a 360 burst as well
+  scene.secondaryEnemyDeathBurstEmitter.setConfig(secondaryEnemyDeathBurstConfig)
+  scene.secondaryEnemyDeathBurstEmitter.setParticleTint(
+    blendColors(
+      enemyData.bloodColor,
+      0x000000,
+      Phaser.Math.FloatBetween(0.5, 0.7),
+    ),
   )
-  scene.enemyDeathBurstEmitter.emitParticleAt(x, y, 20)
+  scene.secondaryEnemyDeathBurstEmitter.emitParticleAt(x, y, 100)
 }
 
-export function tweenFade(
+export function tweenFadeDecal(
   scene: Game,
   combinedDecal: {
     texture: Phaser.GameObjects.RenderTexture
@@ -405,7 +460,7 @@ export function renderExplosion(
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.5)
+  scorch.setAlpha(0.8)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )
@@ -420,7 +475,7 @@ export function renderExplosion(
     damage / 10,
     diameter * 3,
   )
-  createDustCloud(scene, x, y, 0, 0, 0.5, 4000, diameter * 1.4)
+  createDustCloud(scene, x, y, 0, 0, 0.5, 2000, diameter * 1.4)
 
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(
@@ -446,6 +501,6 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
     scene.player.mechContainer.body!.velocity.y,
     opacity,
     1000,
-    100
+    100,
   )
 }

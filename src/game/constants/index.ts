@@ -9,27 +9,29 @@ export type WeaponKey = keyof typeof weaponConstants
 
 const depths = {
   minimap: 15000,
-  enemy: 9999,
+  enemy: 7000,
   player: 9999,
+  bloodSpray: 7400,
   projectile: 8000,
-  explosion: 10000,
+  explosion: 12000,
   decals: 7500,
+  particles: 7500,
   projectileSpark: 10000,
   terrain: 1,
-  dustClouds:11000
+  dustClouds: 11000
 }
 
 export const Constants = {
-  ambientLightColor:0xBBBBBB,
+  ambientLightColor:0xCCCCCC,
   fieldWidth: 3000,
   fieldHeight: 3000,
-  tileSize: 20,
+  tileSize: 15,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
-  decalsPerCombinedDecal: 1500,
+  decalsPerCombinedDecal: 1000,
   DecalFadeTime: 60000,
   musicVolume: 1,
-  maxEnemies: 100,
+  maxEnemies: 150,
   playerStartingX: 1500,
   playerStartingY: 1500,
   mechStepPeriod: 500,

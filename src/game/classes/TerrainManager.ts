@@ -52,7 +52,7 @@ export class TerrainManager {
   terrainLayer: Phaser.Tilemaps.TilemapLayer
   debrisSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
   // Margin variables (in tiles)
-  marginTop: number = 10 // Adjust as needed
+  marginTop: number = 15 // Adjust as needed
   marginBottom: number = 2 // Adjust as needed
   marginLeft: number = 2 // Adjust as needed
   marginRight: number = 2 // Adjust as
@@ -226,10 +226,10 @@ export class TerrainManager {
     const playerStartTileY = Math.floor(ct.playerStartingY / ct.tileSize);
   
     // Increase to make terrain denser, decrease for sparser terrain
-    const fillProbability = 0.46; // Probability of a tile being solid
+    const fillProbability = 0.45;
     // Increasing iterations: Can smooth out the terrain and potentially make it more filled in or homogeneous.
     // Decreasing iterations: May result in more random, rugged, or fragmented terrain patterns.
-    const iterations = 6; // Number of cellular automata iterations
+    const iterations = 7;
   
     // Generate a temporary grid for the initial state, including margins
     let tempGrid: boolean[][] = [];
@@ -355,7 +355,7 @@ export class TerrainManager {
       // Compute weighted probabilities for each terrain type
       const terrainTypeProbabilities = terrainTypes.map((terrainType) => {
         // Use weights to influence the probability
-        const weight = terrainTypeClumpWeight[terrainType];
+        const weight = terrainTypeClumpWeight[terrainType as keyof typeof terrainTypeClumpWeight];
         return Math.pow(clumpSize, weight);
       });
   
@@ -442,7 +442,7 @@ export class TerrainManager {
           acc[type] = (acc[type] || 0) + 1
           return acc
         },
-        {} as { [key: number]: number },
+        {} as { [key: string]: number },
       )
 
       const mostCommonType = Object.keys(counts).reduce((a, b) =>
@@ -611,7 +611,7 @@ export class TerrainManager {
     const worldY = tile.getCenterY()
 
     // Create an effect at the tile's position
-    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 5000, 250)
+    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 3500, 250)
   }
 
   computeTileIndex(x: number, y: number, tileType: number): number {

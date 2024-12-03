@@ -3,7 +3,7 @@ import { enemyWeapons } from './weapons'
 
 export const enemies = {
   ant: {
-    spawnPeriod: 25,
+    spawnPeriod: 100,
     speed: 100,
     health: 40,
     armor: 5,
@@ -13,7 +13,7 @@ export const enemies = {
     color: 0x200505,
     walkAnimation: 'whiteant8',
     corpseImage: 'blood',
-    corpseSize: 50,
+    corpseSize: 100,
     spriteSheetKey: 'whiteant8',
     randomSound: 'antsounds2',
     randomSoundVol: 2,
@@ -28,7 +28,7 @@ export const enemies = {
     tooSmallToBleedWhenHit: true,
   },
   fireant: {
-    spawnPeriod: 300,
+    spawnPeriod: 400,
     speed: 80,
     health: 200,
     armor: 10,
@@ -38,7 +38,7 @@ export const enemies = {
     color: 0x770000,
     walkAnimation: 'whiteant8',
     corpseImage: 'blood',
-    corpseSize: 100,
+    corpseSize: 200,
     spriteSheetKey: 'whiteant8',
     randomSound: 'antsounds2',
     randomSoundVol: 3,

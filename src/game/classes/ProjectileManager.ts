@@ -414,7 +414,7 @@ export class ProjectileManager {
       enemyData,
     )
     if (!enemyData.tooSmallToBleedWhenHit) {
-      createBloodSplat(this.scene, enemy, 20)
+      createBloodSplat(this.scene, enemy.x, enemy.y, enemyData.bloodColor, 20)
     }
     if (enemy.health <= 0) {
       const directionRadians = Phaser.Math.Angle.Between(
@@ -484,7 +484,7 @@ export class ProjectileManager {
           const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
           const effectiveDamage = Math.max(damage - enemySprite.armor, 0)
           enemySprite.health -= effectiveDamage
-          createBloodSplat(this.scene, enemySprite, 30)
+          createBloodSplat(this.scene, enemySprite.x, enemySprite.y, enemySprite.enemyData.bloodColor, 30)
           if (enemySprite.health <= 0) {
             const directionRadians = Phaser.Math.Angle.Between(
               x,

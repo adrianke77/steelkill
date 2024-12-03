@@ -41,6 +41,7 @@ export class Game extends Scene {
   decals: Phaser.GameObjects.Group
   projectileSparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter
   enemyDeathBurstEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  secondaryEnemyDeathBurstEmitter: Phaser.GameObjects.Particles.ParticleEmitter
   combinedDecals: {
     texture: Phaser.GameObjects.RenderTexture
     image: Phaser.GameObjects.Image

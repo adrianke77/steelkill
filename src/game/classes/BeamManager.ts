@@ -182,7 +182,7 @@ export class BeamManager {
       0,
       0.8,
       1500,
-      Math.min(weapon.damage * 10,100),
+      Math.min(weapon.damage * 20, 100),
     )
 
     tile.health -= damage
@@ -247,7 +247,7 @@ export class BeamManager {
     const tileSize = this.scene.terrainMgr.map.tileWidth
     const layer = this.scene.terrainMgr.terrainLayer
     const map = this.scene.terrainMgr.map
-  
+
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     let closestEnemy: EnemySprite | null = null
     let closestTile: Phaser.Tilemaps.Tile | null = null
@@ -255,43 +255,53 @@ export class BeamManager {
     let beamEndX = maxEndX
     let beamEndY = maxEndY
     const intersectionPoint = new Phaser.Geom.Point()
-  
+
     const line = new Phaser.Geom.Line(startX, startY, maxEndX, maxEndY)
-  
+
     // --- Terrain Collision Detection using DDA Algorithm ---
-  
+
     // Convert start and end positions to tile coordinates
     let x = Math.floor(startX / tileSize)
     let y = Math.floor(startY / tileSize)
-  
+
     const deltaX = maxEndX - startX
     const deltaY = maxEndY - startY
-  
+
+    // If both deltaX and deltaY are zero, return early
+    // Required to avoid infinite loops
+    if (deltaX === 0 && deltaY === 0) {
+      return {
+        beamEndX: startX,
+        beamEndY: startY,
+        hitObject: null,
+      }
+    }
+
     const stepX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0
     const stepY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0
-  
+
     const gridDeltaX =
       deltaX === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaX)
     const gridDeltaY =
       deltaY === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaY)
-  
+
     let tMaxX: number
     let tMaxY: number
-  
+
     if (deltaX === 0) {
       tMaxX = Number.MAX_VALUE
     } else {
       const xBound = stepX > 0 ? (x + 1) * tileSize : x * tileSize
       tMaxX = Math.abs((xBound - startX) / deltaX)
     }
-  
+
     if (deltaY === 0) {
       tMaxY = Number.MAX_VALUE
     } else {
       const yBound = stepY > 0 ? (y + 1) * tileSize : y * tileSize
       tMaxY = Math.abs((yBound - startY) / deltaY)
     }
-  
+
     // Step through the grid
     while (x >= 0 && x < map.width && y >= 0 && y < map.height) {
       const tile = layer.getTileAt(x, y) as TerrainTile
@@ -301,24 +311,46 @@ export class BeamManager {
           tile.getLeft(),
           tile.getTop(),
           tileSize,
-          tileSize
+          tileSize,
         )
-  
+
         const sides = [
-          new Phaser.Geom.Line(tileBounds.left, tileBounds.top, tileBounds.right, tileBounds.top), // Top
-          new Phaser.Geom.Line(tileBounds.right, tileBounds.top, tileBounds.right, tileBounds.bottom), // Right
-          new Phaser.Geom.Line(tileBounds.right, tileBounds.bottom, tileBounds.left, tileBounds.bottom), // Bottom
-          new Phaser.Geom.Line(tileBounds.left, tileBounds.bottom, tileBounds.left, tileBounds.top) // Left
+          new Phaser.Geom.Line(
+            tileBounds.left,
+            tileBounds.top,
+            tileBounds.right,
+            tileBounds.top,
+          ), // Top
+          new Phaser.Geom.Line(
+            tileBounds.right,
+            tileBounds.top,
+            tileBounds.right,
+            tileBounds.bottom,
+          ), // Right
+          new Phaser.Geom.Line(
+            tileBounds.right,
+            tileBounds.bottom,
+            tileBounds.left,
+            tileBounds.bottom,
+          ), // Bottom
+          new Phaser.Geom.Line(
+            tileBounds.left,
+            tileBounds.bottom,
+            tileBounds.left,
+            tileBounds.top,
+          ), // Left
         ]
-  
+
         let collisionFound = false
         for (const side of sides) {
-          if (Phaser.Geom.Intersects.LineToLine(line, side, intersectionPoint)) {
+          if (
+            Phaser.Geom.Intersects.LineToLine(line, side, intersectionPoint)
+          ) {
             const distance = Phaser.Math.Distance.Between(
               startX,
               startY,
               intersectionPoint.x,
-              intersectionPoint.y
+              intersectionPoint.y,
             )
             if (distance < closestDistance) {
               closestDistance = distance
@@ -327,12 +359,12 @@ export class BeamManager {
               closestTile = tile
               closestEnemy = null // Beam hit tile before any enemy
               collisionFound = true
-              break 
+              break
             }
           }
         }
         if (collisionFound) {
-          break 
+          break
         }
       }
       if (tMaxX < tMaxY) {
@@ -343,10 +375,10 @@ export class BeamManager {
         y += stepY
       }
     }
-  
+
     for (const enemy of enemies) {
       if (!enemy.active) continue
-  
+
       const enemyCircle = new Phaser.Geom.Circle(
         enemy.x,
         enemy.y,
@@ -357,7 +389,7 @@ export class BeamManager {
         enemyCircle,
         intersectionPoint,
       )
-  
+
       if (intersects) {
         const distance = Phaser.Math.Distance.Between(
           startX,
@@ -374,13 +406,12 @@ export class BeamManager {
         }
       }
     }
-  
+
     // Determine the object hit (enemy, tile, or null)
     const hitObject = closestEnemy || closestTile || null
-  
+
     return { beamEndX, beamEndY, hitObject }
   }
-  
 
   private resetAndDrawBeam(
     beam: ActiveBeam,
@@ -536,12 +567,12 @@ export class BeamManager {
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.7*Phaser.Math.Between(0.5, 1.5),
+        width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.5, 1.5),
         alpha: 0.2,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.4*Phaser.Math.Between(0.5, 1.5),
+        width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
         alpha: 0.2,
       },
       { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 1 },
@@ -606,6 +637,7 @@ export class BeamManager {
     const fadeStartIndex = Math.floor(points.length * (2 / 3))
     for (const layer of glowLayers) {
       const graphics = this.scene.add.graphics()
+      graphics.setDepth(ct.depths.projectile)
       this.scene.addGraphicsFiltering(graphics)
       for (let i = 0; i < points.length - 1; i++) {
         let segmentAlpha = layer.alpha
@@ -742,8 +774,6 @@ export class BeamManager {
             this.scene.lights.removeLight(bigFlash)
           },
         })
-
-
       }
 
       // Handle lights for beam fragments

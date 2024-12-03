@@ -10,6 +10,7 @@ export class ViewManager {
   mainCam: Phaser.Cameras.Scene2D.Camera
   miniMapCam: Phaser.Cameras.Scene2D.Camera
   infraredIsOn: boolean
+  dustClouds: Phaser.GameObjects.Group
 
   constructor(
     scene: Game,
@@ -67,6 +68,7 @@ export class ViewManager {
     background.setPipeline('Light2D')
     this.scene.mainLayer.add(background)
     this.infraredIsOn = false
+    this.dustClouds = this.scene.add.group()
   }
 
   updateCameraOffset(rotation: number): void {
@@ -86,7 +88,12 @@ export class ViewManager {
         'ScanlinesPostFxPipeline',
         'CurvedScreenPostFxPipeline',
       ])
+      this.dustClouds.children.iterate((dustCloud: Phaser.GameObjects.GameObject) => {
+        (dustCloud as Phaser.GameObjects.Sprite).visible = false
+        return true
+      })
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
+
     } else {
       this.mainCam.resetPostPipeline()
       this.mainCam.setPostPipeline([
@@ -94,6 +101,10 @@ export class ViewManager {
         'ScanlinesPostFxPipeline',
         'CurvedScreenPostFxPipeline',
       ])
+      this.dustClouds.children.iterate((dustCloud: Phaser.GameObjects.GameObject) => {
+        (dustCloud as Phaser.GameObjects.Sprite).visible = true
+        return true
+      })
       this.scene.enemyMgr.switchEnemiesToNonInfraredColors()
     }
   }

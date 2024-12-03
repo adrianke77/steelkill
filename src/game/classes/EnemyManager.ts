@@ -107,8 +107,8 @@ export class EnemyManager {
         enemy.hasFiredOnStuck = false
       }
   
-      // Check if (randomly selected) 2 to 5 seconds seconds have passed since last position update
-      if (time - enemy.positionTimestamp! >= Math.random() * 3000 + 2000) {
+      // Check if (randomly selected) 2 to 4 seconds seconds have passed since last position update
+      if (time - enemy.positionTimestamp! >= Math.random() * 2000 + 2000) {
         // Calculate distance from previous position
         const distanceFromPreviousPosition = Phaser.Math.Distance.Between(
           enemy.x,
@@ -117,9 +117,9 @@ export class EnemyManager {
           enemy.previousPosition.y,
         )
   
-        // Check if enemy is within 20 pixels of its position 5 seconds ago
+        // Check if enemy is within 40 pixels of its old position
         if (
-          distanceFromPreviousPosition <= 20 &&
+          distanceFromPreviousPosition <= 40 &&
           !enemy.hasFiredOnStuck
         ) {
           // Fire the weapon once
@@ -127,8 +127,8 @@ export class EnemyManager {
           const weapon = enemy.enemyData.weapons[weaponIndex]
           this.enemyWeaponFire(enemy, weapon, weaponIndex)
           enemy.hasFiredOnStuck = true // Prevent multiple firings
-        } else if (distanceFromPreviousPosition > 20) {
-          // Reset the fired flag if the enemy moved beyond 20 pixels
+        } else if (distanceFromPreviousPosition > 40) {
+          // Reset the fired flag if the enemy moved beyond 'stuck' range
           enemy.hasFiredOnStuck = false
         }
   
@@ -155,8 +155,8 @@ export class EnemyManager {
     switch (direction) {
       case 'charge':
         enemy.setVelocity(
-          speed * 2 * Math.cos(angle),
-          speed * 2 * Math.sin(angle),
+          speed * 3 * Math.cos(angle),
+          speed * 3 * Math.sin(angle),
         )
         break
       case 'stop':
@@ -181,8 +181,8 @@ export class EnemyManager {
       case 'back': {
         const backAngle = angle + Math.PI
         enemy.setVelocity(
-          speed * 1 * Math.cos(backAngle),
-          speed * 1 * Math.sin(backAngle),
+          speed * 2 * Math.cos(backAngle),
+          speed * 2 * Math.sin(backAngle),
         )
         break
       }

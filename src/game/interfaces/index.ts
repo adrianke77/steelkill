@@ -66,6 +66,8 @@ export interface WeaponSpec {
   beamHitLightRadius?: number // radius of point light at hit point
   beamHitLightIntensity?: number // intensity of point light at hit point
   renderAsLightning?: boolean
+  lightningSegments?: number // number of segments in lightning beam
+  lightningDisplacement?: number // magnitude of offsets of lightning segment points
   arcTargeting?: boolean // if true, enemy targets is selected from nearest one within an arc in front of the player
   arcTargetingAngle?: number // angle of the arc in front of the player in degrees
   chaining?: boolean // if true, beam will chain to nearby enemies
@@ -106,6 +108,7 @@ export interface EnemyData {
   hitSound: string
   tooSmallToBleedWhenHit?: boolean
   weapons?: EnemyWeaponSpec[]
+  terrainBreaker?: boolean
 }
 
 export interface EnemyDataMap {

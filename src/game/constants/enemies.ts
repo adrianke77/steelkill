@@ -9,7 +9,7 @@ export const enemies = {
     armor: 5,
     displaySize: 40,
     collisionSize: 35,
-    bloodColor: 0x00dd00,
+    bloodColor: 0x006600,
     color: 0x200505,
     walkAnimation: 'whiteant8',
     corpseImage: 'blood',
@@ -26,9 +26,10 @@ export const enemies = {
     hitDelay: 500,
     hitSound: 'anthit',
     tooSmallToBleedWhenHit: true,
+    terrainBreaker: true
   },
   fireant: {
-    spawnPeriod: 400,
+    spawnPeriod: 1000,
     speed: 80,
     health: 200,
     armor: 10,

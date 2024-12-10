@@ -40,8 +40,8 @@ export class Game extends Scene {
   sceneName: string
   decals: Phaser.GameObjects.Group
   projectileSparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter
-  enemyDeathBurstEmitter: Phaser.GameObjects.Particles.ParticleEmitter
-  secondaryEnemyDeathBurstEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  enemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  secondaryEnemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
   combinedDecals: {
     texture: Phaser.GameObjects.RenderTexture
     image: Phaser.GameObjects.Image
@@ -176,11 +176,11 @@ export class Game extends Scene {
       this,
     )
 
-    this.physics.add.overlap(
+    this.physics.add.collider(
       this.projectileMgr.projectiles,
       this.player.mechContainer,
-      projectileSprite => {
-        const projectile = projectileSprite as Projectile
+      (_,b) => {
+        const projectile = b as Projectile
         if (projectile.enemySource) {
           this.projectileMgr.projectileHitsPlayer(projectile)
         }

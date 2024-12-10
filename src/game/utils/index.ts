@@ -137,3 +137,11 @@ export function clipLineToRect(
 
   return { x0: clippedX0, y0: clippedY0, x1: clippedX1, y1: clippedY1 }
 }
+
+export function normalDistribution(mean: number, stdDev: number): number {
+  let u = 0, v = 0;
+  // Avoid zero to prevent Math.log(0)
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return mean + stdDev * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}

@@ -5,6 +5,8 @@ import { Projectile, TerrainTile } from '../interfaces'
 import { createDustCloud } from '../rendering'
 import { Constants as ct } from '../constants'
 import { tileProperties } from '../constants/tileProperties'
+import { blendColors } from '../utils'
+
 // Bitmask definitions for rounded corners
 const CORNER_BITS = {
   TL: 1, // Top-left corner
@@ -57,6 +59,7 @@ export class TerrainManager {
   marginLeft: number = 2 // Adjust as needed
   marginRight: number = 2 // Adjust as
   playerSafeRadius: number = 5
+  outlineGraphics: Phaser.GameObjects.Graphics;
 
   constructor(scene: Game) {
     this.scene = scene
@@ -70,6 +73,10 @@ export class TerrainManager {
       'whiteParticle',
       debrisSprayEmitterConfig,
     )
+  }
+
+  getTileData(tile: TerrainTile) {
+    return tileProperties[tile.type as keyof typeof tileProperties];
   }
 
   createTerrain() {
@@ -143,6 +150,38 @@ export class TerrainManager {
     // this.displayTilesetForDebug()
   }
 
+  drawTerrainOutlines() {
+    if (!this.outlineGraphics) {
+      this.outlineGraphics = this.scene.add.graphics();
+      this.scene.mainLayer.add(this.outlineGraphics);
+    }
+    
+    this.outlineGraphics.clear();
+  
+    for (let x = 0; x < this.map.width; x++) {
+      for (let y = 0; y < this.map.height; y++) {
+        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile;
+        if (tile) {
+          const tileData = this.getTileData(tile);
+          const outlineColor = blendColors(tileData.color, 0x000000, 0.8); // darkened color
+          this.outlineGraphics.lineStyle(4, outlineColor, 0.9);
+  
+          const worldX = tile.pixelX;
+          const worldY = tile.pixelY;
+          const tileSize = this.map.tileWidth;
+  
+          if (!this.isSolidTileAt(x, y-1)) 
+            this.outlineGraphics.lineBetween(worldX, worldY, worldX + tileSize, worldY);
+          if (!this.isSolidTileAt(x+1, y))
+            this.outlineGraphics.lineBetween(worldX + tileSize, worldY, worldX + tileSize, worldY + tileSize);
+          if (!this.isSolidTileAt(x, y+1))
+            this.outlineGraphics.lineBetween(worldX, worldY + tileSize, worldX + tileSize, worldY + tileSize);
+          if (!this.isSolidTileAt(x-1, y))
+            this.outlineGraphics.lineBetween(worldX, worldY, worldX, worldY + tileSize);
+        }
+      }
+    }
+  }
   addCorners(
     context: CanvasRenderingContext2D,
     x: number,
@@ -278,6 +317,8 @@ export class TerrainManager {
   
     // Apply autotiling to update tile graphics
     this.applyAutotiling();
+
+    this.drawTerrainOutlines();
   }
 
   assignTerrainTypesToClumps() {
@@ -567,7 +608,7 @@ export class TerrainManager {
     return this.scene.projectileMgr.projectileHitsTarget(projectile, tile)
   }
 
-  destroyTile(tile: Phaser.Tilemaps.Tile) {
+  destroyTile(tile: TerrainTile) {
     // Remove the tile from the layer
     this.terrainLayer.removeTileAt(tile.x, tile.y)
 
@@ -599,6 +640,7 @@ export class TerrainManager {
     }
 
     this.renderTileDestructionEffect(tile)
+    this.drawTerrainOutlines();
   }
 
   getTileTypeAt(x: number, y: number): number {
@@ -606,12 +648,13 @@ export class TerrainManager {
     return tile ? tile.type : 0 // Return 0 if tile doesn't exist
   }
 
-  renderTileDestructionEffect(tile: Phaser.Tilemaps.Tile) {
+  renderTileDestructionEffect(tile: TerrainTile) {
     const worldX = tile.getCenterX()
     const worldY = tile.getCenterY()
+    const tileData = this.getTileData(tile)
 
     // Create an effect at the tile's position
-    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 3500, 250)
+    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 3500, 250, tileData.color)
   }
 
   computeTileIndex(x: number, y: number, tileType: number): number {
@@ -777,9 +820,9 @@ export class TerrainManager {
     }
     return false
   }
+  
 
   displayTilesetForDebug() {
-    console.log('here')
     const { width, height } = this.scene.cameras.main
     const textureKey = 'generated-tileset'
 

@@ -22,7 +22,7 @@ const depths = {
 }
 
 export const Constants = {
-  ambientLightColor:0xCCCCCC,
+  ambientLightColor:0xCCFFFF,
   fieldWidth: 3000,
   fieldHeight: 3000,
   tileSize: 15,
@@ -75,6 +75,8 @@ export const Constants = {
   boostCapacity: 15000,
   boostRegeneration: 20,
   boostConsumption: 40,
+  defaultBeamSegmentCount: 80,
+  defaultBeamDisplacement: 13,
 }
 
 export type MouseButtonsKeys = keyof typeof Constants.MouseButtons

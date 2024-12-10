@@ -8,7 +8,7 @@ varying vec2 outTexCoord;
 
 void main() {
     float intensity = 0.8;    // Brightness/intensity adjustment variable inside shader
-    float blurAmount = 0.5;   // Blurriness control variable inside the shader
+    float blurAmount = 0.4;   // Blurriness control variable inside the shader
 
     vec2 texCoord = outTexCoord;
     vec4 color = vec4(0.0);

@@ -350,7 +350,8 @@ export class ProjectileManager {
   ): void {
     const damage = projectile.damage * damageFactor
     if (target instanceof Phaser.Tilemaps.Tile) {
-      // pixel coords
+      const tileData = this.scene.terrainMgr.getTileData(target)
+      // pixel target
       const tileX = target.getCenterX()
       const tileY = target.getCenterY()
       // tile coords
@@ -378,6 +379,7 @@ export class ProjectileManager {
         0.8,
         1500,
         Math.min(damage * 5, 100),
+        tileData.color
       )
       if (target.health <= 0) {
         this.scene.terrainMgr.destroyTile(target)

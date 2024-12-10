@@ -5,6 +5,7 @@ import {
   EnemySprite,
   EnemyWeaponSpec,
   SoundTracker,
+  TerrainTile,
 } from '../interfaces'
 import {
   generateUniqueId,
@@ -12,6 +13,14 @@ import {
   getSoundDistanceScale,
   increaseColorIntensity,
 } from '../utils'
+
+const baseEnemyHitTerrainSparkConfig = {
+  lifespan: 500,
+  speed: { min: 0, max: 100},
+  scale: { start: 0.4, end: 0 },
+  rotate: { start: 0, end: 360 },
+  emitting: false,
+} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export const loadEnemyAssets = (scene: Game) => {
   scene.load.spritesheet('whiteant8', 'whiteant8.png', {
@@ -32,6 +41,7 @@ export const loadEnemyAssets = (scene: Game) => {
         `audio/${enemyData.deathSound}.mp3`,
       )
     }
+    scene.load.audio('terrainHit', 'audio/dig.mp3')
   }
 }
 
@@ -86,10 +96,12 @@ export class EnemyManager {
   }
 
   chasePlayer(enemy: EnemySprite, speed: number): void {
+    const enemyData = enemy.enemyData as EnemyData
+    const hasWeapons = enemyData.weapons && enemyData.weapons.length > 0
     const [playerX, playerY] = this.scene.player.getPlayerCoords()
     const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
     const direction = enemy.direction
-  
+
     const time = this.scene.game.loop.time
     const distanceToPlayer = Phaser.Math.Distance.Between(
       enemy.x,
@@ -97,17 +109,17 @@ export class EnemyManager {
       playerX,
       playerY,
     )
-  
+
     // Proceed only if the enemy has weapons
-    if (enemy.enemyData.weapons && enemy.enemyData.weapons.length > 0) {
+    if (enemyData.terrainBreaker || hasWeapons) {
       // Initialize properties if they don't exist
       if (!enemy.previousPosition) {
         enemy.previousPosition = { x: enemy.x, y: enemy.y }
         enemy.positionTimestamp = time
         enemy.hasFiredOnStuck = false
       }
-  
-      // Check if (randomly selected) 2 to 4 seconds seconds have passed since last position update
+
+      // Stuck behind terrain and attempting to break it
       if (time - enemy.positionTimestamp! >= Math.random() * 2000 + 2000) {
         // Calculate distance from previous position
         const distanceFromPreviousPosition = Phaser.Math.Distance.Between(
@@ -116,41 +128,91 @@ export class EnemyManager {
           enemy.previousPosition.x,
           enemy.previousPosition.y,
         )
-  
+
         // Check if enemy is within 40 pixels of its old position
-        if (
-          distanceFromPreviousPosition <= 40 &&
-          !enemy.hasFiredOnStuck
-        ) {
-          // Fire the weapon once
-          const weaponIndex = 0 // Assuming we fire the first weapon
-          const weapon = enemy.enemyData.weapons[weaponIndex]
-          this.enemyWeaponFire(enemy, weapon, weaponIndex)
+        if (distanceFromPreviousPosition <= 40 && !enemy.hasFiredOnStuck) {
+          if (hasWeapons) {
+            //fire first weapon
+            const weapon = enemyData.weapons![0]
+            this.enemyWeaponFire(enemy, weapon, 0)
+          } else {
+            // 1) Find the terrain tile directly in front of the enemy, up to two body lengths
+            const maxDistance = 2 * enemy.displayHeight
+            const stepSize = this.scene.terrainMgr.map.tileWidth / 2
+            let tileFound = false
+            let tile: TerrainTile | null = null
+
+            for (
+              let distance = stepSize;
+              distance <= maxDistance;
+              distance += stepSize
+            ) {
+              const dx = Math.cos(angle) * distance
+              const dy = Math.sin(angle) * distance
+              const targetX = enemy.x + dx
+              const targetY = enemy.y + dy
+              // Get the tile at the target position
+              tile = this.scene.terrainMgr.terrainLayer.getTileAtWorldXY(
+                targetX,
+                targetY,
+              ) as TerrainTile
+              if (tile) {
+                tileFound = true
+                break
+              }
+            }
+
+            if (tileFound && tile) {
+              tile.health -= 500
+              const tilePixelX = tile.x * ct.tileSize
+              const tilePixely = tile.y * ct.tileSize
+
+              const directionRadians = Phaser.Math.Angle.Between(
+                enemy.x,
+                enemy.y,
+                tilePixelX,
+                tilePixely,
+              )
+              this.enemyHitTerrainSpark(
+                (tilePixelX + enemy.x) / 2,
+                (tilePixely + enemy.y) / 2,
+                0xffffff,
+                directionRadians,
+                10,
+              )
+              this.playHitTerrainSound()
+              if (tile.health <= 0) {
+                this.scene.terrainMgr.destroyTile(tile)
+              }
+            }
+          }
+
           enemy.hasFiredOnStuck = true // Prevent multiple firings
         } else if (distanceFromPreviousPosition > 40) {
           // Reset the fired flag if the enemy moved beyond 'stuck' range
           enemy.hasFiredOnStuck = false
         }
-  
+
         // Update previous position and timestamp
         enemy.previousPosition = { x: enemy.x, y: enemy.y }
         enemy.positionTimestamp = time
       }
-  
-      // Existing weapon firing logic
-      enemy.enemyData.weapons.forEach((weapon, index) => {
-        if (
-          distanceToPlayer < weapon.maxRange! &&
-          time - enemy.lastWeaponFireTime![index] > weapon.fireDelay
-        ) {
-          this.enemyWeaponFire(enemy, weapon, index)
-          enemy.lastWeaponFireTime![index] = time
-        }
-      })
+
+      if (hasWeapons) {
+        enemyData.weapons!.forEach((weapon, index) => {
+          if (
+            distanceToPlayer < weapon.maxRange! &&
+            time - enemy.lastWeaponFireTime![index] > weapon.fireDelay
+          ) {
+            this.enemyWeaponFire(enemy, weapon, index)
+            enemy.lastWeaponFireTime![index] = time
+          }
+        })
+      }
     }
-  
+
     enemy.rotation = angle + Math.PI / 2
-  
+
     // Movement logic remains unchanged
     switch (direction) {
       case 'charge':
@@ -165,30 +227,53 @@ export class EnemyManager {
       case 'angled-left': {
         const leftAngle = angle - Math.PI / 4
         enemy.setVelocity(
-          speed * 1 * Math.cos(leftAngle),
-          speed * 1 * Math.sin(leftAngle),
+          speed * Math.cos(leftAngle),
+          speed * Math.sin(leftAngle),
         )
         break
       }
       case 'angled-right': {
         const rightAngle = angle + Math.PI / 4
         enemy.setVelocity(
-          speed * 1 * Math.cos(rightAngle),
-          speed * 1 * Math.sin(rightAngle),
+          speed * Math.cos(rightAngle),
+          speed * Math.sin(rightAngle),
         )
         break
       }
       case 'back': {
         const backAngle = angle + Math.PI
         enemy.setVelocity(
-          speed * 2 * Math.cos(backAngle),
-          speed * 2 * Math.sin(backAngle),
+          speed * Math.cos(backAngle),
+          speed * Math.sin(backAngle),
         )
         break
       }
     }
   }
-  
+
+  enemyHitTerrainSpark(
+    x: number,
+    y: number,
+    particleTint: number,
+    radDirection: number,
+    particles: number,
+  ) {
+    const config = baseEnemyHitTerrainSparkConfig
+      const degDirection = Phaser.Math.RadToDeg(radDirection)
+      // reverse angle so sparks are towards the projectile source
+      const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
+      config.angle = {
+        min: reversedDirection - 30,
+        max: reversedDirection + 30,
+      }
+    this.scene.projectileSparkEmitter.setConfig(baseEnemyHitTerrainSparkConfig)
+    this.scene.projectileSparkEmitter.setParticleTint(particleTint)
+    this.scene.projectileSparkEmitter.emitParticleAt(
+      x,
+      y,
+      particles ? 5 : particles,
+    )
+  }
 
   enemyWeaponFire(enemy: EnemySprite, weapon: EnemyWeaponSpec, index: number) {
     const projectileMgr = this.scene.projectileMgr
@@ -202,7 +287,7 @@ export class EnemyManager {
       } else {
         if (tracker === undefined) {
           // Initialize the tracer counter for this weapon
-          tracker = index*2
+          tracker = index * 2
         } else {
           if (tracker >= weapon.tracerRate) {
             tracker = 1
@@ -284,6 +369,19 @@ export class EnemyManager {
       enemyData.hitSound,
     ) as Phaser.Sound.WebAudioSound
     soundInstance.play()
+    soundInstance.once('complete', () => {
+      soundInstance.destroy()
+    })
+  }
+
+  playHitTerrainSound(): void {
+    const soundInstance = this.scene.sound.add(
+      'terrainHit',
+    ) as Phaser.Sound.WebAudioSound
+    soundInstance.volume = 0.3
+
+    const detune = Phaser.Math.Between(-400, 400)
+    soundInstance.play({ detune })
     soundInstance.once('complete', () => {
       soundInstance.destroy()
     })

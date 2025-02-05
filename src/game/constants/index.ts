@@ -1,7 +1,14 @@
 import { weapons } from './weapons'
 import { enemies } from './enemies'
 
-export const music = ['horror-ambient-1', 'horror-ambient-2']
+// tuplets: music file name, then relative volu
+export const music = [
+  ['Plague Rat - Karl Casey @ White Bat Audio- bass boosted', 1],
+  ['Torn Flesh - Karl Casey @ White Bat Audio', 1.3],
+  ['Xenomorph - Karl Casey @ White Bat Audio - bass boosted',1.1]
+  // ['horror-ambient-1', 1.5],
+  // ['horror-ambient-2', 1.5],
+]
 
 export const weaponConstants = weapons
 
@@ -10,7 +17,7 @@ export type WeaponKey = keyof typeof weaponConstants
 const depths = {
   minimap: 15000,
   enemy: 7000,
-  player: 9999,
+  player: 10900,
   bloodSpray: 7400,
   projectile: 8000,
   explosion: 12000,
@@ -18,19 +25,19 @@ const depths = {
   particles: 7500,
   projectileSpark: 10000,
   terrain: 1,
-  dustClouds: 11000
+  dustClouds: 11000,
 }
 
 export const Constants = {
-  ambientLightColor:0xCCFFFF,
+  ambientLightColor: 0x909090,
   fieldWidth: 3000,
   fieldHeight: 3000,
-  tileSize: 15,
+  tileSize: 14,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1000,
-  DecalFadeTime: 60000,
-  musicVolume: 1,
+  DecalFadeTime: 10000,
+  musicVolume: 1.5,
   maxEnemies: 150,
   playerStartingX: 1500,
   playerStartingY: 1500,
@@ -51,10 +58,13 @@ export const Constants = {
   boostSoundVol: 0.8,
   muzzleFlashColor: 0xf9cf57,
   maxWalkVel: 150,
-  maxBoostVel: 300,
-  walkAccel: 200,
-  boostAccel: 400,
+  maxBoostVel: 500,
+  walkAccel: 300,
+  boostAccel: 800,
   boostFadeTime: 400,
+  boostCapacity: 4000,
+  boostRegeneration: 20,
+  boostConsumption: 40,
   deceleration: 70,
   playerInitialArmor: 10,
   startPosition: { y: 500, x: 900 },
@@ -72,9 +82,6 @@ export const Constants = {
     [7.5, -10], // mid right
     [12, -10], // far right
   ],
-  boostCapacity: 15000,
-  boostRegeneration: 20,
-  boostConsumption: 40,
   defaultBeamSegmentCount: 80,
   defaultBeamDisplacement: 13,
 }

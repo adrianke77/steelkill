@@ -4,12 +4,12 @@ import { dataStore } from '../../../DataStore'
 
 const reservedKeys = ['v']
 
-const initialWeapons = ['arc1', 'arc1', 'arc1', 'arc1']
+const initialWeapons = ['beam1', 'railgun1', 'rockets1', 'arc1']
 const initialBindings = [
   ['0', 'mouse'],
+  ['1', 'mouse'],
+  ['1', 'mouse'],
   ['0', 'mouse'],
-  ['1', 'mouse'],
-  ['1', 'mouse'],
 ]
 
 dataStore.data.weapons =
@@ -113,23 +113,23 @@ export const WeaponSelector = () => {
     return `${device} ${buttonOrKey}`
   }
 
-  return (
-    <div className="hudFont" style={{ marginTop: 15, width: 800 }}>
+  return ( 
+    <div className="hudFont weaponsSelector" style={{ marginTop: "1rem", width: "80vw" }}>
       {/* Added headers for columns */}
-      <div style={{ display: 'flex', marginBottom: 15 }}>
+      <div style={{ display: 'flex', marginBottom: "1rem" }}>
         <div style={{ width: '20%', textAlign: 'center' }}></div>
-        <div style={{ width: '40%', textAlign: 'center', fontSize: 14 }}>
+        <div style={{ width: '40%', textAlign: 'center', fontSize: "0.7rem" }}>
           Click to select weapons :
         </div>
-        <div style={{ width: '40%', textAlign: 'center', fontSize: 14 }}>
+        <div style={{ width: '40%', textAlign: 'center', fontSize: "0.7rem"}}>
           Click to bind key / button :
         </div>
       </div>
 
       {[...Array(4)].map((_, i) => (
-        <div key={i} style={{ marginBottom: 15, display: 'flex' }}>
-          {/* Weapon Mount label column */}
-          <div style={{ width: '20%', textAlign: 'center' }}>
+        <div key={i} style={{ width:"100%" , display: 'flex' }}>
+          {/* Weapon Mount label c olumn */}
+          <div style={{ width: '20%', textAlign: 'right' }}>
             <label htmlFor={`weapon-select-${i}`}>
               Weapon {i + 1}:&nbsp;&nbsp;
             </label>
@@ -142,7 +142,7 @@ export const WeaponSelector = () => {
               value={selectedWeapons[i]}
               onChange={e => handleWeaponChange(i, e.target.value)}
               className="lcdphoneFont"
-              style={{ padding: 3 }}
+              style={{ padding: 4 }}
             >
               {Object.keys(weaponConstants).map(key => {
                 return (
@@ -165,10 +165,10 @@ export const WeaponSelector = () => {
               readOnly
               className="key-binding-input lcdphoneFont"
               style={{
-                padding: 3,
+                padding: 4,
                 userSelect: 'none',
                 cursor: 'pointer',
-                width: 250,
+                width: '20vw',
               }}
               onContextMenu={e => e.preventDefault()} // Disable right-click context menu
             />

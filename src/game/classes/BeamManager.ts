@@ -74,7 +74,7 @@ export class BeamManager {
 
     let volume = weapon.fireSoundVol ?? 1.0
     if (Object.keys(this.activeBeams).length > 0) {
-      volume *= 0.6
+      volume *= 0.5
     }
 
     const sound = this.scene.sound.add(weapon.fireSound, {
@@ -189,6 +189,7 @@ export class BeamManager {
       0.8,
       1500,
       Math.min(weapon.damage * 20, 100),
+      this.scene.terrainMgr.getTileData(tile).color
     )
 
     tile.health -= damage

@@ -58,34 +58,29 @@ function App() {
         <PhaserGame ref={phaserRef} currentActiveScene={currentScene}/>
         {sceneName === 'mainmenu' && (
           <div className="startScreenCentre flexCenter">
-            <div className="hudFont" style={{ fontSize: 40, marginBottom: 10 }}>
+            <div className="hudFont" style={{ fontSize: "2rem", marginBottom: 10 }}>
               Deadnought
             </div>
             <div
               className="hudFont"
-              style={{ fontSize: 15, marginBottom: 60 }}
+              style={{ fontSize: "1rem", marginBottom: "1.4rem" }}
             >
               Combat Demo
             </div>
             <div
               className="hudFont flexCenter"
-              style={{ fontSize: 15, marginBottom: 60 }}
+              style={{ fontSize: "0.8rem", marginBottom: "1.4rem" }}
             >
-              <br />
-              <div>
+              <div style={{marginBottom:"0.5rem"}}>
                 <b>mouse</b> : &nbsp;&nbsp;aim
               </div>
-              <br />
-              <div>
+              <div style={{marginBottom:"0.5rem"}}>
                 <b>V</b> : &nbsp;&nbsp;infrared vision
               </div>
-              <br />
-              <div>
+              <div style={{marginBottom:"1.5rem"}}>
                 <b>MOVE KEY + BOOST</b> : &nbsp;&nbsp;rocket boosted drifting
-              </div>
-              <br />
-              <br />
-              <div style={{ fontSize: 20, fontStyle: 'italic' }}>
+              </div >
+              <div style={{ fontSize: "1 rem", fontStyle: 'italic' }}>
                 <b>Every weapon is different. Try them all against the hordes.</b>
               </div>
             </div>
@@ -94,7 +89,7 @@ function App() {
             <MovementKeyBinding />
             <button
               className="button"
-              style={{ marginTop: 30, fontSize: 20, backgroundColor: 'red' }}
+              style={{ marginTop: 30, fontSize: "1rem" , backgroundColor: 'red' }}
               onClick={startGame}
             >
               Start Game

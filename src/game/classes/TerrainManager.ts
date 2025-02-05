@@ -146,6 +146,7 @@ export class TerrainManager {
 
     this.terrainLayer.setCollisionBetween(0, tilesetColumns * tilesetRows - 1)
     this.terrainLayer.setPipeline('Light2D')
+    this.terrainLayer.setAlpha(0.7)
 
     // this.displayTilesetForDebug()
   }
@@ -154,6 +155,7 @@ export class TerrainManager {
     if (!this.outlineGraphics) {
       this.outlineGraphics = this.scene.add.graphics();
       this.scene.mainLayer.add(this.outlineGraphics);
+      this.outlineGraphics.setPipeline('Light2D');
     }
     
     this.outlineGraphics.clear();
@@ -182,6 +184,7 @@ export class TerrainManager {
       }
     }
   }
+  
   addCorners(
     context: CanvasRenderingContext2D,
     x: number,
@@ -569,20 +572,17 @@ export class TerrainManager {
   }
 
   setupColliders() {
-    // Add colliders between terrain and player
     this.scene.physics.add.collider(
       this.scene.player.mechContainer,
       this.terrainLayer,
     )
 
-    // Add colliders between terrain and enemies
     this.scene.physics.add.collider(
       this.scene.enemyMgr.enemies,
       this.terrainLayer,
     )
 
-    // Add colliders between projectiles and terrain
-    this.scene.physics.add.collider(
+    this.scene.physics.add.overlap(
       this.scene.projectileMgr.projectiles,
       this.terrainLayer,
       undefined,

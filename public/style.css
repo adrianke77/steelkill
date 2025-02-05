@@ -1,3 +1,7 @@
+:root {
+  font-size: 1.3vw;
+}
+
 @font-face {
   font-family: deadcrt;
   src: url('./assets/fonts/DEADCRT.ttf') format('truetype');
@@ -32,7 +36,7 @@ body {
 
 .hudFont {
   font-family: deadcrt;
-  font-size: 0.7em;
+  font-size: 0.70rem;
   color: white;
   /* Black outline */
   text-shadow:
@@ -40,15 +44,32 @@ body {
     1px -1px 0 #000,
     -1px 1px 0 #000,
     1px 1px 0 #000;
+  white-space: pre;
 }
 
 .lcdphoneFont {
   font-family: lcdPhone;
   font-size: 1.4em;
   color: black;
-  font-weight:900;
+  font-weight: 900;
 }
 
+.startScreenCentre {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  padding: 2vh 2vw;
+}
+
+.lowerLeftHud {
+  position: fixed;
+  bottom: 5vh;
+  left: 3vw;
+  width: min(300px, 30vw);
+  opacity: 0.7;
+}
 .lowerLeftHud {
   position: fixed;
   bottom: 50px;

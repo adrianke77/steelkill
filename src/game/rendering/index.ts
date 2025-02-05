@@ -103,6 +103,13 @@ export function createEmittersAndAnimations(scene: Game) {
   })
 
   scene.anims.create({
+    key: 'head',
+    frames: scene.anims.generateFrameNumbers('head', { start: 0, end: 2 }),
+    frameRate: 20,
+    repeat: -1,
+  })
+
+  scene.anims.create({
     key: 'boostflame',
     frames: scene.anims.generateFrameNumbers('boostflame', {
       start: 0,
@@ -168,6 +175,7 @@ function addCombinedDecal(scene: Game) {
   scene.mainLayer.add(combinedTexture)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
+  combinedDecalsImage.alpha = 0.7
   combinedDecalsImage.setPipeline('Light2D')
   scene.decalCount = 0
   scene.combinedDecals.push({
@@ -243,6 +251,23 @@ export function createDustCloud(
   size?: number,
   tint?: number,
 ): void {
+  // Check for nearby dust clouds first
+  const proximityThreshold = 40 // Adjust this value based on desired minimum distance
+  const nearbyCloud = scene.viewMgr.dustClouds.getChildren().some((cloud) => {
+    const distance = Phaser.Math.Distance.Between(
+      x,
+      y,
+      cloud.x,
+      cloud.y
+    )
+    return distance < proximityThreshold
+  })
+
+  // Skip creation if nearby cloud found
+  if (nearbyCloud) {
+    return
+  }
+
   const dustCloud = scene.addSprite(x, y, 'dust')
   const initialSize = size !== undefined ? size / 2 : 50
   const finalSize = size
@@ -285,8 +310,8 @@ export function createDustCloud(
       dustCloud.destroy()
     },
   })
-}
 
+}
 export function createLightFlash(
   scene: Game,
   x: number,

@@ -31,18 +31,9 @@ export class ProjectileManager {
   playerTracers: { [key: number]: number } = {}
   sounds: SoundTracker = {}
   soundInstances: { [key: string]: Phaser.Sound.BaseSound } = {}
-  repeatingFireSoundActive: [boolean, boolean, boolean, boolean] = [
-    false,
-    false,
-    false,
-    false,
-  ]
-  repeatingFireSounds: (Phaser.Sound.BaseSound | null)[] = [
-    null,
-    null,
-    null,
-    null,
-  ]
+  repeatingFireSounds: { [key: string]: Phaser.Sound.BaseSound } = {}
+  weaponsFiringCount: { [key: string]: number } = {}
+  fadeOutTweens: { [key: string]: Phaser.Tweens.Tween } = {}
 
   constructor(scene: Game) {
     this.scene = scene
@@ -79,7 +70,7 @@ export class ProjectileManager {
       angle,
       weapon.roundHeight,
     )
-    const projectile = this.createProjectileSprite(startX, startY, weapon.image)
+    const projectile = this.createProjectileSprite(startX, startY, weapon)
     projectile.weapon = weapon
     projectile.start = [startX, startY]
     if (enemySource) {
@@ -135,17 +126,22 @@ export class ProjectileManager {
   private createProjectileSprite(
     startX: number,
     startY: number,
-    image: string,
+    weapon: WeaponSpec | EnemyWeaponSpec,
   ): Projectile {
     const projectile = this.scene.createInGroup(
       this.projectiles,
       startX,
       startY,
-      image,
+      weapon.image,
     ) as Projectile
     projectile.setCollideWorldBounds(true)
     projectile.setName('projectile')
-    ;(projectile.body as Phaser.Physics.Arcade.Body).onWorldBounds = true
+    const body = projectile.body as Phaser.Physics.Arcade.Body
+    body.onWorldBounds = true
+    // make collision body much longer if projectile is fast
+    if (weapon.initialSpeed > 1000) {
+      body.setSize(projectile.displayWidth, projectile.displayHeight * 4)
+    }
     return projectile
   }
 
@@ -159,6 +155,12 @@ export class ProjectileManager {
     if (weapon.tint) {
       projectile.setTint(weapon.tint)
     }
+    // Add continuous collision detection for fast projectiles
+    const body = projectile.body as Phaser.Physics.Arcade.Body
+    body.useDamping = true
+    body.setCollideWorldBounds(true)
+    // Increase number of position iterations for fast moving objects
+    body.moves = true
   }
 
   private setupProjectileDisplay(
@@ -296,6 +298,7 @@ export class ProjectileManager {
       this.destroyProjectile(projectile)
       return true
     }
+
     if (projectile!.penetration > target.armor) {
       this.applyProjectileDamageAndEffectsToTarget(projectile, target, 1)
       projectile.penetration -= target.armor / 2
@@ -357,7 +360,9 @@ export class ProjectileManager {
       // tile coords
       const x = target.x
       const y = target.y
-      target.health -= damage
+      target.health -= projectile.weapon.terrainDamageMultiplier
+        ? damage * projectile.weapon.terrainDamageMultiplier
+        : damage
       const directionRadians = Phaser.Math.Angle.Between(
         tileX,
         tileY,
@@ -379,7 +384,7 @@ export class ProjectileManager {
         0.8,
         1500,
         Math.min(damage * 5, 100),
-        tileData.color
+        tileData.color,
       )
       if (target.health <= 0) {
         this.scene.terrainMgr.destroyTile(target)
@@ -486,7 +491,13 @@ export class ProjectileManager {
           const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
           const effectiveDamage = Math.max(damage - enemySprite.armor, 0)
           enemySprite.health -= effectiveDamage
-          createBloodSplat(this.scene, enemySprite.x, enemySprite.y, enemySprite.enemyData.bloodColor, 30)
+          createBloodSplat(
+            this.scene,
+            enemySprite.x,
+            enemySprite.y,
+            enemySprite.enemyData.bloodColor,
+            30,
+          )
           if (enemySprite.health <= 0) {
             const directionRadians = Phaser.Math.Angle.Between(
               x,
@@ -758,7 +769,7 @@ export class ProjectileManager {
     weapon: WeaponSpec | EnemyWeaponSpec,
     projectile: Projectile,
   ) => {
-    // for repeatingContinuousFireSound weapons, sound is started and stopped elsewhere
+    // for repeatingContinuousFireSound weapons, playing the sound is done elsewhere
     if (weapon.repeatingContinuousFireSound) {
       return
     }
@@ -865,65 +876,69 @@ export class ProjectileManager {
     })
   }
 
-  handleRepeatingFireSound(weaponIndex: number, isActive: boolean): void {
-    if (isActive) {
-      this.startSound(weaponIndex)
-    } else {
-      this.endSound(weaponIndex)
-    }
-  }
-
-  startSound(weaponIndex: number): void {
+  handleRepeatingFireSound(weaponIndex: number, isActive: boolean) {
     const weapon = this.scene.player.weapons[weaponIndex]
-    const fireSoundKey = weapon.fireSound
+    const soundKey = weapon.fireSound
+    const baseVolume = weapon.fireSoundVol || 1
 
-    // Check if the sound is already active for this weapon
-    if (this.repeatingFireSoundActive[weaponIndex]) {
-      return
+    if (isActive) {
+      // If there's a fade-out tween in progress, stop it
+      if (this.fadeOutTweens[soundKey]) {
+        this.fadeOutTweens[soundKey].stop()
+        delete this.fadeOutTweens[soundKey]
+        // Reset the volume to baseVolume in case it was altered during fade-out
+        if (this.repeatingFireSounds[soundKey]) {
+          ;(
+            this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
+          ).setVolume(baseVolume)
+        }
+      }
+
+      if (!this.repeatingFireSounds[soundKey]) {
+        this.repeatingFireSounds[soundKey] = this.scene.sound.add(soundKey)
+        this.weaponsFiringCount[soundKey] = 1
+        this.repeatingFireSounds[soundKey].play({
+          loop: true,
+          volume: baseVolume,
+        })
+      } else {
+        this.weaponsFiringCount[soundKey]++
+        const additionalWeapons = this.weaponsFiringCount[soundKey] - 1
+        const additionalVolume = baseVolume * 0.5 * additionalWeapons
+        const newVolume = baseVolume + additionalVolume
+        ;(
+          this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
+        ).setVolume(newVolume)
+      }
+    } else {
+      if (this.repeatingFireSounds[soundKey]) {
+        this.weaponsFiringCount[soundKey]--
+        if (this.weaponsFiringCount[soundKey] <= 0) {
+          // Start fading out the sound
+          const soundInstance = this.repeatingFireSounds[soundKey]
+          this.fadeOutTweens[soundKey] = this.scene.tweens.add({
+            targets: soundInstance,
+            volume: 0,
+            duration: 200, // Adjust the duration as needed
+            ease: 'Linear',
+            onComplete: () => {
+              soundInstance.stop()
+              soundInstance.destroy()
+              delete this.repeatingFireSounds[soundKey]
+              delete this.fadeOutTweens[soundKey]
+              this.weaponsFiringCount[soundKey] = 0
+            },
+          })
+        } else {
+          const additionalWeapons = this.weaponsFiringCount[soundKey] - 1
+          const additionalVolume = baseVolume * 0.5 * additionalWeapons
+          const newVolume = baseVolume + additionalVolume
+          ;(
+            this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
+          ).setVolume(newVolume)
+        }
+      }
     }
-
-    const soundInstance = this.scene.sound.add(fireSoundKey, { loop: true })
-    if (weapon.fireSoundVol) {
-      soundInstance.setVolume(weapon.fireSoundVol)
-    }
-    soundInstance.play()
-    this.repeatingFireSounds[weaponIndex] = soundInstance
-    this.repeatingFireSoundActive[weaponIndex] = true
-  }
-
-  endSound(weaponIndex: number): void {
-    const soundInstance = this.repeatingFireSounds[
-      weaponIndex
-    ] as Phaser.Sound.WebAudioSound
-    if (!soundInstance) {
-      return
-    }
-
-    // Create a tween to fade out the sound over 250ms
-    const fadeOutTween = this.scene.tweens.add({
-      targets: soundInstance,
-      volume: 0,
-      duration: 250,
-      onComplete: () => {
-        soundInstance.stop()
-        soundInstance.destroy()
-        this.repeatingFireSoundActive[weaponIndex] = false
-        this.repeatingFireSounds[weaponIndex] = null
-      },
-    })
-
-    // Handle if the sound ends before the tween completes
-    const onSoundEnd = () => {
-      fadeOutTween.stop()
-      soundInstance.destroy()
-      this.repeatingFireSoundActive[weaponIndex] = false
-      this.repeatingFireSounds[weaponIndex] = null
-    }
-
-    soundInstance.once('stop', onSoundEnd)
-    soundInstance.once('complete', onSoundEnd)
-
-    this.repeatingFireSounds[weaponIndex] = null
   }
 }
 

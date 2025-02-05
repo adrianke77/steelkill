@@ -10,6 +10,8 @@ export interface WeaponSpec {
   roundWidth: number
   damage: number
   penetration: number
+  terrainDamageMultiplier?: number
+  terrainPenetrationMultiplier?: number
   totalAmmo: number
   magSize: number
   reloadDelay: number
@@ -37,7 +39,7 @@ export interface WeaponSpec {
   trailDuration?: number
   trailTint?: number
   fireSound: string
-  fireSoundVol?: number
+  fireSoundVol: number
   repeatingContinuousFireSound?: boolean
   stopFireSoundOnHit?: boolean
   reloadSound: string
@@ -72,8 +74,8 @@ export interface WeaponSpec {
   arcTargetingAngle?: number // angle of the arc in front of the player in degrees
   chaining?: boolean // if true, beam will chain to nearby enemies
   chainRange?:number // max range of chain
-  terrainDamageMultiplier?: number
   randomFlash?: number // chance of particles producing a random flash, only for beam weapons
+  hasUnstableAmmoCount?: boolean // if true, ammo count will be unstable
 }
 
 export interface EnemyWeaponSpec

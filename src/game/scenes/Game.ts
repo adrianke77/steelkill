@@ -49,6 +49,7 @@ export class Game extends Scene {
   decalCount: number
   fpsText: Phaser.GameObjects.Text
   combatMusic: Phaser.Sound.BaseSound
+  previousBindingStates: { [key: string]: boolean } = {}
 
   constructor() {
     super('Game')
@@ -64,8 +65,11 @@ export class Game extends Scene {
     this.load.setPath('assets')
 
     // Load music files
-    music.forEach(fileName => {
-      this.load.audio(fileName, `audio/music/${fileName}.mp3`)
+    music.forEach(musicTuplet => {
+      this.load.audio(
+        musicTuplet[0] as string,
+        `audio/music/${musicTuplet[0]}.mp3`,
+      )
     })
 
     // Load other assets
@@ -91,13 +95,7 @@ export class Game extends Scene {
     this.mainLayer = this.add.layer()
     this.minimapLayer = this.add.layer()
 
-    this.combatMusic = this.sound.add(
-      music[Phaser.Math.Between(0, music.length - 1)],
-    )
-    this.combatMusic.play({
-      loop: true,
-      volume: ct.musicVolume,
-    })
+    this.playRandomCombatMusic()
     createEmittersAndAnimations(this)
 
     this.physics.world.setBounds(0, 0, ct.fieldHeight, ct.fieldWidth)
@@ -161,7 +159,7 @@ export class Game extends Scene {
       this,
     )
 
-    this.physics.add.collider(
+    this.physics.add.overlap(
       this.projectileMgr.projectiles,
       this.enemyMgr.enemies,
       undefined,
@@ -179,7 +177,7 @@ export class Game extends Scene {
     this.physics.add.collider(
       this.projectileMgr.projectiles,
       this.player.mechContainer,
-      (_,b) => {
+      (_, b) => {
         const projectile = b as Projectile
         if (projectile.enemySource) {
           this.projectileMgr.projectileHitsPlayer(projectile)
@@ -295,6 +293,7 @@ export class Game extends Scene {
       ([weaponIndexStr, isActive]) => {
         const weaponIndex = Number(weaponIndexStr)
         const weapon = this.player.weapons[weaponIndex]
+        const wasActive = this.previousBindingStates?.[weaponIndexStr] ?? false
 
         if (weapon.isBeam) {
           if (isActive) {
@@ -305,28 +304,37 @@ export class Game extends Scene {
             this.beamMgr.stopBeam(weaponIndex)
           }
         } else {
-          if (isActive) {
-            // Add a check to see if the weapon is not reloading
-            if (!this.isWeaponReloading(weaponIndex, time, weapon)) {
-              // Start the continuous firing sound if applicable
-              if (weapon.repeatingContinuousFireSound) {
+          // Handle repeating fire sound state changes
+          const weaponReloading = this.isWeaponReloading(weaponIndex, time, weapon)
+          if (weapon.repeatingContinuousFireSound && !weaponReloading) {
+            if (isActive !== wasActive) {
+              if (!isActive) {
+                // If the player released the fire button, stop the sound regardless of reloading
+                this.projectileMgr.handleRepeatingFireSound(weaponIndex, false)
+              } else if (!weaponReloading) {
+                // If the player pressed the fire button and the weapon is not reloading, start the sound
                 this.projectileMgr.handleRepeatingFireSound(weaponIndex, true)
               }
+            }
+          }
 
+          if (isActive) {
+            if (!weaponReloading) {
               if (
                 time - this.lastWeaponFireTime[weaponIndex] >
                 weapon.fireDelay
               ) {
-                this.playerWeaponFire(weaponIndex, time)
+                this.projectileWeaponFire(weaponIndex, time)
                 this.lastWeaponFireTime[weaponIndex] = time
               }
             }
-          } else {
-            // Stop the continuous firing sound if applicable
-            if (weapon.repeatingContinuousFireSound) {
-              this.projectileMgr.handleRepeatingFireSound(weaponIndex, false)
-            }
           }
+        }
+
+        // Store current state for next frame comparison
+        this.previousBindingStates = {
+          ...this.previousBindingStates,
+          [weaponIndexStr]: isActive,
         }
       },
     )
@@ -376,6 +384,20 @@ export class Game extends Scene {
     this.mainLayer.add(graphics)
   }
 
+  playRandomCombatMusic() {
+    const randomMusic = music[Phaser.Math.Between(0, music.length - 1)]
+    const musicSound = randomMusic[0] as string
+    const volumeAdjustment = randomMusic[1] as number
+    this.combatMusic = this.sound.add(musicSound)
+    this.combatMusic.play({
+      loop: false,
+      volume: ct.musicVolume * volumeAdjustment,
+    })
+    this.combatMusic.once('complete', () => {
+      this.playRandomCombatMusic()
+    })
+  }
+
   createInGroup(
     group: Phaser.GameObjects.Group,
     x?: number,
@@ -390,10 +412,10 @@ export class Game extends Scene {
     return member
   }
 
-  playerWeaponFire(weaponIndex: number, time: number): void {
+  projectileWeaponFire(weaponIndex: number, time: number): void {
     const weaponPosition = ct.weaponPositions[weaponIndex]
     const weapon = this.player.weapons[weaponIndex] as WeaponSpec
-
+    
     if (this.isWeaponReloading(weaponIndex, time, weapon)) {
       return
     }
@@ -510,27 +532,27 @@ export class Game extends Scene {
     reloadDelay: number,
   ): void {
     // Stop the repeating fire sound for the weapon that's reloading
-    this.projectileMgr.handleRepeatingFireSound(weaponIndex, false);
-  
+    this.projectileMgr.handleRepeatingFireSound(weaponIndex, false)
+
     // Play the reload sound for the weapon
-    const weapon = this.player.weapons[weaponIndex] as WeaponSpec;
-    this.projectileMgr.playReloadSound(weapon);
-  
+    const weapon = this.player.weapons[weaponIndex] as WeaponSpec
+    this.projectileMgr.playReloadSound(weapon)
+
     // Update the last reload start time
-    this.lastReloadStart[weaponIndex] = startTime;
+    this.lastReloadStart[weaponIndex] = startTime
     EventBus.emit(
       'reload-status',
-      this.lastReloadStart.map((startTime) => startTime !== 0),
-    );
-  
+      this.lastReloadStart.map(startTime => startTime !== 0),
+    )
+
     // Schedule the reload completion
     this.time.addEvent({
       delay: reloadDelay,
       callback: () => {
-        this.finishReload(weaponIndex, weapon);
+        this.finishReload(weaponIndex, weapon)
       },
       callbackScope: this,
-    });
+    })
   }
 
   finishReload(weaponIndex: number, weapon: WeaponSpec): void {
@@ -544,5 +566,9 @@ export class Game extends Scene {
       'reload-status',
       this.lastReloadStart.map(startTime => startTime !== 0),
     )
+    // check if firing key is still held down and the weapon sound is repeatingLoop type, if so start sound again
+    if (this.inputMgr.customBindingStates[weaponIndex] && weapon.repeatingContinuousFireSound) {
+      this.projectileMgr.handleRepeatingFireSound(weaponIndex, true);
+    }
   }
 }

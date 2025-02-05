@@ -11,6 +11,7 @@ export class ViewManager {
   miniMapCam: Phaser.Cameras.Scene2D.Camera
   infraredIsOn: boolean
   dustClouds: Phaser.GameObjects.Group
+  background: Phaser.GameObjects.TileSprite 
 
   constructor(
     scene: Game,
@@ -38,7 +39,7 @@ export class ViewManager {
     )
 
     this.mainCam = scene.cameras.main
-    this.mainCam.setBackgroundColor(0x333333)
+    this.mainCam.setBackgroundColor(0x111111)
     this.mainCam.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
     this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
     this.mainCam.setPostPipeline([
@@ -66,6 +67,7 @@ export class ViewManager {
     )
     background.setDepth(-1)
     background.setPipeline('Light2D')
+    this.background = background
     this.scene.mainLayer.add(background)
     this.infraredIsOn = false
     this.dustClouds = this.scene.add.group()
@@ -88,12 +90,13 @@ export class ViewManager {
         'ScanlinesPostFxPipeline',
         'CurvedScreenPostFxPipeline',
       ])
+      this.scene.lights.setAmbientColor(0xFFFFFF)
+      this.background.setTint(0x999999)
       this.dustClouds.children.iterate((dustCloud: Phaser.GameObjects.GameObject) => {
         (dustCloud as Phaser.GameObjects.Sprite).visible = false
         return true
       })
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
-
     } else {
       this.mainCam.resetPostPipeline()
       this.mainCam.setPostPipeline([
@@ -101,6 +104,8 @@ export class ViewManager {
         'ScanlinesPostFxPipeline',
         'CurvedScreenPostFxPipeline',
       ])
+      this.scene.lights.setAmbientColor(ct.ambientLightColor)
+      this.background.clearTint() 
       this.dustClouds.children.iterate((dustCloud: Phaser.GameObjects.GameObject) => {
         (dustCloud as Phaser.GameObjects.Sprite).visible = true
         return true

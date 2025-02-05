@@ -27,6 +27,10 @@ export const loadEnemyAssets = (scene: Game) => {
     frameWidth: 202,
     frameHeight: 247,
   })
+  scene.load.spritesheet('head', 'head.png', {
+    frameWidth: 202,
+    frameHeight: 247,
+  })
   for (const enemyName of Object.keys(ct.enemyData)) {
     const enemyData = ct.enemyData[enemyName]
     if (enemyData.randomSound) {
@@ -120,7 +124,7 @@ export class EnemyManager {
       }
 
       // Stuck behind terrain and attempting to break it
-      if (time - enemy.positionTimestamp! >= Math.random() * 2000 + 2000) {
+      if (time - enemy.positionTimestamp! >= Math.random() * 1000 + 1000) {
         // Calculate distance from previous position
         const distanceFromPreviousPosition = Phaser.Math.Distance.Between(
           enemy.x,

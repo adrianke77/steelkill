@@ -40,7 +40,7 @@ export class BeamManager {
     graphics.fillCircle(0, 0, 1)
     graphics.generateTexture('whiteParticle', 1, 1)
     graphics.destroy()
-    this.beamParticleEmitter = scene.addParticles(
+    this.beamParticleEmitter = scene.addParticlesEffect(
       0,
       0,
       'whiteParticle',
@@ -584,13 +584,13 @@ export class BeamManager {
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.2, 1.5),
-        alpha: 0.1,
+        width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.5, 1.5),
+        alpha: 0.2,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.2, 1.5),
-        alpha: 0.1,
+        width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
+        alpha: 0.3,
       },
       { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 1 },
     ]

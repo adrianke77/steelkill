@@ -1,5 +1,5 @@
 :root {
-  font-size: 1.3vw;
+  font-size: 1.3vh;
 }
 
 @font-face {
@@ -59,21 +59,21 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 80vw;
-  padding: 2vh 2vw;
+  width: 80vh;
+  padding: 2vh 2vh;
 }
 
 .lowerLeftHud {
   position: fixed;
   bottom: 5vh;
-  left: 3vw;
-  width: min(300px, 30vw);
+  left: 3vh;
+  width: min(300px, 30vh);
   opacity: 0.7;
 }
 .lowerLeftHud {
   position: fixed;
   bottom: 50px;
-  left: 3vw;
+  left: 3vh;
   width: 300px;
   opacity: 0.7;
 }

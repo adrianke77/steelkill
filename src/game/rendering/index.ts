@@ -43,7 +43,7 @@ export const baseDeathSprayConfig = {
   rotate: { start: 0, end: 360 },
   alpha: { start: 1, end: 0.2 },
   accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
-    -particle.velocityX , // Decelerate X
+    -particle.velocityX, // Decelerate X
   accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
     -particle.velocityY, // Decelerate Y
   emitting: false,
@@ -172,7 +172,7 @@ function addCombinedDecal(scene: Game) {
     ct.fieldHeight,
     ct.fieldWidth,
   )
-  scene.mainLayer.add(combinedTexture)
+  scene.viewMgr.mainLayer.add(combinedTexture)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
   combinedDecalsImage.alpha = 0.7
@@ -193,7 +193,7 @@ export function playMuzzleFlare(
   velocityY: number,
   weapon: WeaponSpec | EnemyWeaponSpec,
 ): void {
-  const flare = scene.addSprite(x, y, 'muzzleflash')
+  const flare = scene.addSpriteEffect(x, y, 'muzzleflash')
   flare.rotation = rotation - Math.PI / 2 // Adjust rotation to match mechContainer's direction
   const size = weapon.muzzleFlashSize ? 25 * weapon.muzzleFlashSize : 25
   flare.displayHeight = size
@@ -227,7 +227,7 @@ export function addFlameToProjectile(
 ) {
   const offsetX = Math.cos(forwardAngle) * projectile.displayHeight
   const offsetY = Math.sin(forwardAngle) * projectile.displayHeight
-  const flame = scene.addSprite(x - offsetX, y - offsetY, 'boostflame')
+  const flame = scene.addSpriteEffect(x - offsetX, y - offsetY, 'boostflame')
   flame.setDisplaySize(projectile.displayWidth, projectile.displayHeight / 2)
   flame.setAngle(Phaser.Math.RadToDeg(forwardAngle - Math.PI)) // Set the angle of the flame to match the projectile's direction
   flame.play('boostflame')
@@ -252,14 +252,9 @@ export function createDustCloud(
   tint?: number,
 ): void {
   // Check for nearby dust clouds first
-  const proximityThreshold = 40 // Adjust this value based on desired minimum distance
-  const nearbyCloud = scene.viewMgr.dustClouds.getChildren().some((cloud) => {
-    const distance = Phaser.Math.Distance.Between(
-      x,
-      y,
-      cloud.x,
-      cloud.y
-    )
+  const proximityThreshold = 20 // Adjust this value based on desired minimum distance
+  const nearbyCloud = scene.viewMgr.dustClouds.getChildren().some(cloud => {
+    const distance = Phaser.Math.Distance.Between(x, y, cloud.x, cloud.y)
     return distance < proximityThreshold
   })
 
@@ -310,7 +305,6 @@ export function createDustCloud(
       dustCloud.destroy()
     },
   })
-
 }
 export function createLightFlash(
   scene: Game,
@@ -494,7 +488,7 @@ export function renderExplosion(
     explodeAfterGlowRadius?: number
   },
 ) {
-  const explosion = scene.addSprite(x, y, 'explosion')
+  const explosion = scene.addSpriteEffect(x, y, 'explosion')
   explosion.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   const displayDiameter = Phaser.Math.FloatBetween(
     diameter * 1.2,
@@ -512,7 +506,7 @@ export function renderExplosion(
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.8)
+  scorch.setAlpha(0.9)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )

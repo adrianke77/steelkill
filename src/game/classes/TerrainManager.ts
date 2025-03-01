@@ -59,7 +59,8 @@ export class TerrainManager {
   marginLeft: number = 2 // Adjust as needed
   marginRight: number = 2 // Adjust as
   playerSafeRadius: number = 5
-  outlineGraphics: Phaser.GameObjects.Graphics;
+  outlineGraphics: Phaser.GameObjects.Graphics
+  outlineUpdateTimer: number = 0
 
   constructor(scene: Game) {
     this.scene = scene
@@ -76,7 +77,7 @@ export class TerrainManager {
   }
 
   getTileData(tile: TerrainTile) {
-    return tileProperties[tile.type as keyof typeof tileProperties];
+    return tileProperties[tile.type as keyof typeof tileProperties]
   }
 
   createTerrain() {
@@ -142,7 +143,7 @@ export class TerrainManager {
 
     this.populateTerrain()
 
-    this.scene.mainLayer.add(this.terrainLayer)
+    this.scene.viewMgr.mainLayer.add(this.terrainLayer)
 
     this.terrainLayer.setCollisionBetween(0, tilesetColumns * tilesetRows - 1)
     this.terrainLayer.setPipeline('Light2D')
@@ -151,40 +152,67 @@ export class TerrainManager {
     // this.displayTilesetForDebug()
   }
 
+  checkToUpdateTerrainOutlines(time: number) {
+    if (time > this.outlineUpdateTimer + ct.terrainOutlineUpdateInterval) {
+      this.drawTerrainOutlines()
+      this.outlineUpdateTimer = time
+    }
+  }
+
   drawTerrainOutlines() {
     if (!this.outlineGraphics) {
-      this.outlineGraphics = this.scene.add.graphics();
-      this.scene.mainLayer.add(this.outlineGraphics);
-      this.outlineGraphics.setPipeline('Light2D');
+      this.outlineGraphics = this.scene.add.graphics()
+      this.scene.viewMgr.mainLayer.add(this.outlineGraphics)
+      this.outlineGraphics.setPipeline('Light2D')
     }
-    
-    this.outlineGraphics.clear();
-  
+
+    this.outlineGraphics.clear()
+
     for (let x = 0; x < this.map.width; x++) {
       for (let y = 0; y < this.map.height; y++) {
-        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile;
+        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
         if (tile) {
-          const tileData = this.getTileData(tile);
-          const outlineColor = blendColors(tileData.color, 0x000000, 0.8); // darkened color
-          this.outlineGraphics.lineStyle(4, outlineColor, 0.9);
-  
-          const worldX = tile.pixelX;
-          const worldY = tile.pixelY;
-          const tileSize = this.map.tileWidth;
-  
-          if (!this.isSolidTileAt(x, y-1)) 
-            this.outlineGraphics.lineBetween(worldX, worldY, worldX + tileSize, worldY);
-          if (!this.isSolidTileAt(x+1, y))
-            this.outlineGraphics.lineBetween(worldX + tileSize, worldY, worldX + tileSize, worldY + tileSize);
-          if (!this.isSolidTileAt(x, y+1))
-            this.outlineGraphics.lineBetween(worldX, worldY + tileSize, worldX + tileSize, worldY + tileSize);
-          if (!this.isSolidTileAt(x-1, y))
-            this.outlineGraphics.lineBetween(worldX, worldY, worldX, worldY + tileSize);
+          const tileData = this.getTileData(tile)
+          const outlineColor = blendColors(tileData.color, 0x000000, 0.8) // darkened color
+          this.outlineGraphics.lineStyle(4, outlineColor, 0.9)
+
+          const worldX = tile.pixelX
+          const worldY = tile.pixelY
+          const tileSize = this.map.tileWidth
+
+          if (!this.isSolidTileAt(x, y - 1))
+            this.outlineGraphics.lineBetween(
+              worldX,
+              worldY,
+              worldX + tileSize,
+              worldY,
+            )
+          if (!this.isSolidTileAt(x + 1, y))
+            this.outlineGraphics.lineBetween(
+              worldX + tileSize,
+              worldY,
+              worldX + tileSize,
+              worldY + tileSize,
+            )
+          if (!this.isSolidTileAt(x, y + 1))
+            this.outlineGraphics.lineBetween(
+              worldX,
+              worldY + tileSize,
+              worldX + tileSize,
+              worldY + tileSize,
+            )
+          if (!this.isSolidTileAt(x - 1, y))
+            this.outlineGraphics.lineBetween(
+              worldX,
+              worldY,
+              worldX,
+              worldY + tileSize,
+            )
         }
       }
     }
   }
-  
+
   addCorners(
     context: CanvasRenderingContext2D,
     x: number,
@@ -264,41 +292,41 @@ export class TerrainManager {
 
   populateTerrain() {
     // Calculate the player's starting tile coordinates
-    const playerStartTileX = Math.floor(ct.playerStartingX / ct.tileSize);
-    const playerStartTileY = Math.floor(ct.playerStartingY / ct.tileSize);
-  
+    const playerStartTileX = Math.floor(ct.playerStartingX / ct.tileSize)
+    const playerStartTileY = Math.floor(ct.playerStartingY / ct.tileSize)
+
     // Increase to make terrain denser, decrease for sparser terrain
-    const fillProbability = 0.45;
+    const fillProbability = 0.45
     // Increasing iterations: Can smooth out the terrain and potentially make it more filled in or homogeneous.
     // Decreasing iterations: May result in more random, rugged, or fragmented terrain patterns.
-    const iterations = 7;
-  
+    const iterations = 7
+
     // Generate a temporary grid for the initial state, including margins
-    let tempGrid: boolean[][] = [];
-  
+    let tempGrid: boolean[][] = []
+
     for (let x = 0; x < this.map.width; x++) {
-      tempGrid[x] = [];
+      tempGrid[x] = []
       for (let y = 0; y < this.map.height; y++) {
         // Calculate the distance from the player's starting position
-        const dx = x - playerStartTileX;
-        const dy = y - playerStartTileY;
-        const distanceSquared = dx * dx + dy * dy;
-  
+        const dx = x - playerStartTileX
+        const dy = y - playerStartTileY
+        const distanceSquared = dx * dx + dy * dy
+
         if (distanceSquared <= this.playerSafeRadius * this.playerSafeRadius) {
           // Within the safe radius, set tile to empty
-          tempGrid[x][y] = false;
+          tempGrid[x][y] = false
         } else {
-          const isSolid = Math.random() < fillProbability;
-          tempGrid[x][y] = isSolid;
+          const isSolid = Math.random() < fillProbability
+          tempGrid[x][y] = isSolid
         }
       }
     }
-  
+
     // Apply the cellular automata rules
     for (let i = 0; i < iterations; i++) {
-      tempGrid = this.runAutomataStep(tempGrid);
+      tempGrid = this.runAutomataStep(tempGrid)
     }
-  
+
     // Apply the generated terrain, excluding margins
     for (let x = this.marginLeft; x < this.map.width - this.marginRight; x++) {
       for (
@@ -308,64 +336,64 @@ export class TerrainManager {
       ) {
         if (tempGrid[x][y]) {
           // Set all initial solid tiles to a default type (e.g., 1)
-          this.setAutotileAt(x, y, 1);
+          this.setAutotileAt(x, y, 1)
         } else {
-          this.terrainLayer.removeTileAt(x, y);
+          this.terrainLayer.removeTileAt(x, y)
         }
       }
     }
-  
-    // Assign terrain types to each clump after cellular automata
-    this.assignTerrainTypesToClumps();
-  
-    // Apply autotiling to update tile graphics
-    this.applyAutotiling();
 
-    this.drawTerrainOutlines();
+    // Assign terrain types to each clump after cellular automata
+    this.assignTerrainTypesToClumps()
+
+    // Apply autotiling to update tile graphics
+    this.applyAutotiling()
+
+    // this.drawTerrainOutlines();
   }
 
   assignTerrainTypesToClumps() {
-    const visited = new Set<string>();
-    const terrainTypes = [1, 2, 3]; // Available terrain types
-  
+    const visited = new Set<string>()
+    const terrainTypes = [1, 2, 3] // Available terrain types
+
     // Define clump weight per terrain type (adjust these values as needed)
     const terrainTypeClumpWeight = {
-      1: 1.0, 
+      1: 1.0,
       2: 1.0,
-      3: 1.0, 
-    };
-  
+      3: 1.0,
+    }
+
     // Collect all clumps
-    const allClumps: TerrainTile[][] = [];
-  
+    const allClumps: TerrainTile[][] = []
+
     for (let x = 0; x < this.map.width; x++) {
       for (let y = 0; y < this.map.height; y++) {
-        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile;
+        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
         if (tile && tile.index !== -1 && !visited.has(`${x},${y}`)) {
           // Start a new clump
-          const clumpTiles: TerrainTile[] = [];
-          const stack = [{ x, y }];
-          visited.add(`${x},${y}`);
-  
+          const clumpTiles: TerrainTile[] = []
+          const stack = [{ x, y }]
+          visited.add(`${x},${y}`)
+
           while (stack.length > 0) {
-            const { x: cx, y: cy } = stack.pop()!;
+            const { x: cx, y: cy } = stack.pop()!
             const currentTile = this.terrainLayer.getTileAt(
               cx,
               cy,
-            ) as TerrainTile;
+            ) as TerrainTile
             if (currentTile && currentTile.index !== -1) {
-              clumpTiles.push(currentTile);
-  
+              clumpTiles.push(currentTile)
+
               // Check neighbors (up, down, left, right)
               const neighbors = [
                 { x: cx - 1, y: cy },
                 { x: cx + 1, y: cy },
                 { x: cx, y: cy - 1 },
                 { x: cx, y: cy + 1 },
-              ];
-  
+              ]
+
               for (const neighbor of neighbors) {
-                const key = `${neighbor.x},${neighbor.y}`;
+                const key = `${neighbor.x},${neighbor.y}`
                 if (
                   neighbor.x >= 0 &&
                   neighbor.x < this.map.width &&
@@ -376,64 +404,70 @@ export class TerrainManager {
                   const neighborTile = this.terrainLayer.getTileAt(
                     neighbor.x,
                     neighbor.y,
-                  ) as TerrainTile;
+                  ) as TerrainTile
                   if (neighborTile && neighborTile.index !== -1) {
-                    stack.push(neighbor);
-                    visited.add(key);
+                    stack.push(neighbor)
+                    visited.add(key)
                   }
                 }
               }
             }
           }
-  
+
           // Store the clump for later processing
-          allClumps.push(clumpTiles);
+          allClumps.push(clumpTiles)
         }
       }
     }
-  
+
     // Now, assign terrain types to clumps based on their sizes and weights
     for (const clumpTiles of allClumps) {
-      const clumpSize = clumpTiles.length;
-  
+      const clumpSize = clumpTiles.length
+
       // Compute weighted probabilities for each terrain type
-      const terrainTypeProbabilities = terrainTypes.map((terrainType) => {
+      const terrainTypeProbabilities = terrainTypes.map(terrainType => {
         // Use weights to influence the probability
-        const weight = terrainTypeClumpWeight[terrainType as keyof typeof terrainTypeClumpWeight];
-        return Math.pow(clumpSize, weight);
-      });
-  
+        const weight =
+          terrainTypeClumpWeight[
+            terrainType as keyof typeof terrainTypeClumpWeight
+          ]
+        return Math.pow(clumpSize, weight)
+      })
+
       // Normalize probabilities
-      const sumProbabilities = terrainTypeProbabilities.reduce((a, b) => a + b, 0);
+      const sumProbabilities = terrainTypeProbabilities.reduce(
+        (a, b) => a + b,
+        0,
+      )
       const normalizedProbabilities = terrainTypeProbabilities.map(
-        (p) => p / sumProbabilities,
-      );
-  
+        p => p / sumProbabilities,
+      )
+
       // Choose a terrain type based on the probabilities
       const chosenTerrainType = this.weightedRandomChoice(
         terrainTypes,
         normalizedProbabilities,
-      );
-  
+      )
+
       // Assign the chosen terrain type to the clump
       for (const clumpTile of clumpTiles) {
-        clumpTile.type = chosenTerrainType;
+        clumpTile.type = chosenTerrainType
         // Update the tile's visual appearance based on the new type
-        this.updateAutotileAt(clumpTile.x, clumpTile.y, chosenTerrainType);
+        this.updateAutotileAt(clumpTile.x, clumpTile.y, chosenTerrainType)
       }
     }
   }
 
   weightedRandomChoice(items: number[], weights: number[]): number {
-    let cumulativeWeight = 0;
-    const random = Math.random();
+    let cumulativeWeight = 0
+    const random = Math.random()
     for (let i = 0; i < items.length; i++) {
-      cumulativeWeight += weights[i];
+      cumulativeWeight += weights[i]
       if (random < cumulativeWeight) {
-        return items[i];
+        return items[i]
       }
     }
-    return items[items.length - 1];
+    return items[items.length - 1]
   }
 
   runAutomataStep(grid: boolean[][]): boolean[][] {
@@ -640,7 +674,7 @@ export class TerrainManager {
     }
 
     this.renderTileDestructionEffect(tile)
-    this.drawTerrainOutlines();
+    // this.drawTerrainOutlines();
   }
 
   getTileTypeAt(x: number, y: number): number {
@@ -654,7 +688,17 @@ export class TerrainManager {
     const tileData = this.getTileData(tile)
 
     // Create an effect at the tile's position
-    createDustCloud(this.scene, worldX, worldY, 0, 0, 0.8, 3500, 250, tileData.color)
+    createDustCloud(
+      this.scene,
+      worldX,
+      worldY,
+      0,
+      0,
+      0.8,
+      3500,
+      250,
+      tileData.color,
+    )
   }
 
   computeTileIndex(x: number, y: number, tileType: number): number {
@@ -820,7 +864,6 @@ export class TerrainManager {
     }
     return false
   }
-  
 
   displayTilesetForDebug() {
     const { width, height } = this.scene.cameras.main
@@ -838,6 +881,6 @@ export class TerrainManager {
     // Bring the image to the top depth
     tilesetImage.setDepth(99999999999999)
 
-    this.scene.mainLayer.add(tilesetImage)
+    this.scene.viewMgr.mainLayer.add(tilesetImage)
   }
 }

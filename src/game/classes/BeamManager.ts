@@ -47,6 +47,7 @@ export class BeamManager {
       baseEmitterConfig,
     )
     this.beamParticleEmitter.setDepth(ct.depths.projectile)
+    // this.beamParticleEmitter.setPipeline("Light2D")
   }
 
   startBeam(weaponIndex: number): void {
@@ -57,8 +58,7 @@ export class BeamManager {
     const weapon = this.scene.player.weapons[weaponIndex]
     const weaponPosition = ct.weaponPositions[weaponIndex]
 
-    const beamGraphics = this.scene.add.graphics()
-    this.scene.addGraphicsFiltering(beamGraphics)
+    const beamGraphics = this.scene.addGraphicsEffect()
     beamGraphics.setDepth(ct.depths.projectile)
     beamGraphics.setBlendMode(Phaser.BlendModes.ADD)
     beamGraphics.setPipeline('Light2D')
@@ -580,17 +580,17 @@ export class BeamManager {
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth!,
-        alpha: 0.2,
+        alpha: 0.1,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.2,
+        width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.2, 1.5),
+        alpha: 0.1,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.2,
+        width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.2, 1.5),
+        alpha: 0.1,
       },
       { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 1 },
     ]
@@ -653,9 +653,8 @@ export class BeamManager {
   ): void {
     const fadeStartIndex = Math.floor(points.length * (2 / 3))
     for (const layer of glowLayers) {
-      const graphics = this.scene.add.graphics()
+      const graphics = this.scene.addGraphicsEffect()
       graphics.setDepth(ct.depths.projectile)
-      this.scene.addGraphicsFiltering(graphics)
       for (let i = 0; i < points.length - 1; i++) {
         let segmentAlpha = layer.alpha
         if (i >= fadeStartIndex) {

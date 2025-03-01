@@ -18,11 +18,7 @@ import { WeaponSpec, EnemySprite, Projectile } from '../interfaces'
 import { TerrainManager, loadTerrainAssets } from '../classes/TerrainManager' // Import TerrainManager
 
 export class Game extends Scene {
-  minimapLayer: Phaser.GameObjects.Layer
-  mainLayer: Phaser.GameObjects.Layer
-
   terrainMgr: TerrainManager // Add TerrainManager property
-
   viewMgr: ViewManager
   player: PlayerMech
   projectileMgr: ProjectileManager
@@ -92,26 +88,25 @@ export class Game extends Scene {
   create() {
     document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto"
 
-    this.mainLayer = this.add.layer()
-    this.minimapLayer = this.add.layer()
-
-    this.playRandomCombatMusic()
-    createEmittersAndAnimations(this)
-
-    this.physics.world.setBounds(0, 0, ct.fieldHeight, ct.fieldWidth)
+    this.physics.world.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
     this.decals = this.add.group({
       classType: Phaser.GameObjects.Image,
       runChildUpdate: false,
     })
     this.combinedDecals = []
 
-    this.enemyMgr = new EnemyManager(this)
-    this.player = new PlayerMech(this)
     this.viewMgr = new ViewManager(this)
+    this.player = new PlayerMech(this)
+    this.enemyMgr = new EnemyManager(this)
     this.projectileMgr = new ProjectileManager(this)
     this.beamMgr = new BeamManager(this)
     this.inputMgr = new InputManager(this)
     this.minimapMgr = new MinimapManager(this)
+
+    this.playRandomCombatMusic()
+    createEmittersAndAnimations(this)
+
+    this.viewMgr.startCamFollowingPlayerMech()
 
     // Instantiate the TerrainManager
     this.terrainMgr = new TerrainManager(this)
@@ -193,7 +188,9 @@ export class Game extends Scene {
     })
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
+
     EventBus.emit('current-scene-ready', this)
+
   }
 
   update(time: number) {
@@ -305,7 +302,11 @@ export class Game extends Scene {
           }
         } else {
           // Handle repeating fire sound state changes
-          const weaponReloading = this.isWeaponReloading(weaponIndex, time, weapon)
+          const weaponReloading = this.isWeaponReloading(
+            weaponIndex,
+            time,
+            weapon,
+          )
           if (weapon.repeatingContinuousFireSound && !weaponReloading) {
             if (isActive !== wasActive) {
               if (!isActive) {
@@ -340,6 +341,8 @@ export class Game extends Scene {
     )
 
     this.minimapMgr.drawMinimap()
+
+    // this.terrainMgr.checkToUpdateTerrainOutlines(time)
   }
 
   addImage(
@@ -349,14 +352,26 @@ export class Game extends Scene {
     frame?: string | number,
   ) {
     const image = this.add.image(x, y, texture, frame)
-    this.mainLayer.add(image)
+    this.viewMgr.mainLayer.add(image)
     return image
   }
 
   addSprite(x: number, y: number, key: string, frame?: string | number) {
     const sprite = this.physics.add.sprite(x, y, key, frame)
-    this.mainLayer.add(sprite)
+    this.viewMgr.mainLayer.add(sprite)
     return sprite
+  }
+
+  addSpriteEffect(x: number, y: number, key: string, frame?: string | number) {
+    const sprite = this.physics.add.sprite(x, y, key, frame)
+    this.viewMgr.effectsLayer.add(sprite)
+    return sprite
+  }
+
+  addGraphicsEffect() {
+    const graphics = this.add.graphics()
+    this.viewMgr.effectsLayer.add(graphics)
+    return graphics
   }
 
   addContainer(
@@ -365,7 +380,7 @@ export class Game extends Scene {
     children: Phaser.GameObjects.GameObject[],
   ) {
     const container = this.add.container(x, y, children)
-    this.mainLayer.add(container)
+    this.viewMgr.mainLayer.add(container)
     return container
   }
 
@@ -376,12 +391,19 @@ export class Game extends Scene {
     config?: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig,
   ) {
     const particles = this.add.particles(x, y, texture, config)
-    this.mainLayer.add(particles)
+    this.viewMgr.mainLayer.add(particles)
     return particles
   }
 
-  addGraphicsFiltering(graphics: Phaser.GameObjects.Graphics) {
-    this.mainLayer.add(graphics)
+  addParticlesEffect(
+    x?: number,
+    y?: number,
+    texture?: string | Phaser.Textures.Texture,
+    config?: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig,
+  ) {
+    const particles = this.add.particles(x, y, texture, config)
+    this.viewMgr.effectsLayer.add(particles)
+    return particles
   }
 
   playRandomCombatMusic() {
@@ -408,14 +430,14 @@ export class Game extends Scene {
     active?: boolean,
   ) {
     const member = group.create(x, y, key, frame, visible, active)
-    this.mainLayer.add(member)
+    this.viewMgr.mainLayer.add(member)
     return member
   }
 
   projectileWeaponFire(weaponIndex: number, time: number): void {
     const weaponPosition = ct.weaponPositions[weaponIndex]
     const weapon = this.player.weapons[weaponIndex] as WeaponSpec
-    
+
     if (this.isWeaponReloading(weaponIndex, time, weapon)) {
       return
     }
@@ -567,8 +589,11 @@ export class Game extends Scene {
       this.lastReloadStart.map(startTime => startTime !== 0),
     )
     // check if firing key is still held down and the weapon sound is repeatingLoop type, if so start sound again
-    if (this.inputMgr.customBindingStates[weaponIndex] && weapon.repeatingContinuousFireSound) {
-      this.projectileMgr.handleRepeatingFireSound(weaponIndex, true);
+    if (
+      this.inputMgr.customBindingStates[weaponIndex] &&
+      weapon.repeatingContinuousFireSound
+    ) {
+      this.projectileMgr.handleRepeatingFireSound(weaponIndex, true)
     }
   }
 }

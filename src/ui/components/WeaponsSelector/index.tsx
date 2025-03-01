@@ -116,7 +116,7 @@ export const WeaponSelector = () => {
   return ( 
     <div className="hudFont weaponsSelector" style={{ marginTop: "1rem", width: "80vw" }}>
       {/* Added headers for columns */}
-      <div style={{ display: 'flex', marginBottom: "1rem" }}>
+      <div style={{ display: 'flex', marginBottom: "1rem"}}>
         <div style={{ width: '20%', textAlign: 'center' }}></div>
         <div style={{ width: '40%', textAlign: 'center', fontSize: "0.7rem" }}>
           Click to select weapons :

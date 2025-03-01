@@ -4,8 +4,8 @@ import { enemies } from './enemies'
 // tuplets: music file name, then relative volu
 export const music = [
   ['Plague Rat - Karl Casey @ White Bat Audio- bass boosted', 1],
-  ['Torn Flesh - Karl Casey @ White Bat Audio', 1.3],
-  ['Xenomorph - Karl Casey @ White Bat Audio - bass boosted',1.1]
+  ['Torn Flesh - Karl Casey @ White Bat Audio', 1.4],
+  ['Xenomorph - Karl Casey @ White Bat Audio - bass boosted', 1]
   // ['horror-ambient-1', 1.5],
   // ['horror-ambient-2', 1.5],
 ]
@@ -29,16 +29,16 @@ const depths = {
 }
 
 export const Constants = {
-  ambientLightColor: 0x909090,
-  fieldWidth: 3000,
-  fieldHeight: 3000,
+  ambientLightColor: 0x505050,
+  fieldWidth: 5000,
+  fieldHeight: 5000,
   tileSize: 14,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   decalsPerCombinedDecal: 1000,
   DecalFadeTime: 10000,
   musicVolume: 1.5,
-  maxEnemies: 150,
+  maxEnemies: 0,
   playerStartingX: 1500,
   playerStartingY: 1500,
   mechStepPeriod: 500,
@@ -84,6 +84,7 @@ export const Constants = {
   ],
   defaultBeamSegmentCount: 80,
   defaultBeamDisplacement: 13,
+  terrainOutlineUpdateInterval: 1000
 }
 
 export type MouseButtonsKeys = keyof typeof Constants.MouseButtons

@@ -63,6 +63,7 @@ export interface WeaponSpec {
   beamParticlesFadeTime?: number // time in ms for particles to fade out
   beamGlowWidth?: number // width of the glow around the beam
   beamGlowColor?: number // color of the glow around the beam
+  beamGlowAlpha?: number // alpha of the glow around the beam
   beamLightRadius?: number // radius of point lights along beam
   beamLightIntensity?: number // intensity of point lights along beam
   beamHitLightRadius?: number // radius of point light at hit point

@@ -22,7 +22,7 @@ export class MinimapManager {
     this.minimap = this.scene.make.graphics()
     this.minimap.setScrollFactor(0) // Ensure it doesn't scroll
     this.minimap.setDepth(ct.depths.minimap) // Draw on top of everything
-    this.scene.minimapLayer.add(this.minimap)
+    this.scene.viewMgr.minimapLayer.add(this.minimap)
   }
   drawMinimap() {
     // Clear previous minimap drawing

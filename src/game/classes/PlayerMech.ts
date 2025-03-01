@@ -54,26 +54,26 @@ export class PlayerMech {
     )
     dataStore.data.weaponsData = this.weapons
 
-    this.playerMech = this.scene.addSprite(0, 0, 'mech')
+    this.playerMech = scene.addSprite(0, 0, 'mech')
     this.playerMech.setOrigin(0.5, 0.5)
     this.playerMech.displayWidth = ct.mechDimensions[0]
     this.playerMech.width = ct.mechDimensions[0]
     this.playerMech.displayHeight = ct.mechDimensions[1]
     this.playerMech.height = ct.mechDimensions[1]
     this.boostFlames = {
-      front: this.scene.add
+      front: scene.add
         .sprite(0, -this.playerMech.height / 2 + 5, 'boostflame')
         .setPipeline('Light2D')
         .setVisible(false),
-      back: this.scene.add
+      back: scene.add
         .sprite(0, this.playerMech.height / 2, 'boostflame')
         .setPipeline('Light2D')
         .setVisible(false),
-      left: this.scene.add
+      left: scene.add
         .sprite(-this.playerMech.width / 2, 0, 'boostflame')
         .setPipeline('Light2D')
         .setVisible(false),
-      right: this.scene.add
+      right: scene.add
         .sprite(this.playerMech.width / 2, 0, 'boostflame')
         .setPipeline('Light2D')
         .setVisible(false),
@@ -92,7 +92,7 @@ export class PlayerMech {
     this.boostFlames.front.setRotation(-Math.PI / 2)
     this.boostFlames.back.setRotation(Math.PI / 2)
 
-    this.mechContainer = this.scene.addContainer(
+    this.mechContainer = scene.addContainer(
       ct.playerStartingX,
       ct.playerStartingY,
       [
@@ -103,7 +103,7 @@ export class PlayerMech {
         this.boostFlames.right,
       ],
     )
-    this.scene.physics.world.enable(this.mechContainer)
+    scene.physics.world.enable(this.mechContainer)
     this.mechContainer.setDepth(ct.depths.player)
     const body = this.mechContainer.body as Phaser.Physics.Arcade.Body
     body.setSize(this.playerMech.displayWidth, this.playerMech.displayHeight)
@@ -116,13 +116,14 @@ export class PlayerMech {
 
     body.setCollideWorldBounds(true)
 
-    this.boostSound = this.scene.sound.add('boost', {
+    this.boostSound = scene.sound.add('boost', {
       loop: true,
     }) as Phaser.Sound.WebAudioSound
-    this.mechStepSound = this.scene.sound.add(
+    this.mechStepSound = scene.sound.add(
       'mechstep',
     ) as Phaser.Sound.WebAudioSound
     this.mechStepSound.setVolume(ct.mechStepSoundVol)
+
   }
 
   updatePlayerMotion(time: number): void {

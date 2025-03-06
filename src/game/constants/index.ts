@@ -3,10 +3,10 @@ import { enemies } from './enemies'
 
 // tuplets: music file name, then relative volu
 export const music = [
-  ['Plague Rat - Karl Casey @ White Bat Audio- bass boosted', 1],
-  ['Torn Flesh - Karl Casey @ White Bat Audio', 1.4],
-  ['Xenomorph - Karl Casey @ White Bat Audio - bass boosted', 1]
-  // ['horror-ambient-1', 1.5],
+  // ['Plague Rat - Karl Casey @ White Bat Audio- bass boosted', 1],
+  // ['Torn Flesh - Karl Casey @ White Bat Audio', 1.4],
+  // ['Xenomorph - Karl Casey @ White Bat Audio - bass boosted', 1]
+  ['horror-ambient-1', 1.5],
   // ['horror-ambient-2', 1.5],
 ]
 
@@ -29,7 +29,7 @@ const depths = {
 }
 
 export const Constants = {
-  ambientLightColor: 0x505050,
+  ambientLightColor: 0x606060,
   fieldWidth: 5000,
   fieldHeight: 5000,
   tileSize: 14,

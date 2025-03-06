@@ -3,6 +3,9 @@ import Phaser from 'phaser'
 /**
  * A PostFX pipeline that renders a cone-shaped flashlight in front of the mech,
  * brightening pixels most strongly near the flashlight's apex and weakest at the edge.
+ *
+ * This version uses a smoother fade-out for pixels already lit or near max brightness,
+ * preventing them from becoming overly bright.
  */
 export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
   constructor(game: Phaser.Game) {
@@ -54,39 +57,47 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
         // angleFactor: near 1.0 in the cone center, 0.0 at the cone boundary
         float angleFactor = (angleCos - coneLimit) / (1.0 - coneLimit);
 
-        // Overall intensity from 0..1
+        // Overall flashlight intensity from 0..1
         float intensity = clamp(angleFactor * distFactor, 0.0, 1.0);
 
-        // Brightness: ramp from 1.0 (no brighten) to e.g. 1.5 at max intensity
-        float brightness = mix(1.0, 10.0, intensity);
+        // Compute luminance for the current pixel
+        float luminance = (baseColor.r + baseColor.g + baseColor.b) / 3.0;
 
-        // Multiply the base color to brighten
+        // Smooth fade-out factor for pixels near max brightness
+        // Range is (0.7 to 1.0) so that bright pixels are less affected
+        float fadeFactor = 1.0 - smoothstep(0.5,0.95, luminance);
+
+        // Compute the final brightness factor
+        // Scale by both the flashlight intensity and how dark the pixel is
+        float brightness = 1.0 + intensity * fadeFactor * 3.0;
+
+        // Multiply the base color to brighten, with smooth fade-out
         vec3 finalColor = baseColor.rgb * brightness;
 
         gl_FragColor = vec4(finalColor, baseColor.a);
       }
-      `,
-    })
+      `
+    });
   }
 
   onPreRender() {
     // Update resolution every frame
-    this.set2f('resolution', this.renderer.width, this.renderer.height)
+    this.set2f('resolution', this.renderer.width, this.renderer.height);
   }
 
   setLightPosition(x: number, y: number) {
-    this.set2f('lightPosition', x, y)
+    this.set2f('lightPosition', x, y);
   }
 
   setRadius(r: number) {
-    this.set1f('radius', r)
+    this.set1f('radius', r);
   }
 
   setConeAngle(angle: number) {
-    this.set1f('coneAngle', angle)
+    this.set1f('coneAngle', angle);
   }
 
   setConeDirection(dx: number, dy: number) {
-    this.set2f('coneDirection', dx, dy)
+    this.set2f('coneDirection', dx, dy);
   }
 }

@@ -190,7 +190,19 @@ export class Game extends Scene {
     this.fpsText.setDepth(10000)
 
     EventBus.emit('current-scene-ready', this)
-
+    // const graphics = this.add.graphics()
+    // graphics.fillStyle(0xffffff, 1)
+    // graphics.fillCircle(0, 0, 1)
+    // graphics.generateTexture('testParticle', 1, 1)
+    // graphics.destroy()
+    // this.addParticlesEffect(400, 300, 'testParticle', {
+    //   speed: { min: -100, max: 100 },
+    //   lifespan: 5000,
+    //   quantity: 10,
+    //   scale: { start: 50, end: 0 },
+    //   blendMode: 'ADD',
+    //   tint: 16711731
+    // })
   }
 
   update(time: number) {

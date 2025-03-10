@@ -96,6 +96,9 @@ export class Game extends Scene {
     this.combinedDecals = []
 
     this.viewMgr = new ViewManager(this)
+
+    createEmittersAndAnimations(this)
+
     this.player = new PlayerMech(this)
     this.enemyMgr = new EnemyManager(this)
     this.projectileMgr = new ProjectileManager(this)
@@ -104,7 +107,6 @@ export class Game extends Scene {
     this.minimapMgr = new MinimapManager(this)
 
     this.playRandomCombatMusic()
-    createEmittersAndAnimations(this)
 
     this.viewMgr.startCamFollowingPlayerMech()
 

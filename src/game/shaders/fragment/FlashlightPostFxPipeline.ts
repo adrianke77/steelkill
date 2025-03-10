@@ -2,9 +2,8 @@ import Phaser from 'phaser'
 
 /**
  * A PostFX pipeline that renders a cone-shaped flashlight in front of the mech,
- * ignoring pixels that are already above a certain brightness threshold.
- * 
- * In this version, the threshold is hardcoded in the shader.
+ * gradually reducing its brightening effect as the pixel's luminance approaches
+ * the threshold, until there is no additional brightening at or above the threshold.
  */
 export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
   constructor(game: Phaser.Game) {
@@ -23,7 +22,7 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
       uniform vec2 coneDirection;
 
       // Hardcoded brightness threshold
-      float BRIGHTNESS_THRESHOLD = 0.4;
+      float BRIGHTNESS_THRESHOLD = 0.3;
 
       varying vec2 outTexCoord;
 
@@ -33,12 +32,6 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
 
         // Find the pixel's average luminance [0..1]
         float luminance = (baseColor.r + baseColor.g + baseColor.b) / 3.0;
-
-        // If already above threshold, ignore (i.e., don't brighten it)
-        if (luminance > BRIGHTNESS_THRESHOLD) {
-          gl_FragColor = baseColor;
-          return;
-        }
 
         // Distance from the light center
         float dist = distance(screenPos, lightPosition);
@@ -74,8 +67,13 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
         // Smooth fade-out factor for pixels near max brightness
         float fadeFactor = 1.0 - smoothstep(0.5, 0.95, luminance);
 
-        // Compute the final brightness factor
-        float brightness = 1.0 + intensity * fadeFactor * 4.0;
+        // Calculate how far luminance is below the threshold, clamped to [0,1]
+        float belowThreshold = clamp(BRIGHTNESS_THRESHOLD - luminance, 0.0, BRIGHTNESS_THRESHOLD);
+        float thresholdFactor = belowThreshold / BRIGHTNESS_THRESHOLD;
+
+        // Compute the final brightness factor 
+        // No brightening at or above thresholdFactor=0
+        float brightness = 1.0 + intensity * fadeFactor * 4.0 * thresholdFactor;
 
         vec3 finalColor = baseColor.rgb * brightness;
         gl_FragColor = vec4(finalColor, baseColor.a);

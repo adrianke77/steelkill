@@ -10,7 +10,6 @@ import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
 
 const baseEmitterConfig = {
-  lifespan: 1000,
   scale: { start: 3.5, end: 0 },
   rotate: { start: 0, end: 360 },
   speed: { min: 20, max: 30 },
@@ -35,11 +34,6 @@ export class BeamManager {
 
   constructor(scene: Game) {
     this.scene = scene
-    const graphics = scene.add.graphics()
-    graphics.fillStyle(0xffffff, 1)
-    graphics.fillCircle(0, 0, 1)
-    graphics.generateTexture('whiteParticle', 1, 1)
-    graphics.destroy()
     this.beamParticleEmitter = scene.addParticles(
       0,
       0,
@@ -807,7 +801,7 @@ export class BeamManager {
       adjustedConfig.lifespan = weapon.beamParticlesFadeTime!
       this.beamParticleEmitter.setConfig(adjustedConfig)
       this.beamParticleEmitter.setParticleTint(weapon.beamParticlesColor!)
-      this.beamParticleEmitter.setParticleAlpha(isBeamFragment ? 0.5 : 0.9)
+      this.beamParticleEmitter.setParticleAlpha(1)
       this.beamParticleEmitter.emitParticleAt(particleX, particleY)
 
       // generate large light flash occasionally

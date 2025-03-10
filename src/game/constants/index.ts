@@ -29,7 +29,7 @@ const depths = {
 }
 
 export const Constants = {
-  ambientLightColor: 0x555555,
+  ambientLightColor: 0x333333,
   fieldWidth: 2000,
   fieldHeight: 2000,
   tileSize: 14,

@@ -65,7 +65,7 @@ export function createEmittersAndAnimations(scene: Game) {
   const graphics = scene.add.graphics()
   graphics.fillStyle(0xffffff, 1)
   graphics.fillCircle(0, 0, 20)
-  graphics.generateTexture('whiteParticle', 20, 20)
+  graphics.generateTexture('whiteParticle', 1, 1)
   graphics.destroy()
 
   scene.projectileSparkEmitter = scene.addParticles(

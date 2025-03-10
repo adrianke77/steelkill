@@ -63,18 +63,22 @@ export class PlayerMech {
     this.boostFlames = {
       front: scene.add
         .sprite(0, -this.playerMech.height / 2 + 5, 'boostflame')
+        .setAlpha(0.4)
         .setPipeline('Light2D')
         .setVisible(false),
       back: scene.add
         .sprite(0, this.playerMech.height / 2, 'boostflame')
+        .setAlpha(0.4)
         .setPipeline('Light2D')
         .setVisible(false),
       left: scene.add
         .sprite(-this.playerMech.width / 2, 0, 'boostflame')
+        .setAlpha(0.4)
         .setPipeline('Light2D')
         .setVisible(false),
       right: scene.add
         .sprite(this.playerMech.width / 2, 0, 'boostflame')
+        .setAlpha(0.4)
         .setPipeline('Light2D')
         .setVisible(false),
     }

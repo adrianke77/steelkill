@@ -592,17 +592,17 @@ export class BeamManager {
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth!,
-        alpha: 0.1,
+        alpha: 0.15,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.1,
+        alpha: 0.15,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.1,
+        alpha: 0.15,
       },
       { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7 },
     ]

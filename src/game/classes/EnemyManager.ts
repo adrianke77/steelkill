@@ -361,10 +361,10 @@ export class EnemyManager {
   // only for ants now, need to refactor for other enemies
   getRandomDirection(): string {
     const randomValue = Math.random()
-    if (randomValue < 0.2) return 'charge'
     if (randomValue < 0.4) return 'stop'
-    if (randomValue < 0.6) return 'angled-left'
-    if (randomValue < 0.8) return 'angled-right'
+    if (randomValue < 0.6) return 'charge'
+    if (randomValue < 0.8) return 'angled-left'
+    if (randomValue < 1) return 'angled-right'
     return 'back'
   }
 

@@ -67,7 +67,6 @@ export class ViewManager {
       'CurvedScreenPostFxPipeline',
     ])
 
-    // Defer retrieving & configuring the flashlight pipeline
     scene.events.once(Phaser.Scenes.Events.RENDER, () => {
       this.flashlightPipeline = this.mainCam.getPostPipeline(
         'FlashlightPostFxPipeline',

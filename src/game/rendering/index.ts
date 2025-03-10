@@ -103,13 +103,6 @@ export function createEmittersAndAnimations(scene: Game) {
   })
 
   scene.anims.create({
-    key: 'head',
-    frames: scene.anims.generateFrameNumbers('head', { start: 0, end: 2 }),
-    frameRate: 20,
-    repeat: -1,
-  })
-
-  scene.anims.create({
     key: 'boostflame',
     frames: scene.anims.generateFrameNumbers('boostflame', {
       start: 0,
@@ -160,6 +153,8 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
     addCombinedDecal(scene)
   }
   const currentTexture = scene.combinedDecals.slice(-1)[0].texture
+  image.setAlpha(1)
+  image.setBlendMode(Phaser.BlendModes.NORMAL)
   currentTexture.draw(image, image.x, image.y)
   image.destroy()
   scene.decalCount++
@@ -348,10 +343,10 @@ export function createBloodSplat(
   bloodSplat.setPipeline('Light2D')
   bloodSplat.setAlpha(0) // Start from alpha 0
 
-  // Fade in the decal from alpha 0 to 0.8 over 1 second
+  // Fade in the decal from alpha 0 to 0.9 over 1 second
   scene.tweens.add({
     targets: bloodSplat,
-    alpha: 0.8,
+    alpha: 0.9,
     duration: 1000, // Duration in milliseconds
     ease: 'easeOut',
     onComplete: () => {
@@ -517,7 +512,7 @@ export function renderExplosion(
   if (optionals && optionals.color) {
     explosion.setTint(optionals.color)
   }
-  explosion.setAlpha(Phaser.Math.FloatBetween(0.4, 0.8))
+  explosion.setAlpha(Phaser.Math.FloatBetween(0.1, 0.4))
   explosion.play('explosion')
   const scorch = scene.addImage(x, y, 'scorch1')
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
@@ -535,7 +530,7 @@ export function renderExplosion(
     y,
     optionals && optionals.color ? optionals.color : ct.explosionColor,
     150,
-    damage / 30,
+    damage / 60,
     diameter * 3,
   )
   createDustCloud(scene, x, y, 0, 0, 0.5, 2000, diameter * 1.4)

@@ -592,19 +592,29 @@ export class BeamManager {
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth!,
-        alpha: 0.15,
+        alpha: 0.1,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.15,
+        width: weapon.beamGlowWidth! * 0.8 * Phaser.Math.Between(0.5, 1.5),
+        alpha: 0.1,
+      },
+      {
+        color: weapon.beamGlowColor!,
+        width: weapon.beamGlowWidth! * 0.6 * Phaser.Math.Between(0.5, 1.5),
+        alpha: 0.1,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.15,
+        alpha: 0.1,
       },
-      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7 },
+      {
+        color: weapon.beamGlowColor!,
+        width: weapon.beamGlowWidth! * 0.2 * Phaser.Math.Between(0.5, 1.5),
+        alpha: 0.1,
+      },
+      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7},
     ]
 
     this.drawGlowLayers(points, glowLayers, weapon.fireDelay, beamFades)
@@ -668,7 +678,7 @@ export class BeamManager {
     return points
   }
 
-  private drawGlowLayers(
+  drawGlowLayers(
     points: Phaser.Math.Vector2[],
     glowLayers: { color: number; width: number; alpha: number }[],
     fireDelay: number,
@@ -677,10 +687,14 @@ export class BeamManager {
     const fadeStartIndex = beamFades
       ? Math.floor(points.length * (3 / 5))
       : Infinity
+          
     for (const layer of glowLayers) {
+      // Use a graphics object that is NOT on the Light2D pipeline
       const graphics = this.scene.addGraphicsEffect()
+      // For instance, set the TextureTint pipeline or the default pipeline
       graphics.setPipeline('TextureTintPipeline')
       graphics.setDepth(ct.depths.projectile)
+  
       for (let i = 0; i < points.length - 1; i++) {
         let segmentAlpha = layer.alpha
         if (i >= fadeStartIndex) {
@@ -688,17 +702,17 @@ export class BeamManager {
             (i - fadeStartIndex) / (points.length - 1 - fadeStartIndex)
           segmentAlpha = layer.alpha * (1 - fadeProgress)
         }
-
+  
         graphics.lineStyle(layer.width, layer.color, segmentAlpha)
         graphics.beginPath()
         graphics.moveTo(points[i].x, points[i].y)
         graphics.lineTo(points[i + 1].x, points[i + 1].y)
         graphics.strokePath()
       }
+  
       this.scene.time.delayedCall(fireDelay, () => graphics.destroy())
     }
   }
-
   private updateParticlesAndLights(
     weapon: WeaponSpec,
     beam: ActiveBeam | undefined,

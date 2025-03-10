@@ -32,14 +32,14 @@ export function loadRenderingAssets(scene: Game) {
 export const baseProjectileSparkConfig = {
   lifespan: 100,
   speed: { min: 0, max: 1000 },
-  scale: { start: 0.4, end: 0 },
+  scale: { start: 5, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export const baseDeathSprayConfig = {
   lifespan: 1000,
-  scale: { start: 0.3, end: 0 },
+  scale: { start: 5, end: 0 },
   rotate: { start: 0, end: 360 },
   alpha: { start: 1, end: 0.2 },
   accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
@@ -398,52 +398,70 @@ export function destroyEnemyAndCreateCorpseDecals(
   scene.enemyMgr.playDeathSound(enemy)
 }
 
-function enemyDeathSpray(
+export function enemyDeathSpray(
   scene: Game,
   x: number,
   y: number,
   enemyData: EnemyData,
   radDirection?: number,
 ): void {
-  // const particleSpeed = enemyData.collisionSize /75 *
-  if (radDirection) {
+  // Always do one pass emitting 360° spray
+  baseDeathSprayConfig.angle = {
+    min: 0,
+    max: 360,
+  }
+  baseDeathSprayConfig.speed = {
+    min: enemyData.corpseSize * 0.2,
+    max: enemyData.corpseSize * 1.0,
+  }
+  scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
+  scene.enemyDeathSprayEmitter.setParticleTint(
+    blendColors(enemyData.bloodColor, 0x000000, 0.6),
+  )
+  scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize/2)
+
+  // If we have a particular direction, emit extra particles more densely weighted around that angle
+  if (radDirection !== undefined) {
     const degDirection = Phaser.Math.RadToDeg(radDirection)
+
+    // Emit a second pass focusing on a narrower cone around radDirection
     baseDeathSprayConfig.angle = {
-      min: degDirection - 30,
-      max: degDirection + 30,
+      min: degDirection - 40,
+      max: degDirection + 40,
     }
-    // scale spray size to enemy corpse size by modifying particle speed
-    baseDeathSprayConfig.speed = { min: 0, max: enemyData.corpseSize }
+    baseDeathSprayConfig.speed = {
+      min: enemyData.corpseSize * 0.3,
+      max: enemyData.corpseSize * 1.2,
+    }
     scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
     scene.enemyDeathSprayEmitter.setParticleTint(
       blendColors(enemyData.bloodColor, 0x000000, 0.6),
     )
-    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize)
-    // corpse fragments spray
+    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize/2)
+
+    // Emit additional corpse fragments in a slightly wider range around radDirection
+    baseDeathSprayConfig.angle = {
+      min: degDirection - 60,
+      max: degDirection + 60,
+    }
+    baseDeathSprayConfig.speed = {
+      min: enemyData.corpseSize * 0.2,
+      max: enemyData.corpseSize * 1.0,
+    }
     scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
     scene.enemyDeathSprayEmitter.setParticleTint(
       blendColors(enemyData.color, 0x000000, 0.2),
     )
-    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize)
+    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize/2)
   }
-  // always do a 360 spray as well
-  // scale spray size to enemy corpse size by modifying particle speed
+
+  // Also fire the secondary emitter for additional fragments/debris in all directions
+  secondaryEnemyDeathSprayConfig.angle = { min: 0, max: 360 }
   secondaryEnemyDeathSprayConfig.speed = {
-    min: 0,
-    max: enemyData.corpseSize / 2,
+    min: enemyData.corpseSize * 0.1,
+    max: enemyData.corpseSize * 0.8,
   }
-  scene.secondaryEnemyDeathSprayEmitter.setConfig(
-    secondaryEnemyDeathSprayConfig,
-  )
-  scene.secondaryEnemyDeathSprayEmitter.setParticleTint(
-    blendColors(enemyData.bloodColor, 0x000000, 0.6),
-  )
-  scene.secondaryEnemyDeathSprayEmitter.emitParticleAt(
-    x,
-    y,
-    enemyData.corpseSize,
-  )
-  // corpse fragments spray
+  scene.secondaryEnemyDeathSprayEmitter.setConfig(secondaryEnemyDeathSprayConfig)
   scene.secondaryEnemyDeathSprayEmitter.setParticleTint(
     blendColors(enemyData.color, 0x000000, 0.2),
   )
@@ -453,7 +471,6 @@ function enemyDeathSpray(
     enemyData.corpseSize,
   )
 }
-
 export function tweenFadeDecal(
   scene: Game,
   combinedDecal: {
@@ -517,8 +534,8 @@ export function renderExplosion(
     x,
     y,
     optionals && optionals.color ? optionals.color : ct.explosionColor,
-    200,
-    damage / 10,
+    150,
+    damage / 30,
     diameter * 3,
   )
   createDustCloud(scene, x, y, 0, 0, 0.5, 2000, diameter * 1.4)

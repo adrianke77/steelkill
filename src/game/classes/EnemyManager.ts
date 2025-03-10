@@ -17,7 +17,7 @@ import {
 const baseEnemyHitTerrainSparkConfig = {
   lifespan: 500,
   speed: { min: 0, max: 100},
-  scale: { start: 0.4, end: 0 },
+  scale: { start: 6, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig

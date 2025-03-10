@@ -11,7 +11,7 @@ import { calculateWeaponStartPosition } from './ProjectileManager'
 
 const baseEmitterConfig = {
   lifespan: 1000,
-  scale: { start: 0.35, end: 0 },
+  scale: { start: 3.5, end: 0 },
   rotate: { start: 0, end: 360 },
   speed: { min: 20, max: 30 },
   emitting: false,
@@ -630,30 +630,40 @@ export class BeamManager {
     displacement: number,
   ): Phaser.Math.Vector2[] {
     const segmentsBetweenAlignedPoints = weapon.renderAsLightning ? 3 : 1
-    const points: Phaser.Math.Vector2[] = [
-      new Phaser.Math.Vector2(startX, startY),
-    ]
+    const points: Phaser.Math.Vector2[] = [new Phaser.Math.Vector2(startX, startY)]
     const deltaX = (endX - startX) / segmentCount
     const deltaY = (endY - startY) / segmentCount
-
+    // Decide which segment index is 10% from the end
+    const lastSegmentIndex = Math.floor(segmentCount * 0.9)
+  
     for (let i = 1; i < segmentCount; i++) {
       const prevPoint = points[i - 1]
-      const randomX =
-        i % segmentsBetweenAlignedPoints === 0
+      if (i < lastSegmentIndex) {
+        // Normal random offset calculation
+        const randomX = i % segmentsBetweenAlignedPoints === 0
           ? 0
           : Phaser.Math.FloatBetween(-displacement, displacement)
-      const randomY =
-        i % segmentsBetweenAlignedPoints === 0
+        const randomY = i % segmentsBetweenAlignedPoints === 0
           ? 0
           : Phaser.Math.FloatBetween(-displacement, displacement)
-
-      points.push(
-        new Phaser.Math.Vector2(
-          prevPoint.x + deltaX + randomX,
-          prevPoint.y + deltaY + randomY,
-        ),
-      )
+        points.push(
+          new Phaser.Math.Vector2(
+            prevPoint.x + deltaX + randomX,
+            prevPoint.y + deltaY + randomY
+          )
+        )
+      } else {
+        // Smoothly interpolate from the last offset point to the end, with no added displacement
+        const fraction = (i - lastSegmentIndex + 1) / (segmentCount - lastSegmentIndex)
+        points.push(
+          new Phaser.Math.Vector2(
+            Phaser.Math.Linear(prevPoint.x, endX, fraction),
+            Phaser.Math.Linear(prevPoint.y, endY, fraction)
+          )
+        )
+      }
     }
+  
     points.push(new Phaser.Math.Vector2(endX, endY))
     return points
   }

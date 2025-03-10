@@ -47,7 +47,7 @@ export class BeamManager {
       baseEmitterConfig,
     )
     this.beamParticleEmitter.setDepth(ct.depths.projectile)
-    this.beamParticleEmitter.setPipeline("Light2D")
+    this.beamParticleEmitter.setPipeline('Light2D')
   }
 
   startBeam(weaponIndex: number): void {
@@ -441,7 +441,7 @@ export class BeamManager {
     const weaponArcHalfAngle = weapon.arcTargetingAngle! / 2
     const weaponMaxRange = weapon.maxRange!
 
-    // First, filter enemies based on angle difference and distance
+    // filter enemies based on angle difference and distance
     const potentialTargets = enemies.filter(enemy => {
       if (!enemy.active) return false
 
@@ -458,7 +458,7 @@ export class BeamManager {
       return Math.abs(angleDiff) <= weaponArcHalfAngle
     })
 
-    // Then, perform collision detection on the filtered list
+    // perform collision detection on the filtered list
     let targetEnemy: EnemySprite | null = null
     let minDistance = weaponMaxRange
 
@@ -486,6 +486,8 @@ export class BeamManager {
         }
       }
     }
+
+    let beamFades = false
 
     if (targetEnemy) {
       // Set beam endpoint to the targeted enemy
@@ -521,12 +523,14 @@ export class BeamManager {
             beamEndY,
           )
         }
+      } else {
+        beamFades = true
       }
     }
 
     // Redraw the beam
     beam.graphics.clear()
-    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
+    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam, beamFades)
   }
 
   private consumeAmmo(weaponIndex: number): void {
@@ -566,14 +570,13 @@ export class BeamManager {
     endX: number,
     endY: number,
     beam?: ActiveBeam,
+    beamFades?: boolean,
   ): void {
     const isBeamFragment = !beam
 
     const length = Phaser.Math.Distance.Between(startX, startY, endX, endY)
     const segments = weapon.lightningSegments ? weapon.lightningSegments : 15
-    const segmentCount = Math.ceil(
-      (length / weapon.maxRange!) * segments,
-    )
+    const segmentCount = Math.ceil((length / weapon.maxRange!) * segments)
 
     const points = this.generateBeamPoints(
       weapon,
@@ -594,17 +597,17 @@ export class BeamManager {
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.7 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.2,
+        alpha: 0.1,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.3,
+        alpha: 0.1,
       },
-      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.6 },
+      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7 },
     ]
 
-    this.drawGlowLayers(points, glowLayers, weapon.fireDelay)
+    this.drawGlowLayers(points, glowLayers, weapon.fireDelay, beamFades)
     this.updateParticlesAndLights(
       weapon,
       beam,
@@ -659,10 +662,14 @@ export class BeamManager {
     points: Phaser.Math.Vector2[],
     glowLayers: { color: number; width: number; alpha: number }[],
     fireDelay: number,
+    beamFades: boolean = true,
   ): void {
-    const fadeStartIndex = Math.floor(points.length * (2 / 3))
+    const fadeStartIndex = beamFades
+      ? Math.floor(points.length * (3 / 5))
+      : Infinity
     for (const layer of glowLayers) {
       const graphics = this.scene.addGraphicsEffect()
+      graphics.setPipeline('TextureTintPipeline')
       graphics.setDepth(ct.depths.projectile)
       for (let i = 0; i < points.length - 1; i++) {
         let segmentAlpha = layer.alpha
@@ -671,7 +678,7 @@ export class BeamManager {
             (i - fadeStartIndex) / (points.length - 1 - fadeStartIndex)
           segmentAlpha = layer.alpha * (1 - fadeProgress)
         }
-  
+
         graphics.lineStyle(layer.width, layer.color, segmentAlpha)
         graphics.beginPath()
         graphics.moveTo(points[i].x, points[i].y)

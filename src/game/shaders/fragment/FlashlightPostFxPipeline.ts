@@ -69,7 +69,7 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
 
         // Compute the final brightness factor
         // Scale by both the flashlight intensity and how dark the pixel is
-        float brightness = 1.0 + intensity * fadeFactor * 3.0;
+        float brightness = 1.0 + intensity * fadeFactor * 5.0;
 
         // Multiply the base color to brighten, with smooth fade-out
         vec3 finalColor = baseColor.rgb * brightness;

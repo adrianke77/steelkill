@@ -56,11 +56,12 @@ export class TerrainManager {
   // Margin variables (in tiles)
   marginTop: number = 15 // Adjust as needed
   marginBottom: number = 2 // Adjust as needed
-  marginLeft: number = 2 // Adjust as needed
+  marginLeft: number = 2 // Adjust as neededv
   marginRight: number = 2 // Adjust as
   playerSafeRadius: number = 5
   outlineGraphics: Phaser.GameObjects.Graphics
   outlineUpdateTimer: number = 0
+  outlineSegments = new Map<string, Phaser.GameObjects.Graphics>()
 
   constructor(scene: Game) {
     this.scene = scene
@@ -82,7 +83,9 @@ export class TerrainManager {
 
   createTerrain() {
     // Remove the old tileset if it exists
-    this.scene.textures.remove('generated-tileset')
+    if (this.scene.textures.exists('generated-tileset')) {
+      this.scene.textures.remove('generated-tileset')
+    }
 
     const tilesetColumns = 16 // There are 16 unique tile configurations
     const tilesetRows = NUM_VARIANTS // Number of variants
@@ -152,63 +155,119 @@ export class TerrainManager {
     // this.displayTilesetForDebug()
   }
 
-  checkToUpdateTerrainOutlines(time: number) {
-    if (time > this.outlineUpdateTimer + ct.terrainOutlineUpdateInterval) {
-      this.drawTerrainOutlines()
-      this.outlineUpdateTimer = time
+  clearTileOutlines(x: number, y: number): void {
+    const key = `${x},${y}`
+    const existingOutline = this.outlineSegments.get(key)
+    if (existingOutline) {
+      existingOutline.destroy()
+      this.outlineSegments.delete(key)
     }
   }
 
-  drawTerrainOutlines() {
-    if (!this.outlineGraphics) {
-      this.outlineGraphics = this.scene.add.graphics()
-      this.scene.viewMgr.mainLayer.add(this.outlineGraphics)
-      this.outlineGraphics.setPipeline('Light2D')
+  drawTileOutline(tile: TerrainTile): void {
+    const x = tile.x
+    const y = tile.y
+    const key = `${x},${y}`
+
+    const tileData = this.getTileData(tile)
+    const outlineColor = blendColors(tileData.color, 0x000000, 0.85)
+    const tileSize = this.map.tileWidth
+    const worldX = tile.pixelX
+    const worldY = tile.pixelY
+
+    // Create a new Graphics object for this tile
+    const gfx = this.scene.add.graphics()
+    gfx.setPipeline('Light2D')
+    gfx.lineStyle(4, outlineColor, 0.9)
+
+    // For each side, check if a neighboring tile is missing. If so, draw an outline segment.
+    if (!this.isSolidTileAt(x, y - 1)) {
+      gfx.lineBetween(worldX, worldY, worldX + tileSize, worldY)
+    }
+    if (!this.isSolidTileAt(x + 1, y)) {
+      gfx.lineBetween(
+        worldX + tileSize,
+        worldY,
+        worldX + tileSize,
+        worldY + tileSize,
+      )
+    }
+    if (!this.isSolidTileAt(x, y + 1)) {
+      gfx.lineBetween(
+        worldX,
+        worldY + tileSize,
+        worldX + tileSize,
+        worldY + tileSize,
+      )
+    }
+    if (!this.isSolidTileAt(x - 1, y)) {
+      gfx.lineBetween(worldX, worldY, worldX, worldY + tileSize)
     }
 
-    this.outlineGraphics.clear()
+    // Store the Graphics object so we can remove/replace it later
+    this.outlineSegments.set(key, gfx)
+    // Optionally place it in the mainLayer if desired
+    this.scene.viewMgr.mainLayer.add(gfx)
+  }
 
-    for (let x = 0; x < this.map.width; x++) {
-      for (let y = 0; y < this.map.height; y++) {
-        const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
-        if (tile) {
-          const tileData = this.getTileData(tile)
-          const outlineColor = blendColors(tileData.color, 0x000000, 0.8) // darkened color
-          this.outlineGraphics.lineStyle(4, outlineColor, 0.9)
+  public drawTerrainOutlines(affectedTiles?: { x: number; y: number }[]): void {
+    let tilesToUpdate: { x: number; y: number }[] = []
 
-          const worldX = tile.pixelX
-          const worldY = tile.pixelY
-          const tileSize = this.map.tileWidth
+    if (affectedTiles && affectedTiles.length > 0) {
+      // Collect the affected tiles + neighbors
+      const neighbors = [
+        { dx: -1, dy: -1 },
+        { dx: 0, dy: -1 },
+        { dx: 1, dy: -1 },
+        { dx: -1, dy: 0 },
+        { dx: 1, dy: 0 },
+        { dx: -1, dy: 1 },
+        { dx: 0, dy: 1 },
+        { dx: 1, dy: 1 },
+      ]
+      const tileSet = new Set<string>()
 
-          if (!this.isSolidTileAt(x, y - 1))
-            this.outlineGraphics.lineBetween(
-              worldX,
-              worldY,
-              worldX + tileSize,
-              worldY,
-            )
-          if (!this.isSolidTileAt(x + 1, y))
-            this.outlineGraphics.lineBetween(
-              worldX + tileSize,
-              worldY,
-              worldX + tileSize,
-              worldY + tileSize,
-            )
-          if (!this.isSolidTileAt(x, y + 1))
-            this.outlineGraphics.lineBetween(
-              worldX,
-              worldY + tileSize,
-              worldX + tileSize,
-              worldY + tileSize,
-            )
-          if (!this.isSolidTileAt(x - 1, y))
-            this.outlineGraphics.lineBetween(
-              worldX,
-              worldY,
-              worldX,
-              worldY + tileSize,
-            )
+      for (const { x, y } of affectedTiles) {
+        // Add original tile
+        if (x >= 0 && x < this.map.width && y >= 0 && y < this.map.height) {
+          tileSet.add(`${x},${y}`)
         }
+        // Add neighbors
+        for (const { dx, dy } of neighbors) {
+          const nx = x + dx
+          const ny = y + dy
+          if (
+            nx >= 0 &&
+            nx < this.map.width &&
+            ny >= 0 &&
+            ny < this.map.height
+          ) {
+            tileSet.add(`${nx},${ny}`)
+          }
+        }
+      }
+
+      // Convert the set back to an array
+      tilesToUpdate = [...tileSet].map(key => {
+        const [tx, ty] = key.split(',').map(Number)
+        return { x: tx, y: ty }
+      })
+    } else {
+      // If no specific tiles, update every tile in the map
+      for (let x = 0; x < this.map.width; x++) {
+        for (let y = 0; y < this.map.height; y++) {
+          tilesToUpdate.push({ x, y })
+        }
+      }
+    }
+
+    // For each tile, clear old outlines and draw new ones
+    for (const { x, y } of tilesToUpdate) {
+      this.clearTileOutlines(x, y)
+
+      const tile = this.terrainLayer.getTileAt(x, y) as TerrainTile
+      if (tile) {
+        this.drawTileOutline(tile)
       }
     }
   }
@@ -349,7 +408,7 @@ export class TerrainManager {
     // Apply autotiling to update tile graphics
     this.applyAutotiling()
 
-    // this.drawTerrainOutlines();
+    this.drawTerrainOutlines()
   }
 
   assignTerrainTypesToClumps() {
@@ -674,7 +733,7 @@ export class TerrainManager {
     }
 
     this.renderTileDestructionEffect(tile)
-    // this.drawTerrainOutlines();
+    this.drawTerrainOutlines([{ x: tile.x, y: tile.y }])
   }
 
   getTileTypeAt(x: number, y: number): number {
@@ -695,7 +754,7 @@ export class TerrainManager {
       0,
       0,
       0.8,
-      3500,
+      6000,
       250,
       tileData.color,
     )

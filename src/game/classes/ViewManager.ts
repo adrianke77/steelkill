@@ -6,6 +6,19 @@ import { InfraredPostFxPipeline } from '../shaders/infraredShader'
 import { Constants as ct } from '../constants'
 import { FlashlightPostFxPipeline } from '../shaders/fragment/FlashlightPostFxPipeline'
 
+const PipelinesWithFlashlight = [
+  'FlashlightPostFxPipeline',
+  'StaticPostFxPipeline',
+  'ScanlinesPostFxPipeline',
+  'CurvedScreenPostFxPipeline',
+]
+
+const PipelinesWithoutFlashlight = [
+  'StaticPostFxPipeline',
+  'ScanlinesPostFxPipeline',
+  'CurvedScreenPostFxPipeline',
+]
+
 export class ViewManager {
   scene: Game
   mainLayer: Phaser.GameObjects.Layer
@@ -60,27 +73,11 @@ export class ViewManager {
     this.mainCam.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
     this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
 
-    this.mainCam.setPostPipeline([
-      'FlashlightPostFxPipeline',
-      'StaticPostFxPipeline',
-      'ScanlinesPostFxPipeline',
-      'CurvedScreenPostFxPipeline',
-    ])
+    this.mainCam.setPostPipeline(PipelinesWithFlashlight)
 
-    scene.events.once(Phaser.Scenes.Events.RENDER, () => {
-      this.flashlightPipeline = this.mainCam.getPostPipeline(
-        'FlashlightPostFxPipeline',
-      ) as FlashlightPostFxPipeline
-      this.flashlightPipeline.setRadius(800)
-      this.flashlightPipeline.setConeAngle(Math.PI / 2)
-    })
-
+    this.setupFlashlightPipeline()
     this.miniMapCam = this.scene.cameras.add()
-    this.miniMapCam.setPostPipeline([
-      'StaticPostFxPipeline',
-      'ScanlinesPostFxPipeline',
-      'CurvedScreenPostFxPipeline',
-    ])
+    this.miniMapCam.setPostPipeline(PipelinesWithoutFlashlight)
 
     // Create and configure the effects layer/camera
     this.effectsCam = this.scene.cameras.add(0, 0, ct.gameWidth, ct.gameHeight)
@@ -91,11 +88,7 @@ export class ViewManager {
       this.mainCam.followOffset.y,
     )
     this.effectsCam.setZoom(this.mainCam.zoom)
-    this.effectsCam.setPostPipeline([
-      'StaticPostFxPipeline',
-      'ScanlinesPostFxPipeline',
-      'CurvedScreenPostFxPipeline',
-    ])
+    this.effectsCam.setPostPipeline(PipelinesWithoutFlashlight)
 
     this.mainCam.ignore(this.effectsLayer)
     this.mainCam.ignore(this.minimapLayer)
@@ -120,14 +113,24 @@ export class ViewManager {
   }
 
   public startCamFollowingPlayerMech(): void {
-    this.mainCam.startFollow(this.scene.player.mechContainer, false, 0.03, 0.03)
+    this.mainCam.startFollow(this.scene.player.mechContainer, false, 0.015, 0.015)
     // Sync the effectsCam follow and offset with the mainCam
     this.effectsCam.startFollow(
       this.scene.player.mechContainer,
       false,
-      0.03,
-      0.03,
+      0.015,
+      0.015,
     )
+  }
+
+  private setupFlashlightPipeline(): void {
+    this.scene.events.once(Phaser.Scenes.Events.RENDER, () => {
+      this.flashlightPipeline = this.mainCam.getPostPipeline(
+        'FlashlightPostFxPipeline',
+      ) as FlashlightPostFxPipeline
+      this.flashlightPipeline.setRadius(800)
+      this.flashlightPipeline.setConeAngle(Math.PI / 2)
+    })  
   }
 
   public updateCameraOffset(rotation: number): void {
@@ -135,15 +138,15 @@ export class ViewManager {
     const offsetY = (this.mainCam.height / 4) * Math.sin(rotation + Math.PI / 2)
     this.mainCam.setFollowOffset(offsetX, offsetY)
     this.miniMapCam.setFollowOffset(offsetX, offsetY)
+    this.effectsCam.setFollowOffset(offsetX, offsetY)
+    this.effectsCam.setZoom(this.mainCam.zoom)
 
     this.updateFlashlightCone(
       this.scene.player.mechContainer.x,
       this.scene.player.mechContainer.y,
       this.scene.player.mechContainer.rotation,
     )
-    // Keep effectsCam offset/zoom in sync with mainCam
-    this.effectsCam.setFollowOffset(offsetX, offsetY)
-    this.effectsCam.setZoom(this.mainCam.zoom)
+
     // If you rotate the mainCam or apply other transformations, mirror them here:
     // this.effectsCam.rotation = this.mainCam.rotation
     // or any other transformations you apply to mainCam
@@ -154,7 +157,15 @@ export class ViewManager {
     mechY: number,
     mechRotation: number,
   ): void {
-    if (!this.flashlightPipeline) return
+    if (this.scene.viewMgr.infraredIsOn) return 
+    if (
+      !this.flashlightPipeline ||
+      !this.flashlightPipeline.renderer ||
+      typeof this.flashlightPipeline.setLightPosition !== 'function'
+    ) {
+      console.log('fired guard, not updating flashlight cone')
+      return
+    }
 
     const camera = this.scene.cameras.main
 
@@ -183,13 +194,11 @@ export class ViewManager {
   toggleInfrared(): void {
     this.infraredIsOn = !this.infraredIsOn
     if (this.infraredIsOn) {
+      const InfraredPipelines = ['InfraredPostFxPipeline', ...PipelinesWithoutFlashlight]
       this.mainCam.resetPostPipeline()
-      this.mainCam.setPostPipeline([
-        'InfraredPostFxPipeline',
-        'StaticPostFxPipeline',
-        'ScanlinesPostFxPipeline',
-        'CurvedScreenPostFxPipeline',
-      ])
+      this.mainCam.setPostPipeline(InfraredPipelines)
+      this.effectsCam.resetPostPipeline()
+      this.effectsCam.setPostPipeline(InfraredPipelines)
       this.scene.lights.setAmbientColor(0xffffff)
       this.background.setTint(0x999999)
       this.dustClouds.children.iterate(
@@ -201,11 +210,10 @@ export class ViewManager {
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
     } else {
       this.mainCam.resetPostPipeline()
-      this.mainCam.setPostPipeline([
-        'StaticPostFxPipeline',
-        'ScanlinesPostFxPipeline',
-        'CurvedScreenPostFxPipeline',
-      ])
+      this.mainCam.setPostPipeline(PipelinesWithFlashlight)
+      this.effectsCam.resetPostPipeline()
+      this.effectsCam.setPostPipeline(PipelinesWithoutFlashlight)
+      this.setupFlashlightPipeline()
       this.scene.lights.setAmbientColor(ct.ambientLightColor)
       this.background.clearTint()
       this.dustClouds.children.iterate(

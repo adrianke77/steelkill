@@ -51,14 +51,14 @@ export const MechHealthInfo = (): React.JSX.Element => {
 
   return (
     <div className="hudFont">
-      <p>
+      <div>
         <div>Integrity:</div>
         <span>[ </span>
         <span style={style}>{'|'.repeat(filledLength)}</span>
         <span style={styles.empty}>{'|'.repeat(emptyLength)}</span>
         <span> ] </span>
         <span style={styles.healthCount}>{healthPercentage.toFixed(2)}%</span>
-      </p>
+      </div>
     </div>
   )
 }

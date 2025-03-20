@@ -33,7 +33,8 @@ export class ProjectileManager {
   soundInstances: { [key: string]: Phaser.Sound.BaseSound } = {}
   repeatingFireSounds: { [key: string]: Phaser.Sound.BaseSound } = {}
   weaponsFiringCount: { [key: string]: number } = {}
-  fadeOutTweens: { [key: string]: Phaser.Tweens.Tween } = {}
+  repeatingFireFadeoutSounds: { [key: string]: Phaser.Tweens.Tween } = {}
+  activeRepeatingWeaponsByIndex: { [weaponIndex: number]: string | null } = {}
 
   constructor(scene: Game) {
     this.scene = scene
@@ -138,7 +139,7 @@ export class ProjectileManager {
     projectile.setName('projectile')
     const body = projectile.body as Phaser.Physics.Arcade.Body
     body.onWorldBounds = true
-    // make collision body much longer if projectile is fast
+    // make collision body much longer if projectile is fast, to allow proper collision detection
     if (weapon.initialSpeed > 1000) {
       body.setSize(projectile.displayWidth, projectile.displayHeight * 4)
     }
@@ -382,7 +383,7 @@ export class ProjectileManager {
         0,
         0,
         0.8,
-        1500,
+        4000,
         Math.min(damage * 5, 100),
         tileData.color,
       )
@@ -421,7 +422,7 @@ export class ProjectileManager {
       enemyData,
     )
     if (!enemyData.tooSmallToBleedWhenHit) {
-      createBloodSplat(this.scene, enemy.x, enemy.y, enemyData.bloodColor, 20)
+      createBloodSplat(this.scene, enemy.x, enemy.y, enemyData.bloodColor, 100)
     }
     if (enemy.health <= 0) {
       const directionRadians = Phaser.Math.Angle.Between(
@@ -496,7 +497,7 @@ export class ProjectileManager {
             enemySprite.x,
             enemySprite.y,
             enemySprite.enemyData.bloodColor,
-            30,
+            100,
           )
           if (enemySprite.health <= 0) {
             const directionRadians = Phaser.Math.Angle.Between(
@@ -679,6 +680,7 @@ export class ProjectileManager {
     radDirection?: number,
     particles?: number,
     projectile?: Projectile,
+    lifespan?: number
   ): void {
     const config = baseProjectileSparkConfig
     if (radDirection) {
@@ -691,6 +693,9 @@ export class ProjectileManager {
       }
     } else {
       config.angle = { min: 0, max: 360 }
+    }
+    if (lifespan) {
+      config.lifespan = lifespan
     }
     this.scene.projectileSparkEmitter.setConfig(config)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)
@@ -764,6 +769,8 @@ export class ProjectileManager {
       )
     })
   }
+
+
 
   playWeaponFireSound = (
     weapon: WeaponSpec | EnemyWeaponSpec,
@@ -876,68 +883,80 @@ export class ProjectileManager {
     })
   }
 
+  private getActiveWeaponCountForSoundKey(soundKey: string): number {
+    let count = 0
+    for (const weaponIndex in this.activeRepeatingWeaponsByIndex) {
+      if (this.activeRepeatingWeaponsByIndex[weaponIndex] === soundKey) {
+        count++
+      }
+    }
+    return count
+  }
+
   handleRepeatingFireSound(weaponIndex: number, isActive: boolean) {
     const weapon = this.scene.player.weapons[weaponIndex]
     const soundKey = weapon.fireSound
     const baseVolume = weapon.fireSoundVol || 1
 
+    // 1) Update our activeRepeatingWeaponsByIndex tracking
     if (isActive) {
-      // If there's a fade-out tween in progress, stop it
-      if (this.fadeOutTweens[soundKey]) {
-        this.fadeOutTweens[soundKey].stop()
-        delete this.fadeOutTweens[soundKey]
-        // Reset the volume to baseVolume in case it was altered during fade-out
-        if (this.repeatingFireSounds[soundKey]) {
-          ;(
-            this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
-          ).setVolume(baseVolume)
-        }
-      }
-
-      if (!this.repeatingFireSounds[soundKey]) {
-        this.repeatingFireSounds[soundKey] = this.scene.sound.add(soundKey)
-        this.weaponsFiringCount[soundKey] = 1
-        this.repeatingFireSounds[soundKey].play({
-          loop: true,
-          volume: baseVolume,
-        })
-      } else {
-        this.weaponsFiringCount[soundKey]++
-        const additionalWeapons = this.weaponsFiringCount[soundKey] - 1
-        const additionalVolume = baseVolume * 0.5 * additionalWeapons
-        const newVolume = baseVolume + additionalVolume
-        ;(
-          this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
-        ).setVolume(newVolume)
-      }
+      this.activeRepeatingWeaponsByIndex[weaponIndex] = soundKey
     } else {
-      if (this.repeatingFireSounds[soundKey]) {
-        this.weaponsFiringCount[soundKey]--
-        if (this.weaponsFiringCount[soundKey] <= 0) {
-          // Start fading out the sound
-          const soundInstance = this.repeatingFireSounds[soundKey]
-          this.fadeOutTweens[soundKey] = this.scene.tweens.add({
-            targets: soundInstance,
-            volume: 0,
-            duration: 200, // Adjust the duration as needed
-            ease: 'Linear',
-            onComplete: () => {
-              soundInstance.stop()
-              soundInstance.destroy()
-              delete this.repeatingFireSounds[soundKey]
-              delete this.fadeOutTweens[soundKey]
-              this.weaponsFiringCount[soundKey] = 0
-            },
-          })
-        } else {
-          const additionalWeapons = this.weaponsFiringCount[soundKey] - 1
-          const additionalVolume = baseVolume * 0.5 * additionalWeapons
-          const newVolume = baseVolume + additionalVolume
-          ;(
-            this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
-          ).setVolume(newVolume)
-        }
+      // If the weapon is set to the same soundKey, clear it
+      if (this.activeRepeatingWeaponsByIndex[weaponIndex] === soundKey) {
+        this.activeRepeatingWeaponsByIndex[weaponIndex] = null
       }
+    }
+
+    // 2) Now see how many total weapons are using this soundKey
+    const count = this.getActiveWeaponCountForSoundKey(soundKey)
+
+    if (count <= 0) {
+      // If no weapons are using this sound, fade out or stop if it’s playing
+      if (this.repeatingFireSounds[soundKey]) {
+        const soundInstance = this.repeatingFireSounds[soundKey]
+        // Start fading out
+        this.repeatingFireFadeoutSounds[soundKey] = this.scene.tweens.add({
+          targets: soundInstance,
+          volume: 0,
+          duration: 200,
+          ease: 'Linear',
+          onComplete: () => {
+            soundInstance.stop()
+            soundInstance.destroy()
+            delete this.repeatingFireSounds[soundKey]
+            delete this.repeatingFireFadeoutSounds[soundKey]
+          },
+        })
+      }
+      return
+    }
+
+    // If at least one weapon is active...
+    // cancel fade out (if any)
+    if (this.repeatingFireFadeoutSounds[soundKey]) {
+      this.repeatingFireFadeoutSounds[soundKey].stop()
+      delete this.repeatingFireFadeoutSounds[soundKey]
+      // restore volume if we had a fade-out happening
+      if (this.repeatingFireSounds[soundKey]) {
+        (this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound)
+          .setVolume(baseVolume)
+      }
+    }
+
+    if (!this.repeatingFireSounds[soundKey]) {
+      // No existing loop: create one
+      this.repeatingFireSounds[soundKey] = this.scene.sound.add(soundKey)
+      this.repeatingFireSounds[soundKey].play({
+        loop: true,
+        volume: baseVolume,
+      })
+    } else {
+      const additionalWeapons: number = count - 1
+      // each additional weapon adds 30% of the base volume
+      const addedVolume = baseVolume * 0.3 * additionalWeapons
+      const newVolume: number = baseVolume + addedVolume as number
+      (this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound).setVolume(newVolume)
     }
   }
 }

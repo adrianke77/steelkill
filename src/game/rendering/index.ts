@@ -30,9 +30,9 @@ export function loadRenderingAssets(scene: Game) {
 }
 
 export const baseProjectileSparkConfig = {
-  lifespan: 100,
-  speed: { min: 0, max: 1000 },
-  scale: { start: 5, end: 0 },
+  lifespan: 150,
+  speed: { min: 0, max: 300 },
+  scale: { start: 4, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
@@ -153,7 +153,6 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
     addCombinedDecal(scene)
   }
   const currentTexture = scene.combinedDecals.slice(-1)[0].texture
-  image.setAlpha(1)
   image.setBlendMode(Phaser.BlendModes.NORMAL)
   currentTexture.draw(image, image.x, image.y)
   image.destroy()
@@ -170,7 +169,6 @@ function addCombinedDecal(scene: Game) {
   scene.viewMgr.mainLayer.add(combinedTexture)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
-  combinedDecalsImage.alpha = 0.7
   combinedDecalsImage.setPipeline('Light2D')
   scene.decalCount = 0
   scene.combinedDecals.push({
@@ -341,19 +339,9 @@ export function createBloodSplat(
   bloodSplat.displayWidth = splatSize
   bloodSplat.setTint(bloodColor)
   bloodSplat.setPipeline('Light2D')
-  bloodSplat.setAlpha(0) // Start from alpha 0
+  bloodSplat.setAlpha(1)
+  drawDecal(scene, bloodSplat)
 
-  // Fade in the decal from alpha 0 to 0.9 over 1 second
-  scene.tweens.add({
-    targets: bloodSplat,
-    alpha: 0.9,
-    duration: 1000, // Duration in milliseconds
-    ease: 'easeOut',
-    onComplete: () => {
-      // After the fade-in, draw the decal
-      drawDecal(scene, bloodSplat)
-    },
-  })
 }
 export function destroyEnemyAndCreateCorpseDecals(
   scene: Game,
@@ -373,13 +361,13 @@ export function destroyEnemyAndCreateCorpseDecals(
     enemy.x,
     enemy.y,
     enemyData.bloodColor,
-    enemyData.corpseSize,
+    enemyData.corpseSize * 1.5,
   )
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   deadEnemy.displayHeight = enemyData.corpseSize
   deadEnemy.displayWidth = enemyData.corpseSize
-  deadEnemy.alpha = 1
+  deadEnemy.alpha = 0.5
   deadEnemy.setTint(enemyData.color)
   deadEnemy.setPipeline('Light2D')
   drawDecal(scene, deadEnemy)
@@ -512,13 +500,13 @@ export function renderExplosion(
   if (optionals && optionals.color) {
     explosion.setTint(optionals.color)
   }
-  explosion.setAlpha(Phaser.Math.FloatBetween(0.1, 0.4))
+  explosion.setAlpha(Phaser.Math.FloatBetween(0.3, 0.6))
   explosion.play('explosion')
   const scorch = scene.addImage(x, y, 'scorch1')
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.9)
+  scorch.setAlpha(0.5)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )
@@ -533,7 +521,7 @@ export function renderExplosion(
     damage / 60,
     diameter * 3,
   )
-  createDustCloud(scene, x, y, 0, 0, 0.5, 2000, diameter * 1.4)
+  createDustCloud(scene, x, y, 0, 0, 0.5, 4000, diameter * 1.4)
 
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(

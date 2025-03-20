@@ -27,10 +27,6 @@ export const loadEnemyAssets = (scene: Game) => {
     frameWidth: 202,
     frameHeight: 247,
   })
-  scene.load.spritesheet('head', 'head.png', {
-    frameWidth: 202,
-    frameHeight: 247,
-  })
   for (const enemyName of Object.keys(ct.enemyData)) {
     const enemyData = ct.enemyData[enemyName]
     if (enemyData.randomSound) {

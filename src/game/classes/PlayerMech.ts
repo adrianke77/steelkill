@@ -405,21 +405,26 @@ export class PlayerMech {
         this.mechContainer.y,
       )
       // white hit spark
+      const hitX = (this.mechContainer.x + enemy.x) / 2
+      const hitY = (this.mechContainer.y + enemy.y) / 2
       this.scene.projectileMgr.hitSpark(
-        (this.mechContainer.x + enemy.x) / 2,
-        (this.mechContainer.y + enemy.y) / 2,
+        hitX,
+        hitY,
         0xffffff,
         directionRadians,
-        10,
+        100,
+        undefined,
+        1000,
       )
+      createLightFlash(this.scene, hitX, hitY, 0xffaaaa, 100, 4, 150)
       if (this.health <= ct.mechStartingHealth * 0.6) {
         // additional 'fire' spark
         this.scene.projectileMgr.hitSpark(
-          (this.mechContainer.x + enemy.x) / 2,
-          (this.mechContainer.y + enemy.y) / 2,
+          hitX,
+          hitY,
           0xfa7202,
           directionRadians,
-          20,
+          10,
         )
       }
     }

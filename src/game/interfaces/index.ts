@@ -38,6 +38,7 @@ export interface WeaponSpec {
   trail?: boolean
   trailDuration?: number
   trailTint?: number
+  // firesounds must be unique for repeating sound weapons
   fireSound: string
   fireSoundVol: number
   repeatingContinuousFireSound?: boolean

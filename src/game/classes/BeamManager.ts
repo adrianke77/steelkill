@@ -8,6 +8,7 @@ import {
 } from '../rendering'
 import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
+import { blendColors } from '../utils'
 
 const baseEmitterConfig = {
   scale: { start: 3.5, end: 0 },
@@ -122,6 +123,8 @@ export class BeamManager {
       beam.startX = startX
       beam.startY = startY
 
+      let beamFades = true
+
       // Perform collision detection every frame
       if (weapon.arcTargeting) {
         this.handleArcTargeting(beam, weapon, startX, startY)
@@ -139,6 +142,7 @@ export class BeamManager {
 
         // Handle beam hits
         if (hitObject) {
+          beamFades = false
           if ('enemyData' in hitObject) {
             this.beamHitEnemy(hitObject, weapon, startX, startY)
           } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
@@ -155,7 +159,7 @@ export class BeamManager {
       }
 
       // Redraw the beam every frame
-      this.resetAndDrawBeam(beam, weapon, startX, startY)
+      this.resetAndDrawBeam(beam, weapon, startX, startY, beamFades)
 
       this.consumeAmmo(weaponIndex)
     }
@@ -169,8 +173,6 @@ export class BeamManager {
     beamEndX: number,
     beamEndY: number,
   ): void {
-    const tileX = tile.getCenterX()
-    const tileY = tile.getCenterY()
     const damage = weapon.terrainDamageMultiplier
       ? weapon.damage * weapon.terrainDamageMultiplier
       : weapon.damage
@@ -180,9 +182,9 @@ export class BeamManager {
       beamEndY,
       0,
       0,
-      0.8,
-      1500,
-      Math.min(weapon.damage * 20, 100),
+      1,
+      4000,
+      Math.min(weapon.damage * 40, 100),
       this.scene.terrainMgr.getTileData(tile).color,
     )
 
@@ -191,11 +193,11 @@ export class BeamManager {
       this.scene.terrainMgr.destroyTile(tile)
     }
 
-    this.beamHitSpark(beamStartX, beamStartY, tileX, tileY, weapon)
+    this.beamHitSpark(beamStartX, beamStartY, beamEndX, beamEndY, weapon)
     createLightFlash(
       this.scene,
-      tileX,
-      tileY,
+      beamEndX,
+      beamEndY,
       weapon.beamColor!,
       100,
       weapon.beamHitLightIntensity!,
@@ -419,9 +421,10 @@ export class BeamManager {
     weapon: WeaponSpec,
     startX: number,
     startY: number,
+    beamFades: boolean,
   ): void {
     beam.graphics.clear()
-    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam)
+    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam, beamFades)
   }
 
   private handleArcTargeting(
@@ -481,9 +484,10 @@ export class BeamManager {
       }
     }
 
-    let beamFades = false
+    let beamFades = true
 
     if (targetEnemy) {
+      beamFades = false
       // Set beam endpoint to the targeted enemy
       beam.endX = targetEnemy.x
       beam.endY = targetEnemy.y
@@ -504,6 +508,7 @@ export class BeamManager {
       beam.endY = beamEndY
 
       if (hitObject) {
+        beamFades = false
         if ('enemyData' in hitObject) {
           this.beamHitEnemy(hitObject, weapon, startX, startY)
         } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
@@ -517,8 +522,6 @@ export class BeamManager {
             beamEndY,
           )
         }
-      } else {
-        beamFades = true
       }
     }
 
@@ -566,10 +569,12 @@ export class BeamManager {
     beam?: ActiveBeam,
     beamFades?: boolean,
   ): void {
+    console.log(beamFades)
+
     const isBeamFragment = !beam
 
     const length = Phaser.Math.Distance.Between(startX, startY, endX, endY)
-    const segments = weapon.lightningSegments ? weapon.lightningSegments : 15
+    const segments = weapon.lightningSegments ? weapon.lightningSegments : 10
     const segmentCount = Math.ceil((length / weapon.maxRange!) * segments)
 
     const points = this.generateBeamPoints(
@@ -586,29 +591,19 @@ export class BeamManager {
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth!,
-        alpha: 0.1,
+        alpha: 0.2,
       },
       {
         color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.8 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.1,
-      },
-      {
-        color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.6 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.1,
-      },
-      {
-        color: weapon.beamGlowColor!,
-        width: weapon.beamGlowWidth! * 0.4 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.1,
+        width: weapon.beamGlowWidth! * 0.5 * Phaser.Math.Between(0.5, 1.5),
+        alpha: 0.2,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.2 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.1,
+        alpha: 0.2,
       },
-      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7},
+      { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7 },
     ]
 
     this.drawGlowLayers(points, glowLayers, weapon.fireDelay, beamFades)
@@ -634,40 +629,45 @@ export class BeamManager {
     displacement: number,
   ): Phaser.Math.Vector2[] {
     const segmentsBetweenAlignedPoints = weapon.renderAsLightning ? 3 : 1
-    const points: Phaser.Math.Vector2[] = [new Phaser.Math.Vector2(startX, startY)]
+    const points: Phaser.Math.Vector2[] = [
+      new Phaser.Math.Vector2(startX, startY),
+    ]
     const deltaX = (endX - startX) / segmentCount
     const deltaY = (endY - startY) / segmentCount
     // Decide which segment index is 10% from the end
     const lastSegmentIndex = Math.floor(segmentCount * 0.9)
-  
+
     for (let i = 1; i < segmentCount; i++) {
       const prevPoint = points[i - 1]
       if (i < lastSegmentIndex) {
         // Normal random offset calculation
-        const randomX = i % segmentsBetweenAlignedPoints === 0
-          ? 0
-          : Phaser.Math.FloatBetween(-displacement, displacement)
-        const randomY = i % segmentsBetweenAlignedPoints === 0
-          ? 0
-          : Phaser.Math.FloatBetween(-displacement, displacement)
+        const randomX =
+          i % segmentsBetweenAlignedPoints === 0
+            ? 0
+            : Phaser.Math.FloatBetween(-displacement, displacement)
+        const randomY =
+          i % segmentsBetweenAlignedPoints === 0
+            ? 0
+            : Phaser.Math.FloatBetween(-displacement, displacement)
         points.push(
           new Phaser.Math.Vector2(
             prevPoint.x + deltaX + randomX,
-            prevPoint.y + deltaY + randomY
-          )
+            prevPoint.y + deltaY + randomY,
+          ),
         )
       } else {
         // Smoothly interpolate from the last offset point to the end, with no added displacement
-        const fraction = (i - lastSegmentIndex + 1) / (segmentCount - lastSegmentIndex)
+        const fraction =
+          (i - lastSegmentIndex + 1) / (segmentCount - lastSegmentIndex)
         points.push(
           new Phaser.Math.Vector2(
             Phaser.Math.Linear(prevPoint.x, endX, fraction),
-            Phaser.Math.Linear(prevPoint.y, endY, fraction)
-          )
+            Phaser.Math.Linear(prevPoint.y, endY, fraction),
+          ),
         )
       }
     }
-  
+
     points.push(new Phaser.Math.Vector2(endX, endY))
     return points
   }
@@ -679,16 +679,16 @@ export class BeamManager {
     beamFades: boolean = true,
   ): void {
     const fadeStartIndex = beamFades
-      ? Math.floor(points.length * (3 / 5))
+      ? Math.floor(points.length * 0.3)
       : Infinity
-          
+
     for (const layer of glowLayers) {
       // Use a graphics object that is NOT on the Light2D pipeline
       const graphics = this.scene.addGraphicsEffect()
       // For instance, set the TextureTint pipeline or the default pipeline
       graphics.setPipeline('TextureTintPipeline')
       graphics.setDepth(ct.depths.projectile)
-  
+
       for (let i = 0; i < points.length - 1; i++) {
         let segmentAlpha = layer.alpha
         if (i >= fadeStartIndex) {
@@ -696,17 +696,18 @@ export class BeamManager {
             (i - fadeStartIndex) / (points.length - 1 - fadeStartIndex)
           segmentAlpha = layer.alpha * (1 - fadeProgress)
         }
-  
+
         graphics.lineStyle(layer.width, layer.color, segmentAlpha)
         graphics.beginPath()
         graphics.moveTo(points[i].x, points[i].y)
         graphics.lineTo(points[i + 1].x, points[i + 1].y)
         graphics.strokePath()
       }
-  
+
       this.scene.time.delayedCall(fireDelay, () => graphics.destroy())
     }
   }
+
   private updateParticlesAndLights(
     weapon: WeaponSpec,
     beam: ActiveBeam | undefined,
@@ -973,20 +974,49 @@ export class BeamManager {
     endY: number,
     weapon: WeaponSpec,
   ): void {
-    // calculate spark direction using beam start to make it align to the overall beam
+    // Existing spark effect (unchanged)
     const directionRadians = Phaser.Math.Angle.Between(
-      startX,
-      startY,
       endX,
       endY,
+      startX,
+      startY,
     )
     this.scene.projectileMgr.hitSpark(
       endX,
       endY,
-      weapon.beamColor!,
+      blendColors(weapon.beamColor!, 0xffffff, 0.8),
       directionRadians,
-      5,
+      10,
+      undefined,
+      300,
     )
+
+    // Adjust circles by up to +/- 20%
+    const variation = 0.75
+    const randomFactor = 1 + Phaser.Math.FloatBetween(-variation, variation)
+
+    // Circles from center outward
+    const circleRatios = [1.0, 0.65, 0.4, 0.2]
+    const baseRadius = 12
+
+    // For each circle, use a separate Graphics instance so overlapping visually stacks
+    for (let i = 0; i < circleRatios.length; i++) {
+      const ratio = circleRatios[i]
+      const radius = baseRadius * ratio * randomFactor
+
+      // Create a short-lived Graphics object for this circle
+      const singleCircleGraphics = this.scene.addGraphicsEffect()
+      singleCircleGraphics.setDepth(ct.depths.projectileSpark)
+
+      // Draw a filled circle (white) at alpha = 0.1
+      singleCircleGraphics.fillStyle(weapon.beamColor!, 0.1)
+      singleCircleGraphics.fillCircle(endX, endY, radius)
+
+      // Destroy after a brief delay
+      this.scene.time.delayedCall(80, () => {
+        singleCircleGraphics.destroy()
+      })
+    }
   }
 
   stopAllBeams(): void {

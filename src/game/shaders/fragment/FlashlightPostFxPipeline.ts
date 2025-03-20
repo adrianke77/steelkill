@@ -5,7 +5,8 @@ import Phaser from 'phaser'
  * gradually reducing its brightening effect as the pixel's luminance approaches
  * the threshold, until there is no additional brightening at or above the threshold.
  */
-export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
+export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
+  .PostFXPipeline {
   constructor(game: Phaser.Game) {
     super({
       name: 'FlashlightPostFxPipeline',
@@ -22,7 +23,7 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
       uniform vec2 coneDirection;
 
       // Hardcoded brightness threshold
-      float BRIGHTNESS_THRESHOLD = 0.3;
+      float BRIGHTNESS_THRESHOLD = 0.5;
 
       varying vec2 outTexCoord;
 
@@ -73,33 +74,33 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines.Po
 
         // Compute the final brightness factor 
         // No brightening at or above thresholdFactor=0
-        float brightness = 1.0 + intensity * fadeFactor * 4.0 * thresholdFactor;
+        float brightness = 1.0 + intensity * fadeFactor * 7.0 * thresholdFactor;
 
         vec3 finalColor = baseColor.rgb * brightness;
         gl_FragColor = vec4(finalColor, baseColor.a);
       }
-      `
-    });
+      `,
+    })
   }
 
   onPreRender() {
     // Update resolution every frame
-    this.set2f('resolution', this.renderer.width, this.renderer.height);
+    this.set2f('resolution', this.renderer.width, this.renderer.height)
   }
 
   setLightPosition(x: number, y: number) {
-    this.set2f('lightPosition', x, y);
+    this.set2f('lightPosition', x, y)
   }
 
   setRadius(r: number) {
-    this.set1f('radius', r);
+    this.set1f('radius', r)
   }
 
   setConeAngle(angle: number) {
-    this.set1f('coneAngle', angle);
+    this.set1f('coneAngle', angle)
   }
 
   setConeDirection(dx: number, dy: number) {
-    this.set2f('coneDirection', dx, dy);
+    this.set2f('coneDirection', dx, dy)
   }
 }

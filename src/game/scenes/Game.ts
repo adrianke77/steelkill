@@ -322,12 +322,11 @@ export class Game extends Scene {
             weapon,
           )
           if (weapon.repeatingContinuousFireSound && !weaponReloading) {
+            // update weapon repeating firing sound states
             if (isActive !== wasActive) {
               if (!isActive) {
-                // If the player released the fire button, stop the sound regardless of reloading
                 this.projectileMgr.handleRepeatingFireSound(weaponIndex, false)
               } else if (!weaponReloading) {
-                // If the player pressed the fire button and the weapon is not reloading, start the sound
                 this.projectileMgr.handleRepeatingFireSound(weaponIndex, true)
               }
             }
@@ -356,7 +355,6 @@ export class Game extends Scene {
 
     this.minimapMgr.drawMinimap()
 
-    // this.terrainMgr.checkToUpdateTerrainOutlines(time)
   }
 
   addImage(

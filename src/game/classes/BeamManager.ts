@@ -991,7 +991,6 @@ export class BeamManager {
       300,
     )
 
-    // Adjust circles by up to +/- 20%
     const variation = 0.75
     const randomFactor = 1 + Phaser.Math.FloatBetween(-variation, variation)
 
@@ -1008,7 +1007,6 @@ export class BeamManager {
       const singleCircleGraphics = this.scene.addGraphicsEffect()
       singleCircleGraphics.setDepth(ct.depths.projectileSpark)
 
-      // Draw a filled circle (white) at alpha = 0.1
       singleCircleGraphics.fillStyle(weapon.beamColor!, 0.1)
       singleCircleGraphics.fillCircle(endX, endY, radius)
 

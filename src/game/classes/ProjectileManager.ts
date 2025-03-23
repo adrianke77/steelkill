@@ -365,10 +365,10 @@ export class ProjectileManager {
         ? damage * projectile.weapon.terrainDamageMultiplier
         : damage
       const directionRadians = Phaser.Math.Angle.Between(
-        tileX,
-        tileY,
         projectile.x,
         projectile.y,
+        tileX,
+        tileY,
       )
       this.projectileSpark(
         (projectile.x + tileX) / 2,
@@ -694,15 +694,14 @@ export class ProjectileManager {
     } else {
       config.angle = { min: 0, max: 360 }
     }
-    if (lifespan) {
-      config.lifespan = lifespan
-    }
+    console.log(particles)
+    config.lifespan = lifespan || 150 
     this.scene.projectileSparkEmitter.setConfig(config)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)
     this.scene.projectileSparkEmitter.emitParticleAt(
       x,
       y,
-      particles ? 5 : particles,
+      particles || 5 ,
     )
     if (projectile && projectile?.hasTracer) {
       const weapon = projectile.weapon

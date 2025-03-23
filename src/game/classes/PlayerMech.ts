@@ -410,21 +410,23 @@ export class PlayerMech {
       this.scene.projectileMgr.hitSpark(
         hitX,
         hitY,
-        0xffffff,
+        0xfa7202,
         directionRadians,
         100,
         undefined,
-        1000,
+        500,
       )
-      createLightFlash(this.scene, hitX, hitY, 0xffaaaa, 100, 4, 150)
+      createLightFlash(this.scene, hitX, hitY, 0xffaaaa, 100, 4, 300)
       if (this.health <= ct.mechStartingHealth * 0.6) {
         // additional 'fire' spark
         this.scene.projectileMgr.hitSpark(
           hitX,
           hitY,
-          0xfa7202,
+          0xff0000,
           directionRadians,
-          10,
+          50,
+          undefined,
+          500,
         )
       }
     }

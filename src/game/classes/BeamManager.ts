@@ -569,7 +569,6 @@ export class BeamManager {
     beam?: ActiveBeam,
     beamFades?: boolean,
   ): void {
-    console.log(beamFades)
 
     const isBeamFragment = !beam
 
@@ -995,7 +994,7 @@ export class BeamManager {
     const randomFactor = 1 + Phaser.Math.FloatBetween(-variation, variation)
 
     // Circles from center outward
-    const circleRatios = [1.0, 0.65, 0.4, 0.2]
+    const circleRatios = [1.0, 0.6, 0.3]
     const baseRadius = 12
 
     // For each circle, use a separate Graphics instance so overlapping visually stacks
@@ -1003,14 +1002,13 @@ export class BeamManager {
       const ratio = circleRatios[i]
       const radius = baseRadius * ratio * randomFactor
 
-      // Create a short-lived Graphics object for this circle
       const singleCircleGraphics = this.scene.addGraphicsEffect()
       singleCircleGraphics.setDepth(ct.depths.projectileSpark)
 
       singleCircleGraphics.fillStyle(weapon.beamColor!, 0.1)
       singleCircleGraphics.fillCircle(endX, endY, radius)
+      singleCircleGraphics.setAlpha(0.3)
 
-      // Destroy after a brief delay
       this.scene.time.delayedCall(80, () => {
         singleCircleGraphics.destroy()
       })

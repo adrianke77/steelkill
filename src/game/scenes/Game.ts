@@ -14,6 +14,7 @@ import { InputManager } from '../classes/InputManager'
 import { ViewManager } from '../classes/ViewManager'
 import { MinimapManager } from '../classes/MinimapManager'
 import { BeamManager } from '../classes/BeamManager'
+import { MapManager } from '../classes/MapManager'
 import { WeaponSpec, EnemySprite, Projectile } from '../interfaces'
 import { TerrainManager, loadTerrainAssets } from '../classes/TerrainManager' // Import TerrainManager
 
@@ -21,11 +22,12 @@ export class Game extends Scene {
   terrainMgr: TerrainManager // Add TerrainManager property
   viewMgr: ViewManager
   player: PlayerMech
-  projectileMgr: ProjectileManager
   enemyMgr: EnemyManager
   inputMgr: InputManager
   minimapMgr: MinimapManager
+  mapMgr: MapManager
   beamMgr: BeamManager
+  projectileMgr: ProjectileManager
 
   lastWeaponFireTime: [number, number, number, number]
   magCount: [number, number, number, number]
@@ -56,9 +58,10 @@ export class Game extends Scene {
     this.sound.stopAll()
     this.scene.start('MainMenu')
   }
+  
   preload() {
-    this.sound.volume = 0.4
     this.load.setPath('assets')
+    this.sound.volume = 0.4
 
     // Load music files
     music.forEach(musicTuplet => {
@@ -85,7 +88,7 @@ export class Game extends Scene {
       false,
     )
   }
-  create() {
+  async create() {
     document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto"
 
     this.physics.world.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
@@ -94,6 +97,8 @@ export class Game extends Scene {
       runChildUpdate: false,
     })
     this.combinedDecals = []
+
+    this.playRandomCombatMusic()
 
     this.viewMgr = new ViewManager(this)
 
@@ -105,13 +110,14 @@ export class Game extends Scene {
     this.beamMgr = new BeamManager(this)
     this.inputMgr = new InputManager(this)
     this.minimapMgr = new MinimapManager(this)
+    this.mapMgr = new MapManager(this)
 
-    this.playRandomCombatMusic()
 
     this.viewMgr.startCamFollowingPlayerMech()
 
-    // Instantiate the TerrainManager
     this.terrainMgr = new TerrainManager(this)
+
+    // this.terrainMgr.createTerrain()
 
     this.inputMgr.initializeInputs()
 
@@ -191,20 +197,10 @@ export class Game extends Scene {
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
 
+    await this.mapMgr.loadMap('maps/ruralVillage1')
+
     EventBus.emit('current-scene-ready', this)
-    // const graphics = this.add.graphics()
-    // graphics.fillStyle(0xffffff, 1)
-    // graphics.fillCircle(0, 0, 1)
-    // graphics.generateTexture('testParticle', 1, 1)
-    // graphics.destroy()
-    // this.addParticlesEffect(400, 300, 'testParticle', {
-    //   speed: { min: -100, max: 100 },
-    //   lifespan: 5000,
-    //   quantity: 10,
-    //   scale: { start: 50, end: 0 },
-    //   blendMode: 'ADD',
-    //   tint: 16711731
-    // })
+
   }
 
   update(time: number) {
@@ -267,13 +263,12 @@ export class Game extends Scene {
         let spawnX: number | undefined
         const spawnY = 100 // Enemies a small space away from top border
 
-        // Attempt to find a spawn position along the top edge away from terrain
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           const x = Phaser.Math.Between(0, ct.fieldWidth)
           const tileX = Math.floor(x / ct.tileSize)
           const tileY = Math.floor(spawnY / ct.tileSize)
 
-          // Check if the position is at least 3 tiles away from any terrain
+          // // Check if the position is at least 3 tiles away from any terrain
           if (
             !this.terrainMgr.isTerrainNear(
               tileX,
@@ -548,13 +543,13 @@ export class Game extends Scene {
   ): boolean | null {
     if (this.magCount[weaponIndex] < ammoReduction) {
       if (this.remainingAmmo[weaponIndex] > 0) {
-        return false // Need to reload
+        return false
       } else {
         EventBus.emit(
           'reload-status',
           this.lastReloadStart.map(startTime => startTime !== 0),
         )
-        return null // No ammo left
+        return null
       }
     }
     return true

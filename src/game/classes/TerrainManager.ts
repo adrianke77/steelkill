@@ -62,36 +62,32 @@ export class TerrainManager {
   outlineGraphics: Phaser.GameObjects.Graphics
   outlineUpdateTimer: number = 0
   outlineSegments = new Map<string, Phaser.GameObjects.Graphics>()
+  tilesetColumns: number
+  tilesetRows: number
 
   constructor(scene: Game) {
     this.scene = scene
 
-    // Create the terrain when the manager is instantiated
-    this.createTerrain()
-    this.setupColliders()
-    this.debrisSprayEmitter = this.scene.addParticles(
-      0,
-      0,
-      'whiteParticle',
-      debrisSprayEmitterConfig,
-    )
-  }
+    // Create the tilemap
+    this.map = this.scene.make.tilemap({
+      width: ct.fieldWidth / ct.tileSize,
+      height: ct.fieldHeight / ct.tileSize,
+      tileWidth: ct.tileSize,
+      tileHeight: ct.tileSize,
+    }) as Phaser.Tilemaps.Tilemap
 
-  getTileData(tile: TerrainTile) {
-    return tileProperties[tile.type as keyof typeof tileProperties]
-  }
+    // create tileset and terrain layer
 
-  createTerrain() {
     // Remove the old tileset if it exists
     if (this.scene.textures.exists('generated-tileset')) {
       this.scene.textures.remove('generated-tileset')
     }
 
-    const tilesetColumns = 16 // There are 16 unique tile configurations
-    const tilesetRows = NUM_VARIANTS // Number of variants
+    this.tilesetColumns = 16 // There are 16 unique tile configurations
+    this.tilesetRows = NUM_VARIANTS // Number of variants
     const tileSize = ct.tileSize
-    const tilesetWidth = tilesetColumns * tileSize
-    const tilesetHeight = tilesetRows * tileSize
+    const tilesetWidth = this.tilesetColumns * tileSize
+    const tilesetHeight = this.tilesetRows * tileSize
 
     // Create a canvas texture for the tileset
     const tilesetCanvas = this.scene.textures.createCanvas(
@@ -128,14 +124,6 @@ export class TerrainManager {
     // Refresh the canvas texture to update it
     tilesetCanvas.refresh()
 
-    // Create the tilemap
-    this.map = this.scene.make.tilemap({
-      width: ct.fieldWidth / ct.tileSize,
-      height: ct.fieldHeight / ct.tileSize,
-      tileWidth: ct.tileSize,
-      tileHeight: ct.tileSize,
-    }) as Phaser.Tilemaps.Tilemap
-
     const tileset = this.map.addTilesetImage(
       'generated-tileset',
     ) as Phaser.Tilemaps.Tileset
@@ -143,16 +131,30 @@ export class TerrainManager {
     this.terrainLayer = this.map.createBlankLayer('Terrain', tileset)!
 
     this.terrainLayer.setDepth(ct.depths.terrain)
+  }
 
+  getTileData(tile: TerrainTile) {
+    return tileProperties[tile.type as keyof typeof tileProperties]
+  }
+
+  createTerrain() {
     this.populateTerrain()
 
     this.scene.viewMgr.mainLayer.add(this.terrainLayer)
 
-    this.terrainLayer.setCollisionBetween(0, tilesetColumns * tilesetRows - 1)
+    this.terrainLayer.setCollisionBetween(0, this.tilesetColumns * this.tilesetRows - 1)
     this.terrainLayer.setPipeline('Light2D')
     this.terrainLayer.setAlpha(0.7)
 
     // this.displayTilesetForDebug()
+
+    this.setupColliders()
+    this.debrisSprayEmitter = this.scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      debrisSprayEmitterConfig,
+    )
   }
 
   clearTileOutlines(x: number, y: number): void {

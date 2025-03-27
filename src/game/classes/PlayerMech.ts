@@ -127,7 +127,6 @@ export class PlayerMech {
       'mechstep',
     ) as Phaser.Sound.WebAudioSound
     this.mechStepSound.setVolume(ct.mechStepSoundVol)
-
   }
 
   updatePlayerMotion(time: number): void {
@@ -268,8 +267,8 @@ export class PlayerMech {
       this.playerSkidding = false
     }
 
-    if (this.playerSkidding) {
-      addCloudAtPlayermech(this.scene, 0.1)
+    if (this.playerSkidding && velocMag > ct.maxBoostVel * 0.9) {
+      addCloudAtPlayermech(this.scene, 0.05)
     }
 
     const timeSinceLastMechStep = time - this.lastMechStepTime
@@ -278,7 +277,7 @@ export class PlayerMech {
 
     if (!isBoosting && velocMag > 0) {
       if (timeSinceLastMechStep > adjustedMechStepPeriod) {
-        addCloudAtPlayermech(this.scene, 0.5)
+        addCloudAtPlayermech(this.scene, 0.8)
         this.playMechstepSound()
         this.lastMechStepTime = time
       }

@@ -128,7 +128,7 @@ export class ViewManager {
       this.flashlightPipeline = this.mainCam.getPostPipeline(
         'FlashlightPostFxPipeline',
       ) as FlashlightPostFxPipeline
-      this.flashlightPipeline.setRadius(800)
+      this.flashlightPipeline.setRadius(1000)
       this.flashlightPipeline.setConeAngle(Math.PI / 2)
     })  
   }
@@ -163,7 +163,6 @@ export class ViewManager {
       !this.flashlightPipeline.renderer ||
       typeof this.flashlightPipeline.setLightPosition !== 'function'
     ) {
-      console.log('fired guard, not updating flashlight cone')
       return
     }
 

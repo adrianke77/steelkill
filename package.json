@@ -28,15 +28,16 @@
     "prettify": "prettier --write ."
   },
   "dependencies": {
+    "fast-xml-parser": "^5.0.9",
     "phaser": "3.86",
     "phaser3-rex-plugins": "^1.80.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "xml2js": "^0.6.2"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
     "@typescript-eslint/parser": "^7.1.0",
     "@vitejs/plugin-react": "^4.2.1",

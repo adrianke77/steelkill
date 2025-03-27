@@ -243,17 +243,20 @@ export function createDustCloud(
   duration?: number,
   size?: number,
   tint?: number,
+  skipProximityCheck?: boolean,
 ): void {
-  // Check for nearby dust clouds first
-  const proximityThreshold = 20 // Adjust this value based on desired minimum distance
-  const nearbyCloud = scene.viewMgr.dustClouds.getChildren().some(cloud => {
-    const distance = Phaser.Math.Distance.Between(x, y, cloud.x, cloud.y)
-    return distance < proximityThreshold
-  })
+  if (!skipProximityCheck) {
+    // Check for nearby dust clouds first
+    const proximityThreshold = 20 // Adjust this value based on desired minimum distance
+    const nearbyCloud = scene.viewMgr.dustClouds.getChildren().some(cloud => {
+      const distance = Phaser.Math.Distance.Between(x, y, cloud.x, cloud.y)
+      return distance < proximityThreshold
+    })
 
-  // Skip creation if nearby cloud found
-  if (nearbyCloud) {
-    return
+    // Skip creation if nearby cloud found
+    if (nearbyCloud) {
+      return
+    }
   }
 
   const dustCloud = scene.addSprite(x, y, 'dust')
@@ -341,7 +344,6 @@ export function createBloodSplat(
   bloodSplat.setPipeline('Light2D')
   bloodSplat.setAlpha(1)
   drawDecal(scene, bloodSplat)
-
 }
 export function destroyEnemyAndCreateCorpseDecals(
   scene: Game,
@@ -401,7 +403,7 @@ export function enemyDeathSpray(
   scene.enemyDeathSprayEmitter.setParticleTint(
     blendColors(enemyData.bloodColor, 0x000000, 0.6),
   )
-  scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize/2)
+  scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
 
   // If we have a particular direction, emit extra particles more densely weighted around that angle
   if (radDirection !== undefined) {
@@ -420,7 +422,7 @@ export function enemyDeathSpray(
     scene.enemyDeathSprayEmitter.setParticleTint(
       blendColors(enemyData.bloodColor, 0x000000, 0.6),
     )
-    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize/2)
+    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
 
     // Emit additional corpse fragments in a slightly wider range around radDirection
     baseDeathSprayConfig.angle = {
@@ -435,7 +437,7 @@ export function enemyDeathSpray(
     scene.enemyDeathSprayEmitter.setParticleTint(
       blendColors(enemyData.color, 0x000000, 0.2),
     )
-    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize/2)
+    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
   }
 
   // Also fire the secondary emitter for additional fragments/debris in all directions
@@ -444,7 +446,9 @@ export function enemyDeathSpray(
     min: enemyData.corpseSize * 0.1,
     max: enemyData.corpseSize * 0.8,
   }
-  scene.secondaryEnemyDeathSprayEmitter.setConfig(secondaryEnemyDeathSprayConfig)
+  scene.secondaryEnemyDeathSprayEmitter.setConfig(
+    secondaryEnemyDeathSprayConfig,
+  )
   scene.secondaryEnemyDeathSprayEmitter.setParticleTint(
     blendColors(enemyData.color, 0x000000, 0.2),
   )
@@ -521,7 +525,7 @@ export function renderExplosion(
     damage / 60,
     diameter * 3,
   )
-  createDustCloud(scene, x, y, 0, 0, 0.5, 4000, diameter * 1.4)
+  createDustCloud(scene, x, y, 0, 0, 0.5, 4000, diameter * 1.4, undefined, true)
 
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(
@@ -546,7 +550,9 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
     scene.player.mechContainer.body!.velocity.x,
     scene.player.mechContainer.body!.velocity.y,
     opacity,
-    1000,
-    100,
+    2000,
+    200,
+    undefined,
+    true
   )
 }

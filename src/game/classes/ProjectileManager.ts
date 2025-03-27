@@ -694,7 +694,6 @@ export class ProjectileManager {
     } else {
       config.angle = { min: 0, max: 360 }
     }
-    console.log(particles)
     config.lifespan = lifespan || 150 
     this.scene.projectileSparkEmitter.setConfig(config)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)

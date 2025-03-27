@@ -15,8 +15,8 @@ export class MainMenu extends Scene {
   }
 
   preload() {
-    // Load the background image asset
     this.load.setPath('assets')
+
     this.load.image('menubackground', 'mechbackground.jpg')
 
     document.body.style.cursor = 'default'

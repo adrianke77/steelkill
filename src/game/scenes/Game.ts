@@ -29,6 +29,8 @@ export class Game extends Scene {
   beamMgr: BeamManager
   projectileMgr: ProjectileManager
 
+  mapWidth: number
+  mapHeight: number
   lastWeaponFireTime: [number, number, number, number]
   magCount: [number, number, number, number]
   remainingAmmo: [number, number, number, number]
@@ -58,7 +60,7 @@ export class Game extends Scene {
     this.sound.stopAll()
     this.scene.start('MainMenu')
   }
-  
+
   preload() {
     this.load.setPath('assets')
     this.sound.volume = 0.4
@@ -91,7 +93,6 @@ export class Game extends Scene {
   async create() {
     document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto"
 
-    this.physics.world.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
     this.decals = this.add.group({
       classType: Phaser.GameObjects.Image,
       runChildUpdate: false,
@@ -111,9 +112,6 @@ export class Game extends Scene {
     this.inputMgr = new InputManager(this)
     this.minimapMgr = new MinimapManager(this)
     this.mapMgr = new MapManager(this)
-
-
-    this.viewMgr.startCamFollowingPlayerMech()
 
     this.terrainMgr = new TerrainManager(this)
 
@@ -197,10 +195,21 @@ export class Game extends Scene {
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
 
-    await this.mapMgr.loadMap('maps/ruralVillage1')
+    const { width, height, tilewidth, tileheight } =
+      await this.mapMgr.loadMap('maps/ruralVillage1')
+
+    // Calculate total pixel width/height from Tiled’s data
+    // map size in game is half of Tiled's in width and height each
+    this.mapWidth = (width * tilewidth) / 2
+    this.mapHeight = (height * tileheight) / 2
+
+    this.physics.world.setBounds(0, 0, this.mapWidth, this.mapHeight)
+
+    this.viewMgr.setMapSize(this.mapWidth, this.mapHeight)
+    this.minimapMgr.setMapSize(this.mapWidth, this.mapHeight)
+    this.viewMgr.startCamFollowingPlayerMech()
 
     EventBus.emit('current-scene-ready', this)
-
   }
 
   update(time: number) {
@@ -349,7 +358,6 @@ export class Game extends Scene {
     )
 
     this.minimapMgr.drawMinimap()
-
   }
 
   addImage(

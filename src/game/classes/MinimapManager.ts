@@ -5,8 +5,6 @@ import { clipLineToRect } from '../utils'
 
 const MINIMAP_WIDTH = 200 // Width of the minimap in pixels
 const MINIMAP_HEIGHT = 200 // Height of the minimap in pixels
-const GAME_WIDTH = ct.fieldWidth // Actual width of the game field
-const GAME_HEIGHT = ct.fieldHeight // Actual height of the game field
 const MINIMAP_SCALE = 0.05 // smaller value means more of the field is visible in the minimap
 const MINIMAP_X = 30 // X position of the minimap on screen
 const MINIMAP_Y = 40 // Y position of the minimap on screen
@@ -15,6 +13,8 @@ const MINIMAP_BKGRND_ALPHA = 0.4 // Transparency of the minimap background
 export class MinimapManager {
   scene: Game
   minimap: Phaser.GameObjects.Graphics
+  mapWidth: number
+  mapHeight: number
 
   constructor(gameScene: Game) {
     this.scene = gameScene
@@ -24,7 +24,13 @@ export class MinimapManager {
     this.minimap.setDepth(ct.depths.minimap) // Draw on top of everything
     this.scene.viewMgr.minimapLayer.add(this.minimap)
   }
-  drawMinimap() {
+  
+  public setMapSize(width: number, height: number) {
+    this.mapWidth = width
+    this.mapHeight = height
+  }
+
+  public drawMinimap() {
     // Clear previous minimap drawing
     this.minimap.clear()
 
@@ -43,8 +49,8 @@ export class MinimapManager {
     // Calculate the boundary positions relative to the minimap
     const boundaryLeft = (0 - minimapX) * MINIMAP_SCALE
     const boundaryTop = (0 - minimapY) * MINIMAP_SCALE
-    const boundaryRight = (GAME_WIDTH - minimapX) * MINIMAP_SCALE
-    const boundaryBottom = (GAME_HEIGHT - minimapY) * MINIMAP_SCALE
+    const boundaryRight = (this.mapWidth - minimapX) * MINIMAP_SCALE
+    const boundaryBottom = (this.mapHeight - minimapY) * MINIMAP_SCALE
 
     // Set the line style for boundaries
     this.minimap.lineStyle(5, 0x4444ff, 1)

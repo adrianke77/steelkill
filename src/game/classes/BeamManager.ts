@@ -701,6 +701,7 @@ export class BeamManager {
         graphics.moveTo(points[i].x, points[i].y)
         graphics.lineTo(points[i + 1].x, points[i + 1].y)
         graphics.strokePath()
+        graphics.setDepth(ct.depths.projectile)
       }
 
       this.scene.time.delayedCall(fireDelay, () => graphics.destroy())

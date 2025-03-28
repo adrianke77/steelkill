@@ -17,7 +17,7 @@ export type WeaponKey = keyof typeof weaponConstants
 const depths = {
   minimap: 15000,
   enemy: 7000,
-  player: 10900,
+  player: 10000,
   bloodSpray: 7400,
   projectile: 8000,
   explosion: 12000,
@@ -26,15 +26,15 @@ const depths = {
   projectileSpark: 10000,
   terrain: 1,
   dustClouds: 11000,
+  trees: 10500
 }
 
 export const Constants = {
   ambientLightColor: 0x151515,
-  fieldWidth: 2000,
-  fieldHeight: 2000,
   tileSize: 14,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
+  mapScaling: 0.5,
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,
@@ -58,11 +58,11 @@ export const Constants = {
   boostSoundVol: 0.8,
   muzzleFlashColor: 0xf9cf57,
   maxWalkVel: 70,
-  maxBoostVel: 200,
+  maxBoostVel: 500,
   walkAccel: 100,
-  boostAccel: 200,
+  boostAccel: 500,
   boostFadeTime: 400,
-  boostCapacity: 4000,
+  boostCapacity: 20000,
   boostRegeneration: 10,
   boostConsumption: 20,
   deceleration: 70,

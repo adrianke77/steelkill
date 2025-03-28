@@ -70,8 +70,6 @@ export class ViewManager {
 
     this.mainCam = scene.cameras.main
     this.mainCam.setBackgroundColor(0x111111)
-    this.mainCam.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
-    this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
 
     this.mainCam.setPostPipeline(PipelinesWithFlashlight)
 
@@ -80,9 +78,13 @@ export class ViewManager {
     this.miniMapCam.setPostPipeline(PipelinesWithoutFlashlight)
 
     // Create and configure the effects layer/camera
-    this.effectsCam = this.scene.cameras.add(0, 0, ct.gameWidth, ct.gameHeight)
+    this.effectsCam = this.scene.cameras.add(
+      0,
+      0,
+      scene.mapWidth,
+      scene.mapHeight,
+    )
     this.effectsCam.setName('EffectsCam')
-    this.effectsCam.setBounds(0, 0, ct.fieldWidth, ct.fieldHeight)
     this.effectsCam.setFollowOffset(
       this.mainCam.followOffset.x,
       this.mainCam.followOffset.y,
@@ -97,23 +99,17 @@ export class ViewManager {
     this.effectsCam.ignore(this.mainLayer)
     this.effectsCam.ignore(this.minimapLayer)
 
-    const background = scene.add.tileSprite(
-      ct.fieldWidth / 2,
-      ct.fieldHeight / 2,
-      ct.fieldWidth,
-      ct.fieldHeight,
-      'background',
-    )
-    background.setDepth(-1)
-    background.setPipeline('Light2D')
-    this.background = background
-    this.mainLayer.add(background)
     this.infraredIsOn = false
     this.dustClouds = this.scene.add.group()
   }
 
   public startCamFollowingPlayerMech(): void {
-    this.mainCam.startFollow(this.scene.player.mechContainer, false, 0.015, 0.015)
+    this.mainCam.startFollow(
+      this.scene.player.mechContainer,
+      false,
+      0.015,
+      0.015,
+    )
     // Sync the effectsCam follow and offset with the mainCam
     this.effectsCam.startFollow(
       this.scene.player.mechContainer,
@@ -123,6 +119,24 @@ export class ViewManager {
     )
   }
 
+  public setMapSize(width: number, height: number): void {
+    this.mainCam.setBounds(0, 0, width, height)
+    this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
+    this.effectsCam.setBounds(0, 0, width, height)
+    this.effectsCam.setSize(ct.gameWidth, ct.gameHeight)
+    const background = this.scene.add.tileSprite(
+      this.scene.mapWidth / 2,
+      this.scene.mapHeight / 2,
+      this.scene.mapWidth,
+      this.scene.mapHeight,
+      'background',
+    )
+    background.setDepth(-1)
+    background.setPipeline('Light2D')
+    this.background = background
+    this.mainLayer.add(background)
+  }
+
   private setupFlashlightPipeline(): void {
     this.scene.events.once(Phaser.Scenes.Events.RENDER, () => {
       this.flashlightPipeline = this.mainCam.getPostPipeline(
@@ -130,7 +144,7 @@ export class ViewManager {
       ) as FlashlightPostFxPipeline
       this.flashlightPipeline.setRadius(1000)
       this.flashlightPipeline.setConeAngle(Math.PI / 2)
-    })  
+    })
   }
 
   public updateCameraOffset(rotation: number): void {
@@ -157,7 +171,7 @@ export class ViewManager {
     mechY: number,
     mechRotation: number,
   ): void {
-    if (this.scene.viewMgr.infraredIsOn) return 
+    if (this.scene.viewMgr.infraredIsOn) return
     if (
       !this.flashlightPipeline ||
       !this.flashlightPipeline.renderer ||
@@ -193,7 +207,10 @@ export class ViewManager {
   toggleInfrared(): void {
     this.infraredIsOn = !this.infraredIsOn
     if (this.infraredIsOn) {
-      const InfraredPipelines = ['InfraredPostFxPipeline', ...PipelinesWithoutFlashlight]
+      const InfraredPipelines = [
+        'InfraredPostFxPipeline',
+        ...PipelinesWithoutFlashlight,
+      ]
       this.mainCam.resetPostPipeline()
       this.mainCam.setPostPipeline(InfraredPipelines)
       this.effectsCam.resetPostPipeline()

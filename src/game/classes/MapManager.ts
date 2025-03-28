@@ -1,5 +1,8 @@
 import { Game } from '../scenes/Game'
 import { XMLParser } from 'fast-xml-parser'
+import { Constants as ct } from '../constants/index'
+
+const tilesetTreeIds = [0, 8]
 
 // handles importing and rendering maps made in the Tiled map editor
 export class MapManager {
@@ -27,16 +30,22 @@ export class MapManager {
       )) as any
     ).tileset.tile
     await this.loadTilesetImages(baseUrl, tilesetData)
-    tilesetData.forEach(tile => {
-      const key = `${baseUrl}_${tile.id}`
-      const exists = this.scene.textures.exists(key)
-      console.log(`Texture key "${key}" loaded? ${exists}`)
-    })
     const mapLayersWithScaling = this.convertMapDataToUseScaling(
       mapData.layers,
       tilesetData,
     )
-    this.drawMapObjects(baseUrl, mapLayersWithScaling, undefined)
+    this.drawMapObjects(
+      baseUrl,
+      mapLayersWithScaling,
+      undefined,
+      tilesetTreeIds,
+    )
+    return {
+      width: mapData.width,
+      height: mapData.height,
+      tilewidth: mapData.tilewidth,
+      tileheight: mapData.tileheight,
+    }
   }
 
   // Function to import data from a .tsx file (Tiled tileset). XML format.
@@ -58,7 +67,6 @@ export class MapManager {
       // Enqueue all tileset images to the loader
       tilesetData.forEach(tile => {
         const key = `${mapBaseUrl}_${tile.id}`
-        console.log('loading image from:', mapBaseUrl + '/' + tile.image.source)
         this.scene.load.image(key, mapBaseUrl + '/' + tile.image.source)
       })
 
@@ -127,37 +135,70 @@ export class MapManager {
   public drawMapObjects(
     mapBaseUrl: string,
     mapLayers: any[],
-    overallScale: number = 0.5,
+    overallScale: number = ct.mapScaling,
+    treeGids: number[] = [],
   ): void {
     mapLayers.forEach(layer => {
-      if (!layer.objects) {
-        return
-      }
+      if (!layer.objects) return
+
       layer.objects.forEach((obj: any) => {
         if (typeof obj.gid === 'number') {
           const tileIndex = obj.gid - 1
           const textureKey = `${mapBaseUrl}_${tileIndex}`
 
-          // Position is multiplied by overallScale
-          const sprite = this.scene.addSprite(
+          // Create sprite at Tiled's position, scaled
+          const spriteArgs: [number, number, string] = [
             obj.x * overallScale,
             obj.y * overallScale,
             textureKey,
-          )
+          ]
+          const sprite = treeGids.includes(tileIndex)
+            ? this.scene.addSpriteEffect(...spriteArgs)
+            : this.scene.addSprite(...spriteArgs)
           sprite.setPipeline('Light2D')
 
-          // Tiled tile objects often pivot around bottom-left
+          // First, pivot around bottom-left, like Tiled
           sprite.setOrigin(0, 1)
 
-          // Convert Tiled rotation from degrees to Phaser's radians
-          const rotationRad = Phaser.Math.DegToRad(obj.rotation ?? 0)
-          sprite.setRotation(rotationRad)
+          // Apply Tiled's rotation (degrees)
+          const tiledRotationDeg = obj.rotation ?? 0
+          const tiledRotationRad = Phaser.Math.DegToRad(tiledRotationDeg)
+          sprite.setRotation(tiledRotationRad)
 
-          // If a per-object scale was computed earlier, multiply it by the global scale
+          // Apply Tiled scale if provided
           if (obj.scale !== undefined) {
             sprite.setScale(obj.scale * overallScale)
           } else {
             sprite.setScale(overallScale)
+          }
+
+          if (treeGids.includes(tileIndex)) {
+            // Store the sprite's current position so we can restore it after changing origin
+            const oldX = sprite.x
+            const oldY = sprite.y
+
+            // Shift sprite’s position so changing origin to center won't shift it visually
+            const width = sprite.displayWidth
+            const height = sprite.displayHeight
+
+            sprite.x = oldX + width * 0.5
+            sprite.y = oldY - height * 0.5
+
+            // Change origin to center
+            sprite.setOrigin(0.5, 0.5)
+
+            // Extra random rotation
+            const randomDeg = Phaser.Math.Between(0, 359)
+            sprite.angle += randomDeg
+
+            // Random resize up to ±10% of the sprite's current size
+            const randomScaleFactor = 0.7 + 0.6 * Math.random() // 70 to 130 percent
+            sprite.setScale(
+              sprite.scaleX * randomScaleFactor,
+              sprite.scaleY * randomScaleFactor,
+            )
+
+            sprite.setDepth(ct.depths.trees)
           }
         }
       })

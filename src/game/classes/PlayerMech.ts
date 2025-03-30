@@ -8,6 +8,8 @@ import { dataStore } from '../../DataStore'
 import { getVectMag } from '../utils'
 import { createLightFlash, addCloudAtPlayermech } from '../rendering'
 
+
+
 export const loadMechAssets = (scene: Game) => {
   scene.load.image('mech', 'mech.png')
   scene.load.audio('boost', 'audio/boost.mp3')
@@ -335,9 +337,9 @@ export class PlayerMech {
       flame.x + this.mechContainer.x,
       flame.y + this.mechContainer.y,
       ct.boosterLightColor,
-      10 * scale,
-      1,
       100,
+      0.2,
+      150,
     )
   }
 

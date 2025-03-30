@@ -2,9 +2,11 @@ import { Game } from '../scenes/Game'
 import { XMLParser } from 'fast-xml-parser'
 import { Constants as ct } from '../constants/index'
 
+const MAP_SCALE = 0.5
+
+// These tile indices (from the .tsx) are treated as "trees" for random rotation/scale
 const tilesetTreeIds = [0, 8]
 
-// handles importing and rendering maps made in the Tiled map editor
 export class MapManager {
   private scene: Game
   private xmlParser: XMLParser
@@ -13,33 +15,46 @@ export class MapManager {
     this.scene = scene
     this.xmlParser = new XMLParser({
       ignoreAttributes: false,
-      attributeNamePrefix: '', // optional: remove @_ or other prefix
-      parseAttributeValue: true, // optional: parse numbers etc.
-      allowBooleanAttributes: true, // optional
+      attributeNamePrefix: '',
+      parseAttributeValue: true,
+      allowBooleanAttributes: true,
     })
   }
 
-  // Function to load and render a map, given the map path, eg 'maps/ruralVillage1'
+  /**
+   * Loads the .tmj JSON map data and the corresponding .tsx tileset file,
+   * queues up images, converts map layers for scaling + collision shapes,
+   * and then draws them.
+   */
   public async loadMap(baseUrl: string) {
+    // 1) Load the Tiled map JSON (map.tmj)
     const mapDataFetchResponse = await fetch('/assets/' + baseUrl + '/map.tmj')
     const mapData = await mapDataFetchResponse.json()
+
+    // 2) Load the .tsx tileset
     const tileSet1FileName = mapData.tilesets[0].source
-    const tilesetData = (
-      (await this.importTilesetData(
-        '/assets/' + baseUrl + '/' + tileSet1FileName,
-      )) as any
-    ).tileset.tile
-    await this.loadTilesetImages(baseUrl, tilesetData)
+    const tsxFullUrl = '/assets/' + baseUrl + '/' + tileSet1FileName
+    const tilesetData = (await this.importTilesetData(tsxFullUrl)) as any
+    const tileDefs = Array.isArray(tilesetData.tileset.tile)
+      ? tilesetData.tileset.tile
+      : [tilesetData.tileset.tile]
+
+    // 3) Queue up images for each tile in the tileset
+    await this.loadTilesetImages(baseUrl, tileDefs)
+
+    // 4) Convert the map’s layers and objects so that each object has
+    //    (a) a final scale
+    //    (b) collisionShapes embedded if the tile has objectgroup data
     const mapLayersWithScaling = this.convertMapDataToUseScaling(
       mapData.layers,
-      tilesetData,
+      tileDefs,
+      MAP_SCALE,
     )
-    this.drawMapObjects(
-      baseUrl,
-      mapLayersWithScaling,
-      undefined,
-      tilesetTreeIds,
-    )
+
+    // 5) Draw the objects
+    this.drawMapObjects(baseUrl, mapLayersWithScaling, tilesetTreeIds)
+
+    // Return essential map dimension info for reference
     return {
       width: mapData.width,
       height: mapData.height,
@@ -48,7 +63,9 @@ export class MapManager {
     }
   }
 
-  // Function to import data from a .tsx file (Tiled tileset). XML format.
+  /**
+   * Helper for loading a .tsx file (Tiled tileset definition) via XML parsing.
+   */
   public async importTilesetData(url: string): Promise<unknown> {
     const response = await fetch(url)
     const tsxContent = await response.text()
@@ -56,150 +73,222 @@ export class MapManager {
     return data
   }
 
+  /**
+   * Queues each tile image in tilesetData to be loaded by Phaser, then awaits completion.
+   */
   public async loadTilesetImages(
     mapBaseUrl: string,
     tilesetData: any[],
   ): Promise<void> {
     return new Promise<void>(resolve => {
-      // Listen for Phaser's loader "complete" event
       this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
-
-      // Enqueue all tileset images to the loader
       tilesetData.forEach(tile => {
         const key = `${mapBaseUrl}_${tile.id}`
         this.scene.load.image(key, mapBaseUrl + '/' + tile.image.source)
       })
-
-      // Start the loader to load the queued assets
       this.scene.load.start()
     })
   }
 
-  /**
-   * Given:
-   *  1) layersData from the Tiled map editor (sample object layers .json),
-   *  2) objectsData from the sample objects .json which specifies each object's
-   *     original width and height at neutral rotation,
-   * this function returns a new copy of layersData in which every object's
-   * "height" and "width" are replaced with a "scale" (height/width ratio),
-   * calculated using the rotation and the original height, width and rectangular shape.
-   *
-   * Assumes each object has a matching "gid" in the Tiled data that maps to
-   * the array index (gid - 1) in the objectsData. Also assumes uniform scaling
-   * for height and width.
-   *
-   * @param {Array} layersData - The array of layer objects exported from Tiled
-   * @param {Array} objectsData - The array of original object definitions (with image sizes)
-   * @returns {Array} A new array of layers with each object's scale and rotation
-   */
-
-  public convertMapDataToUseScaling(layersData: any[], objectsData: any[]) {
-    // Make a deep copy so we don't mutate the original
+  public convertMapDataToUseScaling(
+    layersData: any[],
+    tilesetData: any[],
+    globalScale: number
+  ): any[] {
+    // Make a deep copy so we don’t mutate the original
     const resultLayers = JSON.parse(JSON.stringify(layersData))
-
+  
+    // Build a lookup keyed by tile ID
+    const tileLookup = new Map<number, any>()
+    for (const tileDef of tilesetData) {
+      tileLookup.set(tileDef.id, tileDef)
+    }
+  
+    // For each layer in the map
     for (const layer of resultLayers) {
-      if (!layer.objects) {
-        continue
-      }
-
+      // Skip layers that don’t have objects
+      if (!layer.objects) continue
+  
+      // For each object in the layer
       for (const obj of layer.objects) {
-        // If the object has a gid, look up the original width/height as
-        if (typeof obj.gid === 'number') {
-          const index = obj.gid - 1 // assuming gid indexes into objectsData by (gid - 1)
-          const matchingData = objectsData[index]
-
-          if (matchingData && matchingData.image) {
-            const originalW = matchingData.image.width
-            const originalH = matchingData.image.height
-
-            // Instead of computing a rotated bounding box, just compare the original
-            // tile size to Tiled's reported width/height for the object, which is
-            // often the unrotated tile dims (plus any user scaling).
-            const scaleW = originalW ? obj.width / originalW : 1
-            const scaleH = originalH ? obj.height / originalH : 1
-            const scale = (scaleW + scaleH) / 2
-
-            obj.scale = scale
+        // Scale the object's position by the globalScale
+        obj.x *= globalScale
+        obj.y *= globalScale
+  
+        // If it’s not a tile-based object, still scale width/height if they exist
+        if (obj.width !== undefined) {
+          obj.width *= globalScale
+        }
+        if (obj.height !== undefined) {
+          obj.height *= globalScale
+        }
+  
+        // If obj.gid is not a number, move on to the next object
+        if (typeof obj.gid !== 'number') {
+          continue
+        }
+  
+        const tileIndex = obj.gid - 1
+        const tileDef = tileLookup.get(tileIndex)
+        if (!tileDef || !tileDef.image) continue
+  
+        // Compute a uniform scale from Tiled’s object width/height
+        const originalW = tileDef.image.width
+        const originalH = tileDef.image.height
+  
+        let scaleW = 1
+        let scaleH = 1
+  
+        // If width/height are known, they've already been scaled by globalScale
+        if (obj.width !== undefined && obj.height !== undefined) {
+          scaleW = originalW ? obj.width / originalW : 1
+          scaleH = originalH ? obj.height / originalH : 1
+        }
+  
+        // Combine Tiled’s own scale factor with the globalScale-based sizing
+        obj.scale = (scaleW + scaleH) * 0.5
+  
+        // If this tile has collision <objectgroup>, transform the shapes
+        if (tileDef.objectgroup && tileDef.objectgroup.object) {
+          let rawShapes = tileDef.objectgroup.object
+          if (!Array.isArray(rawShapes)) {
+            rawShapes = [rawShapes]
+          }
+  
+          const tileRotationDeg = tileDef.rotation ?? 0
+          const tileRotationRad = Phaser.Math.DegToRad(tileRotationDeg)
+  
+          // We'll store collisionShapes on the map object
+          obj.collisionShapes = []
+  
+          for (const shape of rawShapes) {
+            const isEllipse = 'ellipse' in shape
+            const { x, y, width, height, rotation } = shape
+  
+            // Combine shape’s own rotation with the tile’s rotation
+            const shapeRotationDeg = (rotation ?? 0) + tileRotationDeg
+  
+            // Scale shape’s local width/height by the final object scale
+            const scaledWidth = width * obj.scale
+            const scaledHeight = height * obj.scale
+  
+            // Also apply the same scale to shape’s local position
+            const sx = x * obj.scale
+            const sy = y * obj.scale
+  
+            // Rotate (sx, sy) around (0,0) by tileRotationRad
+            const cosR = Math.cos(tileRotationRad)
+            const sinR = Math.sin(tileRotationRad)
+            const rx = sx * cosR - sy * sinR
+            const ry = sx * sinR + sy * cosR
+  
+            obj.collisionShapes.push({
+              x: rx,
+              y: ry,
+              width: scaledWidth,
+              height: scaledHeight,
+              ellipse: isEllipse,
+              rotation: shapeRotationDeg,
+            })
           }
         }
-        // Keep obj.rotation as Tiled specified
-        // Remove unneeded properties
-        delete obj.height
-        delete obj.width
       }
     }
-
+  
     return resultLayers
   }
 
+  /**
+   * Draws each object as a sprite (with Tiled’s position/rotation/scale),
+   * plus draws collisionShapes from the data embedded in each obj (if any).
+   */
   public drawMapObjects(
     mapBaseUrl: string,
     mapLayers: any[],
-    overallScale: number = ct.mapScaling,
     treeGids: number[] = [],
   ): void {
     mapLayers.forEach(layer => {
       if (!layer.objects) return
 
       layer.objects.forEach((obj: any) => {
-        if (typeof obj.gid === 'number') {
-          const tileIndex = obj.gid - 1
-          const textureKey = `${mapBaseUrl}_${tileIndex}`
+        if (typeof obj.gid !== 'number') return
+        const tileIndex = obj.gid - 1
+        const textureKey = `${mapBaseUrl}_${tileIndex}`
 
-          // Create sprite at Tiled's position, scaled
-          const spriteArgs: [number, number, string] = [
-            obj.x * overallScale,
-            obj.y * overallScale,
-            textureKey,
-          ]
-          const sprite = treeGids.includes(tileIndex)
-            ? this.scene.addSpriteEffect(...spriteArgs)
-            : this.scene.addSprite(...spriteArgs)
-          sprite.setPipeline('Light2D')
+        const startX = obj.x
+        const startY = obj.y
 
-          // First, pivot around bottom-left, like Tiled
-          sprite.setOrigin(0, 1)
+        const sprite = treeGids.includes(tileIndex)
+          ? this.scene.addSpriteEffect(startX, startY, textureKey)
+          : this.scene.addSprite(startX, startY, textureKey)
 
-          // Apply Tiled's rotation (degrees)
-          const tiledRotationDeg = obj.rotation ?? 0
-          const tiledRotationRad = Phaser.Math.DegToRad(tiledRotationDeg)
-          sprite.setRotation(tiledRotationRad)
+        sprite.setPipeline('Light2D')
+        // Tiled tile origins are (0,0).
+        sprite.setOrigin(0, 0)
 
-          // Apply Tiled scale if provided
-          if (obj.scale !== undefined) {
-            sprite.setScale(obj.scale * overallScale)
-          } else {
-            sprite.setScale(overallScale)
-          }
+        // Apply rotation from Tiled (degrees → radians).
+        const tiledRotationRad = Phaser.Math.DegToRad(obj.rotation ?? 0)
+        sprite.setRotation(tiledRotationRad)
 
-          if (treeGids.includes(tileIndex)) {
-            // Store the sprite's current position so we can restore it after changing origin
-            const oldX = sprite.x
-            const oldY = sprite.y
+        // Apply Tiled’s scale (if set).
+        const finalScale = obj.scale ?? 1
+        sprite.setScale(finalScale)
+        sprite.setDepth(ct.depths.buildings)
 
-            // Shift sprite’s position so changing origin to center won't shift it visually
-            const width = sprite.displayWidth
-            const height = sprite.displayHeight
+        // Draw collision shapes if present.
+        if (obj.collisionShapes) {
+          const debugGraphics = this.scene.add.graphics({
+            lineStyle: { width: 2, color: 0xff0000, alpha: 0.8 },
+          })
+          debugGraphics.setDepth(ct.depths.debug)
 
-            sprite.x = oldX + width * 0.5
-            sprite.y = oldY - height * 0.5
+          // The sprite’s actual transform.
+          const finalRotation = sprite.rotation
+          const originOffsetX = -sprite.originX * sprite.displayWidth
+          const originOffsetY = -sprite.originY * sprite.displayHeight
+          const cosR = Math.cos(finalRotation)
+          const sinR = Math.sin(finalRotation)
 
-            // Change origin to center
-            sprite.setOrigin(0.5, 0.5)
+          // Since collisionShapes have already been scaled inside
+          // convertMapDataToUseScaling(), we skip sprite scale here.
+          obj.collisionShapes.forEach((shape: any) => {
+            // Local shape coords before final sprite transform.
+            const localX = shape.x
+            const localY = shape.y
 
-            // Extra random rotation
-            const randomDeg = Phaser.Math.Between(0, 359)
-            sprite.angle += randomDeg
+            // Step 1: account for sprite’s top-left origin offset.
+            const worldX = localX + originOffsetX
+            const worldY = localY + originOffsetY
 
-            // Random resize up to ±10% of the sprite's current size
-            const randomScaleFactor = 0.7 + 0.6 * Math.random() // 70 to 130 percent
-            sprite.setScale(
-              sprite.scaleX * randomScaleFactor,
-              sprite.scaleY * randomScaleFactor,
-            )
+            // Step 2: rotate around sprite’s rotation.
+            const rx = worldX * cosR - worldY * sinR
+            const ry = worldX * sinR + worldY * cosR
 
-            sprite.setDepth(ct.depths.trees)
-          }
+            // Step 3: final translate by sprite’s in-world position.
+            const finalX = sprite.x + rx
+            const finalY = sprite.y + ry
+
+            // Combine shape’s own rotation with sprite rotation.
+            const shapeRotationRad = Phaser.Math.DegToRad(shape.rotation || 0)
+            const totalRotation = finalRotation + shapeRotationRad
+
+            // Draw ellipse or rect. No extra scaling needed here.
+            if (shape.ellipse) {
+              const ellipseCenterX = finalX + shape.width / 2
+              const ellipseCenterY = finalY + shape.height / 2
+              debugGraphics.save()
+              debugGraphics.translateCanvas(ellipseCenterX, ellipseCenterY)
+              debugGraphics.rotateCanvas(totalRotation)
+              debugGraphics.strokeEllipse(0, 0, shape.width, shape.height)
+              debugGraphics.restore()
+            } else {
+              debugGraphics.save()
+              debugGraphics.translateCanvas(finalX, finalY)
+              debugGraphics.rotateCanvas(totalRotation)
+              debugGraphics.strokeRect(0, 0, shape.width, shape.height)
+              debugGraphics.restore()
+            }
+          })
         }
       })
     })

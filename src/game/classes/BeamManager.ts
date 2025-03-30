@@ -10,7 +10,7 @@ import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
 import { blendColors } from '../utils'
 
-const baseEmitterConfig = {
+const baseEmitterConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig = {
   scale: { start: 3.5, end: 0 },
   rotate: { start: 0, end: 360 },
   speed: { min: 20, max: 30 },

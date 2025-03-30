@@ -26,7 +26,8 @@ const depths = {
   projectileSpark: 10000,
   terrain: 1,
   dustClouds: 11000,
-  trees: 10500
+  trees: 10500,
+  buildings: 10500
 }
 
 export const Constants = {
@@ -34,7 +35,7 @@ export const Constants = {
   tileSize: 14,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
-  mapScaling: 0.5,
+  mapScaling: 1,
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,

@@ -101,6 +101,13 @@ export class ViewManager {
 
     this.infraredIsOn = false
     this.dustClouds = this.scene.add.group()
+
+    // move minimap camera to topmost
+    this.scene.cameras.cameras.push(this.miniMapCam);
+
+    // temporarily hide minimap cam for debugging
+    this.miniMapCam.setVisible(false);
+
   }
 
   public startCamFollowingPlayerMech(): void {

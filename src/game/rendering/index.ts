@@ -163,8 +163,8 @@ function addCombinedDecal(scene: Game) {
   const combinedTexture = scene.add.renderTexture(
     0,
     0,
-    ct.fieldHeight,
-    ct.fieldWidth,
+    scene.mapHeight,
+    scene.mapWidth,
   )
   scene.viewMgr.mainLayer.add(combinedTexture)
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)

@@ -160,7 +160,7 @@ export class Game extends Scene {
       this,
     )
 
-    this.physics.add.overlap(
+    this.physics.add.collider(
       this.projectileMgr.projectiles,
       this.enemyMgr.enemies,
       undefined,
@@ -273,7 +273,7 @@ export class Game extends Scene {
         const spawnY = 100 // Enemies a small space away from top border
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          const x = Phaser.Math.Between(0, ct.fieldWidth)
+          const x = Phaser.Math.Between(0, this.mapWidth)
           const tileX = Math.floor(x / ct.tileSize)
           const tileY = Math.floor(spawnY / ct.tileSize)
 
@@ -383,8 +383,8 @@ export class Game extends Scene {
     return sprite
   }
 
-  addGraphicsEffect() {
-    const graphics = this.add.graphics()
+  addGraphicsEffect(optionalArgs?:any) {
+    const graphics = this.add.graphics(optionalArgs)
     this.viewMgr.effectsLayer.add(graphics)
     return graphics
   }

@@ -37,7 +37,7 @@ export class StaticPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
       game,
       fragShader: frag,
     })
-    this.staticIntensity = 0.05
+    this.staticIntensity = 0.03
   }
 
   setStaticIntensity(intensity: number): void {

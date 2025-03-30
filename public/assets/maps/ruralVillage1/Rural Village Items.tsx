@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.11.2" name="Rural Village Objects" tilewidth="2000" tileheight="2000" tilecount="12" columns="0">
+<tileset version="1.10" tiledversion="1.11.2" name="Rural Village Objects" tilewidth="2000" tileheight="2000" tilecount="12" columns="0" objectalignment="topleft">
  <grid orientation="orthogonal" width="1" height="1"/>
  <tile id="0">
   <image source="objects/blobbytree.png" width="200" height="200"/>

@@ -70,8 +70,8 @@ export class TerrainManager {
 
     // Create the tilemap
     this.map = this.scene.make.tilemap({
-      width: ct.fieldWidth / ct.tileSize,
-      height: ct.fieldHeight / ct.tileSize,
+      width: this.scene.mapWidth/ ct.tileSize,
+      height: this.scene.mapHeight / ct.tileSize,
       tileWidth: ct.tileSize,
       tileHeight: ct.tileSize,
     }) as Phaser.Tilemaps.Tilemap
@@ -353,8 +353,8 @@ export class TerrainManager {
 
   populateTerrain() {
     // Calculate the player's starting tile coordinates
-    const playerStartTileX = Math.floor(ct.playerStartingX / ct.tileSize)
-    const playerStartTileY = Math.floor(ct.playerStartingY / ct.tileSize)
+    const playerStartTileX = Math.floor(this.scene.player.mechContainer.x / ct.tileSize)
+    const playerStartTileY = Math.floor(this.scene.player.mechContainer.y / ct.tileSize)
 
     // Increase to make terrain denser, decrease for sparser terrain
     const fillProbability = 0.45

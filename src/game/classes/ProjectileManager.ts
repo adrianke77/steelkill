@@ -1,5 +1,5 @@
-// ProjectileManager.ts
 import { Game } from '../scenes/Game'
+import { MapTileEntity } from '../classes/MapManager'
 import { Constants as ct, weaponConstants } from '../constants'
 import { enemyWeapons } from '../constants/weapons'
 import {
@@ -285,9 +285,10 @@ export class ProjectileManager {
 
   projectileHitsTarget(
     projectile: Projectile,
-    target: EnemySprite | TerrainTile,
+    target: EnemySprite | TerrainTile | MapTileEntity,
   ): boolean {
     const weapon = projectile.weapon
+
 
     if (weapon?.explodeRadius) {
       this.playExplosionSound(projectile)
@@ -349,11 +350,30 @@ export class ProjectileManager {
 
   private applyProjectileDamageAndEffectsToTarget(
     projectile: Projectile,
-    target: EnemySprite | TerrainTile,
+    target: EnemySprite | TerrainTile | MapTileEntity,
     damageFactor: number,
   ): void {
     const damage = projectile.damage * damageFactor
-    if (target instanceof Phaser.Tilemaps.Tile) {
+    if ('entityType' in target && target.entityType === 'mapEntity') {
+      console.log(target.health, projectile.damage, damageFactor)
+      target.health -= projectile.damage * damageFactor
+      const directionRadians = Phaser.Math.Angle.Between(
+        projectile.x,
+        projectile.y,
+        target.sprite.x,
+        target.sprite.y,
+      )
+      this.projectileSpark(
+        projectile.x * 0.75 + target.sprite.x * 0.25,
+        projectile.y * 0.75 + target.sprite.y * 0.25,
+        projectile,
+        directionRadians,
+      )
+      if (target.health <= 0) {
+        this.scene.mapMgr.destroyMapTileEntity(target)
+      }
+      
+    } else if (target instanceof Phaser.Tilemaps.Tile) {
       const tileData = this.scene.terrainMgr.getTileData(target)
       // pixel target
       const tileX = target.getCenterX()
@@ -392,16 +412,15 @@ export class ProjectileManager {
         // Update autotiling around the destroyed tile
         this.scene.terrainMgr.updateAutotileAt(x, y, target.type)
       }
+      return
     } else {
       this.applyProjectileDamageAndEffectsToEnemy(
         projectile,
-        target,
+        target as EnemySprite,
         damageFactor,
       )
     }
-  }
-
-  private applyProjectileDamageAndEffectsToEnemy(
+  }  private applyProjectileDamageAndEffectsToEnemy(
     projectile: Projectile,
     enemy: EnemySprite,
     damageFactor: number,

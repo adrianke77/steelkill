@@ -3,13 +3,29 @@ import { XMLParser } from 'fast-xml-parser'
 import { Constants as ct } from '../constants/index'
 
 const MAP_SCALE = 0.5
+const MIN_CIRCLE_DIAMETER = 12 // for approximateRectWithCircles
 
 // These tile indices (from the .tsx) are treated as "trees" for random rotation/scale
 const tilesetTreeIds = [0, 8]
 
+export interface MapTileEntity {
+  objectId: number // Tiled's object ID (obj.id)
+  sprite: Phaser.GameObjects.Sprite
+  collisionBodies: Phaser.GameObjects.Sprite[] // The circle or rect colliders created
+  health: number
+  armor: number
+  source: string
+  entityType: 'mapEntity'
+}
+
 export class MapManager {
   private scene: Game
   private xmlParser: XMLParser
+
+  // New: Keep a collection of all tile "entities"
+  public tileEntities: MapTileEntity[] = []
+
+  public collisionShapesGroup: Phaser.Physics.Arcade.StaticGroup
 
   constructor(scene: Game) {
     this.scene = scene
@@ -19,6 +35,7 @@ export class MapManager {
       parseAttributeValue: true,
       allowBooleanAttributes: true,
     })
+    this.collisionShapesGroup = this.scene.physics.add.staticGroup()
   }
 
   /**
@@ -42,7 +59,7 @@ export class MapManager {
     // 3) Queue up images for each tile in the tileset
     await this.loadTilesetImages(baseUrl, tileDefs)
 
-    // 4) Convert the map’s layers and objects so that each object has
+    // 4) Convert the map's layers and objects so that each object has
     //    (a) a final scale
     //    (b) collisionShapes embedded if the tile has objectgroup data
     const mapLayersWithScaling = this.convertMapDataToUseScaling(
@@ -93,95 +110,106 @@ export class MapManager {
   public convertMapDataToUseScaling(
     layersData: any[],
     tilesetData: any[],
-    globalScale: number
+    globalScale: number,
   ): any[] {
-    // Make a deep copy so we don’t mutate the original
+    // Make a deep copy so we don't mutate the original
     const resultLayers = JSON.parse(JSON.stringify(layersData))
-  
+
     // Build a lookup keyed by tile ID
     const tileLookup = new Map<number, any>()
     for (const tileDef of tilesetData) {
       tileLookup.set(tileDef.id, tileDef)
     }
-  
+
     // For each layer in the map
     for (const layer of resultLayers) {
-      // Skip layers that don’t have objects
+      // Skip layers that don't have objects
       if (!layer.objects) continue
-  
+
       // For each object in the layer
       for (const obj of layer.objects) {
         // Scale the object's position by the globalScale
         obj.x *= globalScale
         obj.y *= globalScale
-  
-        // If it’s not a tile-based object, still scale width/height if they exist
+
+        // If it's not a tile-based object, still scale width/height if they exist
         if (obj.width !== undefined) {
           obj.width *= globalScale
         }
         if (obj.height !== undefined) {
           obj.height *= globalScale
         }
-  
+
         // If obj.gid is not a number, move on to the next object
         if (typeof obj.gid !== 'number') {
           continue
         }
-  
+
         const tileIndex = obj.gid - 1
         const tileDef = tileLookup.get(tileIndex)
         if (!tileDef || !tileDef.image) continue
-  
-        // Compute a uniform scale from Tiled’s object width/height
+
+        // Merge any tile-level properties (like health, armor) into obj.properties
+        if (tileDef.properties?.property) {
+          obj.properties = obj.properties || {}
+          tileDef.properties.property.forEach((prop: any) => {
+            obj.properties[prop.name] = prop.value
+          })
+        }
+
+        obj.tileSource = tileDef.image.source
+        obj.tileId = tileIndex
+
+        // Compute a uniform scale from Tiled's object width/height
         const originalW = tileDef.image.width
         const originalH = tileDef.image.height
-  
+
         let scaleW = 1
         let scaleH = 1
-  
+
         // If width/height are known, they've already been scaled by globalScale
         if (obj.width !== undefined && obj.height !== undefined) {
           scaleW = originalW ? obj.width / originalW : 1
           scaleH = originalH ? obj.height / originalH : 1
         }
-  
-        // Combine Tiled’s own scale factor with the globalScale-based sizing
+
+        // Combine Tiled's own scale factor with the globalScale-based sizing
         obj.scale = (scaleW + scaleH) * 0.5
-  
+
         // If this tile has collision <objectgroup>, transform the shapes
         if (tileDef.objectgroup && tileDef.objectgroup.object) {
           let rawShapes = tileDef.objectgroup.object
           if (!Array.isArray(rawShapes)) {
             rawShapes = [rawShapes]
           }
-  
+
           const tileRotationDeg = tileDef.rotation ?? 0
           const tileRotationRad = Phaser.Math.DegToRad(tileRotationDeg)
-  
+
           // We'll store collisionShapes on the map object
           obj.collisionShapes = []
-  
+
           for (const shape of rawShapes) {
             const isEllipse = 'ellipse' in shape
             const { x, y, width, height, rotation } = shape
-  
-            // Combine shape’s own rotation with the tile’s rotation
+
+            // Combine shape's own rotation with the tile's rotation
             const shapeRotationDeg = (rotation ?? 0) + tileRotationDeg
-  
-            // Scale shape’s local width/height by the final object scale
+
+            // Scale shape's local width/height by the final object scale
             const scaledWidth = width * obj.scale
             const scaledHeight = height * obj.scale
-  
-            // Also apply the same scale to shape’s local position
+
+            // Also apply the same scale to shape's local position
             const sx = x * obj.scale
             const sy = y * obj.scale
-  
+
             // Rotate (sx, sy) around (0,0) by tileRotationRad
             const cosR = Math.cos(tileRotationRad)
             const sinR = Math.sin(tileRotationRad)
             const rx = sx * cosR - sy * sinR
             const ry = sx * sinR + sy * cosR
-  
+
             obj.collisionShapes.push({
               x: rx,
               y: ry,
@@ -194,14 +222,10 @@ export class MapManager {
         }
       }
     }
-  
+
     return resultLayers
   }
 
-  /**
-   * Draws each object as a sprite (with Tiled’s position/rotation/scale),
-   * plus draws collisionShapes from the data embedded in each obj (if any).
-   */
   public drawMapObjects(
     mapBaseUrl: string,
     mapLayers: any[],
@@ -223,74 +247,249 @@ export class MapManager {
           : this.scene.addSprite(startX, startY, textureKey)
 
         sprite.setPipeline('Light2D')
-        // Tiled tile origins are (0,0).
+        // Tiled tile origins are (0, 0).
         sprite.setOrigin(0, 0)
 
         // Apply rotation from Tiled (degrees → radians).
         const tiledRotationRad = Phaser.Math.DegToRad(obj.rotation ?? 0)
         sprite.setRotation(tiledRotationRad)
 
-        // Apply Tiled’s scale (if set).
+        // Apply Tiled's scale if set.
         const finalScale = obj.scale ?? 1
         sprite.setScale(finalScale)
         sprite.setDepth(ct.depths.buildings)
 
-        // Draw collision shapes if present.
+        // Grab tile-level properties (if set in the TSX under <tile><properties>...)
+        // If the tileLookup was built earlier, you'd do something like:
+        // const tileDef = tileLookup.get(tileIndex)
+        // const props = tileDef?.properties || {}
+        // For simplicity here, assume we stored them on obj.properties if you
+        // merge them in convertMapDataToUseScaling, or you can do so here.
+        const props = obj.properties || {}
+        const health = props.health || 0
+        const armor = props.armor || 0
+
+        // Create a new entity object for this tile
+        const tileEntity: MapTileEntity = {
+          objectId: obj.id,
+          sprite: sprite,
+          collisionBodies: [],
+          health,
+          armor,
+          source: obj.tileSource,
+          entityType: 'mapEntity',
+        }
+
+        // If collisionShapes exist, create colliders.
         if (obj.collisionShapes) {
-          const debugGraphics = this.scene.add.graphics({
+          const collisionSketchGraphics = this.scene.add.graphics({
             lineStyle: { width: 2, color: 0xff0000, alpha: 0.8 },
           })
-          debugGraphics.setDepth(ct.depths.debug)
 
-          // The sprite’s actual transform.
+          // Store references to created bodies:
+          obj.arcadeCollisionBodies = []
+
           const finalRotation = sprite.rotation
           const originOffsetX = -sprite.originX * sprite.displayWidth
           const originOffsetY = -sprite.originY * sprite.displayHeight
           const cosR = Math.cos(finalRotation)
           const sinR = Math.sin(finalRotation)
 
-          // Since collisionShapes have already been scaled inside
-          // convertMapDataToUseScaling(), we skip sprite scale here.
           obj.collisionShapes.forEach((shape: any) => {
             // Local shape coords before final sprite transform.
             const localX = shape.x
             const localY = shape.y
 
-            // Step 1: account for sprite’s top-left origin offset.
+            // Step 1: account for sprite's top-left origin offset.
             const worldX = localX + originOffsetX
             const worldY = localY + originOffsetY
 
-            // Step 2: rotate around sprite’s rotation.
+            // Step 2: rotate around sprite's final rotation.
             const rx = worldX * cosR - worldY * sinR
             const ry = worldX * sinR + worldY * cosR
 
-            // Step 3: final translate by sprite’s in-world position.
+            // Step 3: position offset by sprite in world coords.
             const finalX = sprite.x + rx
             const finalY = sprite.y + ry
 
-            // Combine shape’s own rotation with sprite rotation.
+            // Combine shape's own rotation with sprite rotation.
             const shapeRotationRad = Phaser.Math.DegToRad(shape.rotation || 0)
             const totalRotation = finalRotation + shapeRotationRad
 
-            // Draw ellipse or rect. No extra scaling needed here.
             if (shape.ellipse) {
-              const ellipseCenterX = finalX + shape.width / 2
-              const ellipseCenterY = finalY + shape.height / 2
-              debugGraphics.save()
-              debugGraphics.translateCanvas(ellipseCenterX, ellipseCenterY)
-              debugGraphics.rotateCanvas(totalRotation)
-              debugGraphics.strokeEllipse(0, 0, shape.width, shape.height)
-              debugGraphics.restore()
+              // 1) Debug-draw a circle with diameter = average of shape.width and shape.height
+              collisionSketchGraphics.save()
+              collisionSketchGraphics.translateCanvas(
+                finalX + shape.width / 2,
+                finalY + shape.height / 2,
+              )
+              collisionSketchGraphics.rotateCanvas(totalRotation)
+
+              const diameter = (shape.width + shape.height) / 2
+              const radius = diameter / 2
+              collisionSketchGraphics.strokeCircle(0, 0, radius)
+
+              collisionSketchGraphics.restore()
+
+              // 2) Create a corresponding circle collider at the same position
+              //    but make sprite's origin (0,0) so (x,y) is top-left.
+              //    Then the negative offsets in setCircle will correctly center the collider.
+              const circleSprite = this.scene.add
+                .sprite(finalX + shape.width / 2, finalY + shape.height / 2, '')
+                .setAlpha(0)
+                .setOrigin(0, 0)
+
+              // Rotation for consistency (though not crucial for circles)
+              circleSprite.setRotation(totalRotation)
+
+              // Make it a static body and set as a circle
+              this.scene.physics.add.existing(circleSprite, true)
+              const body = circleSprite.body as Phaser.Physics.Arcade.Body
+
+              // Keep negative offsets so the collider lines up with the debug circle
+              body.setCircle(radius, -radius, -radius)
+
+              obj.arcadeCollisionBodies.push(circleSprite)
+              this.collisionShapesGroup.add(circleSprite)
+              this.collisionShapesGroup.refresh()
+              tileEntity.collisionBodies.push(circleSprite)
             } else {
-              debugGraphics.save()
-              debugGraphics.translateCanvas(finalX, finalY)
-              debugGraphics.rotateCanvas(totalRotation)
-              debugGraphics.strokeRect(0, 0, shape.width, shape.height)
-              debugGraphics.restore()
+              // Draw the original rectangle in debug:
+              collisionSketchGraphics.save()
+              collisionSketchGraphics.translateCanvas(finalX, finalY)
+              collisionSketchGraphics.rotateCanvas(totalRotation)
+              collisionSketchGraphics.strokeRect(
+                0,
+                0,
+                shape.width,
+                shape.height,
+              )
+              collisionSketchGraphics.restore()
+
+              this.approximateRectWithCircles(
+                obj,
+                finalX,
+                finalY,
+                shape.width,
+                shape.height,
+                totalRotation,
+                tileEntity,
+              )
             }
           })
         }
+
+        // Finally, store our tileEntity in the list
+        this.tileEntities.push(tileEntity)
+        console.log(this.tileEntities)
       })
     })
+  }
+
+  private approximateRectWithCircles(
+    mapObject: any,
+    rectX: number,
+    rectY: number,
+    rectWidth: number,
+    rectHeight: number,
+    rotationRad: number,
+    tileEntity: MapTileEntity,
+  ): void {
+    // 1) Determine circle diameter/ radius from the rectangle's shorter dimension
+    const longSide = Math.max(rectWidth, rectHeight)
+    let diameter = longSide / 4
+    diameter = Math.max(diameter, MIN_CIRCLE_DIAMETER)
+    const radius = diameter * 0.5
+
+    // 2) Instead of basing corners on the exact edges, we inset each corner by 'radius'.
+    //    This creates a smaller "inset rectangle perimeter" on which we will place circles,
+    //    ensuring they just touch the outer rectangle from the inside.
+    const corners = [
+      { x: radius, y: radius },
+      { x: rectWidth - radius, y: radius },
+      { x: rectWidth - radius, y: rectHeight - radius },
+      { x: radius, y: rectHeight - radius },
+    ]
+
+    // We'll measure the perimeter in local space
+    let totalPerimeter = 0
+    for (let i = 0; i < corners.length; i++) {
+      const j = (i + 1) % corners.length
+      const dx = corners[j].x - corners[i].x
+      const dy = corners[j].y - corners[i].y
+      totalPerimeter += Math.sqrt(dx * dx + dy * dy)
+    }
+
+    // 3) Determine how many circles based on perimeter vs. diameter
+    const circleCount = Math.max(1, Math.floor(totalPerimeter / diameter))
+    const segmentLength = totalPerimeter / circleCount
+
+    const cosR = Math.cos(rotationRad)
+    const sinR = Math.sin(rotationRad)
+
+    // Helper to interpolate along the inset edges
+    function getPointAtLength(dist: number) {
+      let remaining = dist
+      for (let i = 0; i < corners.length; i++) {
+        const j = (i + 1) % corners.length
+        const dx = corners[j].x - corners[i].x
+        const dy = corners[j].y - corners[i].y
+        const edgeLen = Math.sqrt(dx * dx + dy * dy)
+        if (remaining <= edgeLen) {
+          // fraction along the current edge
+          const t = remaining / edgeLen
+          return {
+            x: corners[i].x + dx * t,
+            y: corners[i].y + dy * t,
+          }
+        } else {
+          remaining -= edgeLen
+        }
+      }
+      // If we go beyond, just return the last corner
+      return corners[corners.length - 1]
+    }
+
+    // 6) Place circles along the inset perimeter
+    for (let cIndex = 0; cIndex < circleCount; cIndex++) {
+      const distAlongPerimeter = cIndex * segmentLength
+      const localPt = getPointAtLength(distAlongPerimeter)
+
+      // Rotate and then shift into world coordinates
+      const rx = localPt.x * cosR - localPt.y * sinR
+      const ry = localPt.x * sinR + localPt.y * cosR
+      const finalX = rectX + rx
+      const finalY = rectY + ry
+
+      // Create an invisible sprite for the circle collider
+      const circleSprite = this.scene.add
+        .sprite(finalX, finalY, '')
+        .setAlpha(0)
+        .setOrigin(0, 0)
+
+      circleSprite.setRotation(rotationRad)
+      this.scene.physics.add.existing(circleSprite, true)
+      const body = circleSprite.body as Phaser.Physics.Arcade.Body
+      body.setCircle(radius, -radius, -radius)
+
+      if (!mapObject.arcadeCollisionBodies) {
+        mapObject.arcadeCollisionBodies = []
+      }
+      mapObject.arcadeCollisionBodies.push(circleSprite)
+      this.collisionShapesGroup.add(circleSprite)
+      tileEntity.collisionBodies.push(circleSprite)
+    }
+  }
+
+  // to be expanded
+  public destroyMapTileEntity(entity: MapTileEntity): void {
+    const index = this.tileEntities.indexOf(entity)
+    if (index !== -1) {
+      this.tileEntities.splice(index, 1)
+    }
+    entity.sprite.destroy()
+    for (const shape of entity.collisionBodies) {
+      shape.destroy()
+    }
   }
 }

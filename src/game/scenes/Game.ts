@@ -1,5 +1,3 @@
-// Game.ts
-
 import { Scene } from 'phaser'
 import { EventBus } from '../../EventBus'
 import { Constants as ct, music } from '../constants'
@@ -152,6 +150,11 @@ export class Game extends Scene {
 
     this.physics.add.collider(
       this.player.mechContainer,
+      this.mapMgr.collisionShapesGroup,
+    )
+
+    this.physics.add.collider(
+      this.player.mechContainer,
       this.enemyMgr.enemies,
       undefined,
       (_, enemy) => {
@@ -160,7 +163,7 @@ export class Game extends Scene {
       this,
     )
 
-    this.physics.add.collider(
+    this.physics.add.overlap(
       this.projectileMgr.projectiles,
       this.enemyMgr.enemies,
       undefined,
@@ -186,6 +189,23 @@ export class Game extends Scene {
       },
       undefined,
       this,
+    )
+
+    this.physics.add.overlap(
+      this.projectileMgr.projectiles,
+      this.mapMgr.collisionShapesGroup,
+      (projectileObj, collisionBody) => {
+        const projectile = projectileObj as Projectile
+        const tileEntity = this.mapMgr.tileEntities.find(t =>
+          t.collisionBodies.includes(
+            collisionBody as Phaser.GameObjects.Sprite,
+          ),
+        )
+        console.log(tileEntity)
+        if (tileEntity) {
+          this.projectileMgr.projectileHitsTarget(projectile, tileEntity)
+        }
+      },
     )
 
     this.fpsText = this.add.text(10, 10, '', {
@@ -383,7 +403,7 @@ export class Game extends Scene {
     return sprite
   }
 
-  addGraphicsEffect(optionalArgs?:any) {
+  addGraphicsEffect(optionalArgs?: any) {
     const graphics = this.add.graphics(optionalArgs)
     this.viewMgr.effectsLayer.add(graphics)
     return graphics

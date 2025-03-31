@@ -23,15 +23,22 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: {
       fps: 90,
+      // debug: true,
+      // // Show body shapes for both active and static bodies
+      // debugShowBody: false,
+      // debugShowStaticBody: true,
+      // // Set collision shape lines to green
+      // debugBodyColor: 0x00ff00,
+      // debugStaticBodyColor: 0xff00ff, // Color for static bodies
     },
   },
-  scene: [ Preloader, MainMenu, MainGame, GameOver],
+  scene: [Preloader, MainMenu, MainGame, GameOver],
   audio: {
     disableWebAudio: false, // Ensures Web Audio API is used
   },
   render: {
     maxLights: 200, // Set the maximum number of lights
-  }
+  },
 }
 
 const StartGame = (parent: string) => {

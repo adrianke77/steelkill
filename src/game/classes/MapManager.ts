@@ -1,23 +1,16 @@
 import { Game } from '../scenes/Game'
 import { XMLParser } from 'fast-xml-parser'
 import { Constants as ct } from '../constants/index'
+import { MapTileEntity } from '../interfaces'
 
 const MAP_SCALE = 0.5
 const MIN_CIRCLE_DIAMETER = 12 // for approximateRectWithCircles
 
-// These tile indices (from the .tsx) are treated as "trees" for random rotation/scale
-const tilesetTreeIds = [0, 8]
+// These tile indices (from the .tsx) are treated as "trees" for random rotation/scale and alpha setting
+// note that these are the ids in the raw tileset XML, plus 1
+const treeGids = [1, 9]
 
-export interface MapTileEntity {
-  objectId: number // Tiled's object ID (obj.id)
-  sprite: Phaser.GameObjects.Sprite
-  collisionBodies: Phaser.GameObjects.Sprite[] // The circle or rect colliders created
-  health: number
-  armor: number
-  source: string
-  entityType: 'mapEntity'
-}
-
+//handles importing and rendering maps created in the Tiled map creator
 export class MapManager {
   private scene: Game
   private xmlParser: XMLParser
@@ -69,7 +62,7 @@ export class MapManager {
     )
 
     // 5) Draw the objects
-    this.drawMapObjects(baseUrl, mapLayersWithScaling, tilesetTreeIds)
+    this.drawMapObjects(baseUrl, mapLayersWithScaling, treeGids)
 
     // Return essential map dimension info for reference
     return {
@@ -242,29 +235,65 @@ export class MapManager {
         const startX = obj.x
         const startY = obj.y
 
-        const sprite = treeGids.includes(tileIndex)
-          ? this.scene.addSpriteEffect(startX, startY, textureKey)
-          : this.scene.addSprite(startX, startY, textureKey)
-
+        // Create the sprite
+        const sprite = this.scene.addSprite(startX, startY, textureKey)
         sprite.setPipeline('Light2D')
-        // Tiled tile origins are (0, 0).
-        sprite.setOrigin(0, 0)
+        sprite.setOrigin(0, 0) // Tiled tile origins are (0, 0)
 
-        // Apply rotation from Tiled (degrees → radians).
+        // Apply rotation from Tiled (degrees → radians)
         const tiledRotationRad = Phaser.Math.DegToRad(obj.rotation ?? 0)
         sprite.setRotation(tiledRotationRad)
 
-        // Apply Tiled's scale if set.
-        const finalScale = obj.scale ?? 1
-        sprite.setScale(finalScale)
+        // Get base scale from the object
+        let finalScale = obj.scale ?? 1
+        
+        // For tree sprites, apply random scaling and adjust position
+        if (treeGids.includes(obj.gid)) {
+          // First apply the base scale to get the original dimensions
+          sprite.setScale(finalScale)
+        
+          // Store original dimensions and center position
+          const originalWidth = sprite.displayWidth
+          const originalHeight = sprite.displayHeight
+
+        
+          // Generate random scale factor between 0.5 and 1.5
+          const randomScaleFactor = Phaser.Math.FloatBetween(0.5, 1.5)
+          finalScale *= randomScaleFactor
+        
+          // Apply the new scale
+          sprite.setScale(finalScale)
+        
+          // Calculate new dimensions
+          const newWidth = sprite.displayWidth
+          const newHeight = sprite.displayHeight
+        
+          // Calculate new top-left position to maintain the center
+          // We need to account for rotation when repositioning
+          const cosR = Math.cos(tiledRotationRad)
+          const sinR = Math.sin(tiledRotationRad)
+        
+          // Calculate the offset from the original top-left to maintain center
+          const offsetX = (originalWidth - newWidth) / 2
+          const offsetY = (originalHeight - newHeight) / 2
+        
+          // Apply rotation to the offset
+          const rotatedOffsetX = offsetX * cosR - offsetY * sinR
+          const rotatedOffsetY = offsetX * sinR + offsetY * cosR
+        
+          // Apply the offset to the sprite position
+          sprite.x += rotatedOffsetX
+          sprite.y += rotatedOffsetY
+        
+          // Also apply random alpha variation for trees
+          sprite.setAlpha(Phaser.Math.FloatBetween(0.8, 1.0))
+        } else {
+          // For non-tree sprites, just apply the scale directly
+          sprite.setScale(finalScale)
+        }
+        
         sprite.setDepth(ct.depths.buildings)
 
-        // Grab tile-level properties (if set in the TSX under <tile><properties>...)
-        // If the tileLookup was built earlier, you'd do something like:
-        // const tileDef = tileLookup.get(tileIndex)
-        // const props = tileDef?.properties || {}
-        // For simplicity here, assume we stored them on obj.properties if you
-        // merge them in convertMapDataToUseScaling, or you can do so here.
         const props = obj.properties || {}
         const health = props.health || 0
         const armor = props.armor || 0
@@ -282,6 +311,8 @@ export class MapManager {
 
         // If collisionShapes exist, create colliders.
         if (obj.collisionShapes) {
+          // For trees with random scaling, we need to scale the collision shapes too
+        
           const collisionSketchGraphics = this.scene.add.graphics({
             lineStyle: { width: 2, color: 0xff0000, alpha: 0.8 },
           })
@@ -296,9 +327,13 @@ export class MapManager {
           const sinR = Math.sin(finalRotation)
 
           obj.collisionShapes.forEach((shape: any) => {
+            // Apply the tree's random scale to the collision shape if needed
+            const shapeWidth = shape.width * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
+            const shapeHeight = shape.height * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
+            
             // Local shape coords before final sprite transform.
-            const localX = shape.x
-            const localY = shape.y
+            const localX = shape.x * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
+            const localY = shape.y * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
 
             // Step 1: account for sprite's top-left origin offset.
             const worldX = localX + originOffsetX
@@ -320,22 +355,20 @@ export class MapManager {
               // 1) Debug-draw a circle with diameter = average of shape.width and shape.height
               collisionSketchGraphics.save()
               collisionSketchGraphics.translateCanvas(
-                finalX + shape.width / 2,
-                finalY + shape.height / 2,
+                finalX + shapeWidth / 2,
+                finalY + shapeHeight / 2,
               )
               collisionSketchGraphics.rotateCanvas(totalRotation)
 
-              const diameter = (shape.width + shape.height) / 2
+              const diameter = (shapeWidth + shapeHeight) / 2
               const radius = diameter / 2
               collisionSketchGraphics.strokeCircle(0, 0, radius)
 
               collisionSketchGraphics.restore()
 
               // 2) Create a corresponding circle collider at the same position
-              //    but make sprite's origin (0,0) so (x,y) is top-left.
-              //    Then the negative offsets in setCircle will correctly center the collider.
               const circleSprite = this.scene.add
-                .sprite(finalX + shape.width / 2, finalY + shape.height / 2, '')
+                .sprite(finalX + shapeWidth / 2, finalY + shapeHeight / 2, '')
                 .setAlpha(0)
                 .setOrigin(0, 0)
 
@@ -361,8 +394,8 @@ export class MapManager {
               collisionSketchGraphics.strokeRect(
                 0,
                 0,
-                shape.width,
-                shape.height,
+                shapeWidth,
+                shapeHeight,
               )
               collisionSketchGraphics.restore()
 
@@ -370,8 +403,8 @@ export class MapManager {
                 obj,
                 finalX,
                 finalY,
-                shape.width,
-                shape.height,
+                shapeWidth,
+                shapeHeight,
                 totalRotation,
                 tileEntity,
               )
@@ -381,7 +414,6 @@ export class MapManager {
 
         // Finally, store our tileEntity in the list
         this.tileEntities.push(tileEntity)
-        console.log(this.tileEntities)
       })
     })
   }
@@ -491,5 +523,9 @@ export class MapManager {
     for (const shape of entity.collisionBodies) {
       shape.destroy()
     }
+  }
+
+  public isAMapTileEntity(obj: any): boolean {
+    return obj && obj.entityType === 'mapEntity'
   }
 }

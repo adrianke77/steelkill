@@ -184,3 +184,13 @@ export interface TerrainChunk {
   health: number;
   armor: number;
 }
+
+export interface MapTileEntity {
+  objectId: number // Tiled's object ID (obj.id)
+  sprite: Phaser.GameObjects.Sprite
+  collisionBodies: Phaser.GameObjects.Sprite[] // The circle or rect colliders created
+  health: number
+  armor: number
+  source: string
+  entityType: 'mapEntity'
+}

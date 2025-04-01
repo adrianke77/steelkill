@@ -1,5 +1,5 @@
 import { Game } from '../scenes/Game'
-import { WeaponSpec, EnemySprite, TerrainTile } from '../interfaces'
+import { WeaponSpec, EnemySprite, TerrainTile, MapTileEntity } from '../interfaces'
 import { Constants as ct } from '../constants'
 import {
   destroyEnemyAndCreateCorpseDecals,
@@ -10,12 +10,13 @@ import { EventBus } from '../../EventBus'
 import { calculateWeaponStartPosition } from './ProjectileManager'
 import { blendColors } from '../utils'
 
-const baseEmitterConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig = {
-  scale: { start: 3.5, end: 0 },
-  rotate: { start: 0, end: 360 },
-  speed: { min: 20, max: 30 },
-  emitting: false,
-}
+const baseEmitterConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig =
+  {
+    scale: { start: 3.5, end: 0 },
+    rotate: { start: 0, end: 360 },
+    speed: { min: 20, max: 30 },
+    emitting: false,
+  }
 
 interface ActiveBeam {
   graphics: Phaser.GameObjects.Graphics
@@ -143,11 +144,20 @@ export class BeamManager {
         // Handle beam hits
         if (hitObject) {
           beamFades = false
-          if ('enemyData' in hitObject) {
-            this.beamHitEnemy(hitObject, weapon, startX, startY)
-          } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
-            this.damageTerrainTile(
+          if (this.scene.enemyMgr.isAnEnemy(hitObject)) {
+            this.beamHitEnemy(hitObject as EnemySprite, weapon, startX, startY)
+          } else if (this.scene.terrainMgr.isATerrainTile(hitObject)) {
+            this.beamHitTerrainTile(
               hitObject as TerrainTile,
+              weapon,
+              startX,
+              startY,
+              beamEndX,
+              beamEndY,
+            )
+          } else if (this.scene.mapMgr.isAMapTileEntity(hitObject)) {
+            this.beamHitMapTileEntity(
+              hitObject as MapTileEntity,
               weapon,
               startX,
               startY,
@@ -165,7 +175,7 @@ export class BeamManager {
     }
   }
 
-  private damageTerrainTile(
+  private beamHitTerrainTile(
     tile: TerrainTile,
     weapon: WeaponSpec,
     beamStartX: number,
@@ -245,7 +255,7 @@ export class BeamManager {
   ): {
     beamEndX: number
     beamEndY: number
-    hitObject: EnemySprite | Phaser.Tilemaps.Tile | null
+    hitObject: EnemySprite | TerrainTile | MapTileEntity | null
   } {
     const tileSize = this.scene.terrainMgr.map.tileWidth
     const layer = this.scene.terrainMgr.terrainLayer
@@ -253,25 +263,20 @@ export class BeamManager {
 
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     let closestEnemy: EnemySprite | null = null
-    let closestTile: Phaser.Tilemaps.Tile | null = null
+    let closestTile: TerrainTile | null = null
+    let closestMapObject: MapTileEntity | null = null
     let closestDistance = weapon.maxRange!
     let beamEndX = maxEndX
     let beamEndY = maxEndY
     const intersectionPoint = new Phaser.Geom.Point()
-
     const line = new Phaser.Geom.Line(startX, startY, maxEndX, maxEndY)
 
-    // --- Terrain Collision Detection using DDA Algorithm ---
-
-    // Convert start and end positions to tile coordinates
+    // --- Terrain Collision Detection with DDA ---
     let x = Math.floor(startX / tileSize)
     let y = Math.floor(startY / tileSize)
-
     const deltaX = maxEndX - startX
     const deltaY = maxEndY - startY
 
-    // If both deltaX and deltaY are zero, return early
-    // Required to avoid infinite loops
     if (deltaX === 0 && deltaY === 0) {
       return {
         beamEndX: startX,
@@ -282,7 +287,6 @@ export class BeamManager {
 
     const stepX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0
     const stepY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0
-
     const gridDeltaX =
       deltaX === 0 ? Number.MAX_VALUE : Math.abs(tileSize / deltaX)
     const gridDeltaY =
@@ -305,43 +309,40 @@ export class BeamManager {
       tMaxY = Math.abs((yBound - startY) / deltaY)
     }
 
-    // Step through the grid
     while (x >= 0 && x < map.width && y >= 0 && y < map.height) {
       const tile = layer.getTileAt(x, y) as TerrainTile
       if (tile && tile.collides) {
-        // Compute the exact intersection point with the tile boundary
         const tileBounds = new Phaser.Geom.Rectangle(
           tile.getLeft(),
           tile.getTop(),
           tileSize,
           tileSize,
         )
-
         const sides = [
           new Phaser.Geom.Line(
             tileBounds.left,
             tileBounds.top,
             tileBounds.right,
             tileBounds.top,
-          ), // Top
+          ),
           new Phaser.Geom.Line(
             tileBounds.right,
             tileBounds.top,
             tileBounds.right,
             tileBounds.bottom,
-          ), // Right
+          ),
           new Phaser.Geom.Line(
             tileBounds.right,
             tileBounds.bottom,
             tileBounds.left,
             tileBounds.bottom,
-          ), // Bottom
+          ),
           new Phaser.Geom.Line(
             tileBounds.left,
             tileBounds.bottom,
             tileBounds.left,
             tileBounds.top,
-          ), // Left
+          ),
         ]
 
         let collisionFound = false
@@ -360,7 +361,8 @@ export class BeamManager {
               beamEndX = intersectionPoint.x
               beamEndY = intersectionPoint.y
               closestTile = tile
-              closestEnemy = null // Beam hit tile before any enemy
+              closestEnemy = null
+              closestMapObject = null
               collisionFound = true
               break
             }
@@ -379,21 +381,21 @@ export class BeamManager {
       }
     }
 
+    // --- Enemy Collision ---
     for (const enemy of enemies) {
       if (!enemy.active) continue
-
       const enemyCircle = new Phaser.Geom.Circle(
         enemy.x,
         enemy.y,
         enemy.displayWidth / 2,
       )
-      const intersects = Phaser.Geom.Intersects.LineToCircle(
-        line,
-        enemyCircle,
-        intersectionPoint,
-      )
-
-      if (intersects) {
+      if (
+        Phaser.Geom.Intersects.LineToCircle(
+          line,
+          enemyCircle,
+          intersectionPoint,
+        )
+      ) {
         const distance = Phaser.Math.Distance.Between(
           startX,
           startY,
@@ -403,16 +405,46 @@ export class BeamManager {
         if (distance < closestDistance) {
           closestDistance = distance
           closestEnemy = enemy
-          closestTile = null // Beam hit enemy before any tile
+          closestTile = null
+          closestMapObject = null
           beamEndX = intersectionPoint.x
           beamEndY = intersectionPoint.y
         }
       }
     }
 
-    // Determine the object hit (enemy, tile, or null)
-    const hitObject = closestEnemy || closestTile || null
+    // map object collision
+    for (const tileEntity of this.scene.mapMgr.tileEntities) {
+      for (const colliderSprite of tileEntity.collisionBodies) {
+        const body = colliderSprite.body as Phaser.Physics.Arcade.Body
+        // Example circle collision (if using setCircle)
+        const circle = new Phaser.Geom.Circle(
+          body.x + body.halfWidth,
+          body.y + body.halfHeight,
+          body.halfWidth,
+        )
+        if (
+          Phaser.Geom.Intersects.LineToCircle(line, circle, intersectionPoint)
+        ) {
+          const distance = Phaser.Math.Distance.Between(
+            startX,
+            startY,
+            intersectionPoint.x,
+            intersectionPoint.y,
+          )
+          if (distance < closestDistance) {
+            closestDistance = distance
+            closestEnemy = null
+            closestTile = null
+            closestMapObject = tileEntity
+            beamEndX = intersectionPoint.x
+            beamEndY = intersectionPoint.y
+          }
+        }
+      }
+    }
 
+    const hitObject = closestEnemy || closestTile || closestMapObject || null
     return { beamEndX, beamEndY, hitObject }
   }
 
@@ -469,7 +501,7 @@ export class BeamManager {
       )
 
       // Check if there is a line of sight to the enemy
-      if (!hitObject || 'enemyData' in hitObject) {
+      if (!hitObject || this.scene.terrainMgr.isATerrainTile(hitObject)) {
         const distance = Phaser.Math.Distance.Between(
           startX,
           startY,
@@ -509,11 +541,11 @@ export class BeamManager {
 
       if (hitObject) {
         beamFades = false
-        if ('enemyData' in hitObject) {
-          this.beamHitEnemy(hitObject, weapon, startX, startY)
-        } else if (hitObject instanceof Phaser.Tilemaps.Tile) {
+        if (this.scene.enemyMgr.isAnEnemy(hitObject)) {
+          this.beamHitEnemy(hitObject as EnemySprite, weapon, startX, startY)
+        } else if (this.scene.terrainMgr.isATerrainTile(hitObject)) {
           const tile = hitObject as TerrainTile
-          this.damageTerrainTile(
+          this.beamHitTerrainTile(
             tile,
             weapon,
             startX,
@@ -569,7 +601,6 @@ export class BeamManager {
     beam?: ActiveBeam,
     beamFades?: boolean,
   ): void {
-
     const isBeamFragment = !beam
 
     const length = Phaser.Math.Distance.Between(startX, startY, endX, endY)
@@ -859,6 +890,49 @@ export class BeamManager {
     }
   }
 
+  private beamHitMapTileEntity(
+    entity: MapTileEntity,
+    weapon: WeaponSpec,
+    beamStartX: number,
+    beamStartY: number,
+    beamEndX: number,
+    beamEndY: number,
+  ): void {
+    const damage = weapon.damage
+
+    // Optional: create a dust/explosion effect where the beam hit
+    createDustCloud(
+      this.scene,
+      beamEndX,
+      beamEndY,
+      0,
+      0,
+      1,
+      4000,
+      Math.min(weapon.damage * 40, 100),
+      0x666666 // Or pick any color relevant to the map tile entity
+    )
+
+    // Subtract health from the entity
+    entity.health -= damage
+
+    // If health is depleted, remove it
+    if (entity.health <= 0) {
+      this.scene.mapMgr.destroyMapTileEntity(entity)
+    }
+
+    this.beamHitSpark(beamStartX, beamStartY, beamEndX, beamEndY, weapon)
+    createLightFlash(
+      this.scene,
+      beamEndX,
+      beamEndY,
+      weapon.beamColor!,
+      100,
+      weapon.beamHitLightIntensity!,
+      weapon.beamHitLightRadius!,
+    )
+  }
+
   private beamHitEnemy(
     enemy: EnemySprite,
     weapon: WeaponSpec,
@@ -937,7 +1011,7 @@ export class BeamManager {
         )
 
         // Only allow chaining if there's direct line of sight or if hitting another enemy
-        return !hitObject || 'enemyData' in hitObject
+        return !hitObject || this.scene.enemyMgr.isAnEnemy(hitObject)
       })
       .sort((a, b) => a.distance - b.distance)
 

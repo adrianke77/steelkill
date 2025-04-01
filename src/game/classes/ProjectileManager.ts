@@ -1,5 +1,5 @@
 import { Game } from '../scenes/Game'
-import { MapTileEntity } from '../classes/MapManager'
+import { MapTileEntity } from '../interfaces'
 import { Constants as ct, weaponConstants } from '../constants'
 import { enemyWeapons } from '../constants/weapons'
 import {
@@ -289,7 +289,6 @@ export class ProjectileManager {
   ): boolean {
     const weapon = projectile.weapon
 
-
     if (weapon?.explodeRadius) {
       this.playExplosionSound(projectile)
       if (projectile.enemySource) {
@@ -355,7 +354,6 @@ export class ProjectileManager {
   ): void {
     const damage = projectile.damage * damageFactor
     if ('entityType' in target && target.entityType === 'mapEntity') {
-      console.log(target.health, projectile.damage, damageFactor)
       target.health -= projectile.damage * damageFactor
       const directionRadians = Phaser.Math.Angle.Between(
         projectile.x,
@@ -372,7 +370,6 @@ export class ProjectileManager {
       if (target.health <= 0) {
         this.scene.mapMgr.destroyMapTileEntity(target)
       }
-      
     } else if (target instanceof Phaser.Tilemaps.Tile) {
       const tileData = this.scene.terrainMgr.getTileData(target)
       // pixel target
@@ -420,7 +417,8 @@ export class ProjectileManager {
         damageFactor,
       )
     }
-  }  private applyProjectileDamageAndEffectsToEnemy(
+  }
+  private applyProjectileDamageAndEffectsToEnemy(
     projectile: Projectile,
     enemy: EnemySprite,
     damageFactor: number,
@@ -549,47 +547,7 @@ export class ProjectileManager {
       },
     )
 
-    // Damaging tiles
-    const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
-      x - radius,
-      y - radius,
-      radius * 2,
-      radius * 2,
-      { isColliding: true }, // Only consider collidable tiles,
-      undefined,
-      this.scene.terrainMgr.terrainLayer,
-    )
-
-    if (tiles) {
-      tiles.forEach((tileObject: Phaser.Tilemaps.Tile) => {
-        const tile = tileObject as TerrainTile
-        // Calculate the distance from the explosion center to the tile's center
-        const tileCenterX = tile.getCenterX()
-        const tileCenterY = tile.getCenterY()
-        const distance = Phaser.Math.Distance.Between(
-          x,
-          y,
-          tileCenterX,
-          tileCenterY,
-        )
-
-        if (distance <= radius) {
-          let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
-          if (weapon.terrainDamageMultiplier) {
-            damage = damage * weapon.terrainDamageMultiplier
-          }
-          // Apply damage considering tile's armor
-          if (damage > tile.armor / 2) {
-            const effectiveDamage = damage - tile.armor / 2
-            tile.health -= effectiveDamage
-
-            if (tile.health <= 0) {
-              this.scene.terrainMgr.destroyTile(tile)
-            }
-          }
-        }
-      })
-    }
+    this.applyDamageToTerrainAndMapObjects(x, y, radius, baseDamage, weapon)
   }
 
   createExplosionHittingPlayer(
@@ -621,7 +579,17 @@ export class ProjectileManager {
       player.damagePlayer(damage - player.armor)
     }
 
-    // Add terrain damage
+    this.applyDamageToTerrainAndMapObjects(x, y, radius, baseDamage, weapon)
+  }
+
+  private applyDamageToTerrainAndMapObjects(
+    x: number,
+    y: number,
+    radius: number,
+    baseDamage: number,
+    weapon: WeaponSpec | EnemyWeaponSpec,
+  ): void {
+    
     const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
       x - radius,
       y - radius,
@@ -661,6 +629,31 @@ export class ProjectileManager {
         }
       })
     }
+
+    for (const mapEntity of this.scene.mapMgr.tileEntities) {
+      const distance = Phaser.Math.Distance.Between(
+        x,
+        y,
+        mapEntity.sprite.x,
+        mapEntity.sprite.y
+      )
+      if (distance <= radius) {
+        let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
+        if (weapon.terrainDamageMultiplier) {
+          damage = damage * weapon.terrainDamageMultiplier
+        }
+  
+        // Same armor/damage logic as terrain tiles
+        if (damage > mapEntity.armor / 2) {
+          const effectiveDamage = damage * 10 - mapEntity.armor / 2
+          mapEntity.health -= effectiveDamage
+          if (mapEntity.health <= 0) {
+            // Destroy the map object
+            this.scene.mapMgr.destroyMapTileEntity(mapEntity)
+          }
+        }
+      }
+    }
   }
 
   destroyProjectile(projectile: Projectile): void {
@@ -699,7 +692,7 @@ export class ProjectileManager {
     radDirection?: number,
     particles?: number,
     projectile?: Projectile,
-    lifespan?: number
+    lifespan?: number,
   ): void {
     const config = baseProjectileSparkConfig
     if (radDirection) {
@@ -713,14 +706,10 @@ export class ProjectileManager {
     } else {
       config.angle = { min: 0, max: 360 }
     }
-    config.lifespan = lifespan || 150 
+    config.lifespan = lifespan || 150
     this.scene.projectileSparkEmitter.setConfig(config)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)
-    this.scene.projectileSparkEmitter.emitParticleAt(
-      x,
-      y,
-      particles || 5 ,
-    )
+    this.scene.projectileSparkEmitter.emitParticleAt(x, y, particles || 5)
     if (projectile && projectile?.hasTracer) {
       const weapon = projectile.weapon
       createLightFlash(
@@ -786,8 +775,6 @@ export class ProjectileManager {
       )
     })
   }
-
-
 
   playWeaponFireSound = (
     weapon: WeaponSpec | EnemyWeaponSpec,
@@ -956,8 +943,9 @@ export class ProjectileManager {
       delete this.repeatingFireFadeoutSounds[soundKey]
       // restore volume if we had a fade-out happening
       if (this.repeatingFireSounds[soundKey]) {
-        (this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound)
-          .setVolume(baseVolume)
+        ;(
+          this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
+        ).setVolume(baseVolume)
       }
     }
 
@@ -972,8 +960,10 @@ export class ProjectileManager {
       const additionalWeapons: number = count - 1
       // each additional weapon adds 30% of the base volume
       const addedVolume = baseVolume * 0.3 * additionalWeapons
-      const newVolume: number = baseVolume + addedVolume as number
-      (this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound).setVolume(newVolume)
+      const newVolume: number = (baseVolume + addedVolume) as number
+      ;(
+        this.repeatingFireSounds[soundKey] as Phaser.Sound.WebAudioSound
+      ).setVolume(newVolume)
     }
   }
 }

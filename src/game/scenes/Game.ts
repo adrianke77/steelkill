@@ -111,10 +111,6 @@ export class Game extends Scene {
     this.minimapMgr = new MinimapManager(this)
     this.mapMgr = new MapManager(this)
 
-    this.terrainMgr = new TerrainManager(this)
-
-    // this.terrainMgr.createTerrain()
-
     this.inputMgr.initializeInputs()
 
     this.lastWeaponFireTime = [0, 0, 0, 0]
@@ -201,7 +197,6 @@ export class Game extends Scene {
             collisionBody as Phaser.GameObjects.Sprite,
           ),
         )
-        console.log(tileEntity)
         if (tileEntity) {
           this.projectileMgr.projectileHitsTarget(projectile, tileEntity)
         }
@@ -222,6 +217,11 @@ export class Game extends Scene {
     // map size in game is half of Tiled's in width and height each
     this.mapWidth = (width * tilewidth) / 2
     this.mapHeight = (height * tileheight) / 2
+
+    // needs mapWidth and mapHeight to initialise
+    this.terrainMgr = new TerrainManager(this)
+
+    // this.terrainMgr.createTerrain()
 
     this.physics.world.setBounds(0, 0, this.mapWidth, this.mapHeight)
 

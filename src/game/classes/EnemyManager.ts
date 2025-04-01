@@ -463,4 +463,8 @@ export class EnemyManager {
       return true
     })
   }
+
+  isAnEnemy(obj: any): boolean {
+    return 'enemyData' in obj
+  }
 }

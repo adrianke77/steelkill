@@ -4,11 +4,11 @@ import { dataStore } from '../../../DataStore'
 
 const reservedKeys = ['v']
 
-const initialWeapons = ['machineGun1', 'machineGun1', 'machineGun1', 'machineGun1']
+const initialWeapons = ['machineGun1', 'machineGun1', 'machineGun1', 'rockets1']
 const initialBindings = [
   ['0', 'mouse'],
-  ['1', 'mouse'],
-  ['1', 'mouse'],
+  ['0', 'mouse'],
+  ['0', 'mouse'],
   ['1', 'mouse'],
 ]
 
@@ -113,21 +113,24 @@ export const WeaponSelector = () => {
     return `${device} ${buttonOrKey}`
   }
 
-  return ( 
-    <div className="hudFont weaponsSelector" style={{ marginTop: "1rem", width: "80vw" }}>
+  return (
+    <div
+      className="hudFont weaponsSelector"
+      style={{ marginTop: '1rem', width: '80vw' }}
+    >
       {/* Added headers for columns */}
-      <div style={{ display: 'flex', marginBottom: "1rem"}}>
+      <div style={{ display: 'flex', marginBottom: '1rem' }}>
         <div style={{ width: '20%', textAlign: 'center' }}></div>
-        <div style={{ width: '40%', textAlign: 'center', fontSize: "0.7rem" }}>
+        <div style={{ width: '40%', textAlign: 'center', fontSize: '0.7rem' }}>
           Click to select weapons :
         </div>
-        <div style={{ width: '40%', textAlign: 'center', fontSize: "0.7rem"}}>
+        <div style={{ width: '40%', textAlign: 'center', fontSize: '0.7rem' }}>
           Click to bind key / button :
         </div>
       </div>
 
       {[...Array(4)].map((_, i) => (
-        <div key={i} style={{ width:"100%" , display: 'flex' }}>
+        <div key={i} style={{ width: '100%', display: 'flex' }}>
           {/* Weapon Mount label c olumn */}
           <div style={{ width: '20%', textAlign: 'right' }}>
             <label htmlFor={`weapon-select-${i}`}>

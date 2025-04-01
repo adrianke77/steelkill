@@ -1,7 +1,10 @@
 // TerrainManager.ts
 
 import { Game } from '../scenes/Game'
-import { Projectile, TerrainTile } from '../interfaces'
+import {
+  Projectile,
+  TerrainTile,
+} from '../interfaces'
 import { createDustCloud } from '../rendering'
 import { Constants as ct } from '../constants'
 import { tileProperties } from '../constants/tileProperties'
@@ -70,7 +73,7 @@ export class TerrainManager {
 
     // Create the tilemap
     this.map = this.scene.make.tilemap({
-      width: this.scene.mapWidth/ ct.tileSize,
+      width: this.scene.mapWidth / ct.tileSize,
       height: this.scene.mapHeight / ct.tileSize,
       tileWidth: ct.tileSize,
       tileHeight: ct.tileSize,
@@ -142,7 +145,10 @@ export class TerrainManager {
 
     this.scene.viewMgr.mainLayer.add(this.terrainLayer)
 
-    this.terrainLayer.setCollisionBetween(0, this.tilesetColumns * this.tilesetRows - 1)
+    this.terrainLayer.setCollisionBetween(
+      0,
+      this.tilesetColumns * this.tilesetRows - 1,
+    )
     this.terrainLayer.setPipeline('Light2D')
     this.terrainLayer.setAlpha(0.7)
 
@@ -353,8 +359,12 @@ export class TerrainManager {
 
   populateTerrain() {
     // Calculate the player's starting tile coordinates
-    const playerStartTileX = Math.floor(this.scene.player.mechContainer.x / ct.tileSize)
-    const playerStartTileY = Math.floor(this.scene.player.mechContainer.y / ct.tileSize)
+    const playerStartTileX = Math.floor(
+      this.scene.player.mechContainer.x / ct.tileSize,
+    )
+    const playerStartTileY = Math.floor(
+      this.scene.player.mechContainer.y / ct.tileSize,
+    )
 
     // Increase to make terrain denser, decrease for sparser terrain
     const fillProbability = 0.45
@@ -943,5 +953,9 @@ export class TerrainManager {
     tilesetImage.setDepth(99999999999999)
 
     this.scene.viewMgr.mainLayer.add(tilesetImage)
+  }
+
+  isATerrainTile(obj: any): boolean {
+    return obj instanceof Phaser.Tilemaps.Tile
   }
 }

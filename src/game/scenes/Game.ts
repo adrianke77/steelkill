@@ -198,7 +198,7 @@ export class Game extends Scene {
           ),
         )
         if (tileEntity) {
-          this.projectileMgr.projectileHitsTarget(projectile, tileEntity)
+          this.projectileMgr.projectileHitsTarget(projectile, tileEntity, collisionBody)
         }
       },
     )

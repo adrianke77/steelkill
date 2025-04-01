@@ -286,6 +286,8 @@ export class ProjectileManager {
   projectileHitsTarget(
     projectile: Projectile,
     target: EnemySprite | TerrainTile | MapTileEntity,
+    // only used for hitting map objects
+    collisionBody?: Phaser.GameObjects.Sprite,
   ): boolean {
     const weapon = projectile.weapon
 
@@ -301,14 +303,29 @@ export class ProjectileManager {
     }
 
     if (projectile!.penetration > target.armor) {
-      this.applyProjectileDamageAndEffectsToTarget(projectile, target, 1)
+      this.applyProjectileDamageAndEffectsToTarget(
+        projectile,
+        target,
+        1,
+        collisionBody,
+      )
       projectile.penetration -= target.armor / 2
       return false
     } else if (projectile!.penetration > target.armor / 2) {
-      this.applyProjectileDamageAndEffectsToTarget(projectile, target, 0.5)
+      this.applyProjectileDamageAndEffectsToTarget(
+        projectile,
+        target,
+        0.5,
+        collisionBody,
+      )
       this.destroyProjectile(projectile)
     } else if (projectile!.penetration < target.armor / 2) {
-      this.applyProjectileDamageAndEffectsToTarget(projectile, target, 0)
+      this.applyProjectileDamageAndEffectsToTarget(
+        projectile,
+        target,
+        0,
+        collisionBody,
+      )
       this.destroyProjectile(projectile)
     }
     return true
@@ -351,6 +368,8 @@ export class ProjectileManager {
     projectile: Projectile,
     target: EnemySprite | TerrainTile | MapTileEntity,
     damageFactor: number,
+    // only used for hitting map objects
+    collisionbody?: Phaser.GameObjects.Sprite,
   ): void {
     const damage = projectile.damage * damageFactor
     if ('entityType' in target && target.entityType === 'mapEntity') {
@@ -358,12 +377,13 @@ export class ProjectileManager {
       const directionRadians = Phaser.Math.Angle.Between(
         projectile.x,
         projectile.y,
-        target.sprite.x,
-        target.sprite.y,
+        collisionbody!.x,
+        collisionbody!.y,
       )
+      console.log(projectile.x, collisionbody!.x)
       this.projectileSpark(
-        projectile.x * 0.75 + target.sprite.x * 0.25,
-        projectile.y * 0.75 + target.sprite.y * 0.25,
+        (projectile.x + collisionbody!.x) / 2,
+        (projectile.y + collisionbody!.y) / 2,
         projectile,
         directionRadians,
       )
@@ -589,7 +609,6 @@ export class ProjectileManager {
     baseDamage: number,
     weapon: WeaponSpec | EnemyWeaponSpec,
   ): void {
-    
     const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
       x - radius,
       y - radius,
@@ -635,14 +654,14 @@ export class ProjectileManager {
         x,
         y,
         mapEntity.sprite.x,
-        mapEntity.sprite.y
+        mapEntity.sprite.y,
       )
       if (distance <= radius) {
         let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
         if (weapon.terrainDamageMultiplier) {
           damage = damage * weapon.terrainDamageMultiplier
         }
-  
+
         // Same armor/damage logic as terrain tiles
         if (damage > mapEntity.armor / 2) {
           const effectiveDamage = damage * 10 - mapEntity.armor / 2

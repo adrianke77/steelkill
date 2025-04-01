@@ -313,10 +313,6 @@ export class MapManager {
         if (obj.collisionShapes) {
           // For trees with random scaling, we need to scale the collision shapes too
         
-          const collisionSketchGraphics = this.scene.add.graphics({
-            lineStyle: { width: 2, color: 0xff0000, alpha: 0.8 },
-          })
-
           // Store references to created bodies:
           obj.arcadeCollisionBodies = []
 
@@ -325,6 +321,13 @@ export class MapManager {
           const originOffsetY = -sprite.originY * sprite.displayHeight
           const cosR = Math.cos(finalRotation)
           const sinR = Math.sin(finalRotation)
+
+          // Track min/max coordinates to draw bounding box
+          // this is for calculating the general centre of sprite and saving this later
+          let minX = Number.MAX_VALUE
+          let minY = Number.MAX_VALUE
+          let maxX = Number.MIN_VALUE
+          let maxY = Number.MIN_VALUE
 
           obj.collisionShapes.forEach((shape: any) => {
             // Apply the tree's random scale to the collision shape if needed
@@ -353,18 +356,8 @@ export class MapManager {
 
             if (shape.ellipse) {
               // 1) Debug-draw a circle with diameter = average of shape.width and shape.height
-              collisionSketchGraphics.save()
-              collisionSketchGraphics.translateCanvas(
-                finalX + shapeWidth / 2,
-                finalY + shapeHeight / 2,
-              )
-              collisionSketchGraphics.rotateCanvas(totalRotation)
-
               const diameter = (shapeWidth + shapeHeight) / 2
               const radius = diameter / 2
-              collisionSketchGraphics.strokeCircle(0, 0, radius)
-
-              collisionSketchGraphics.restore()
 
               // 2) Create a corresponding circle collider at the same position
               const circleSprite = this.scene.add
@@ -386,18 +379,29 @@ export class MapManager {
               this.collisionShapesGroup.add(circleSprite)
               this.collisionShapesGroup.refresh()
               tileEntity.collisionBodies.push(circleSprite)
+              
+              // Update bounding box coordinates
+              minX = Math.min(minX, finalX + shapeWidth / 2 - radius)
+              minY = Math.min(minY, finalY + shapeHeight / 2 - radius)
+              maxX = Math.max(maxX, finalX + shapeWidth / 2 + radius)
+              maxY = Math.max(maxY, finalY + shapeHeight / 2 + radius)
             } else {
-              // Draw the original rectangle in debug:
-              collisionSketchGraphics.save()
-              collisionSketchGraphics.translateCanvas(finalX, finalY)
-              collisionSketchGraphics.rotateCanvas(totalRotation)
-              collisionSketchGraphics.strokeRect(
-                0,
-                0,
-                shapeWidth,
-                shapeHeight,
-              )
-              collisionSketchGraphics.restore()
+              // Update bounding box coordinates for rectangle corners
+              // Since the rectangle is rotated, we need to check all four corners
+              const corners = [
+                { x: finalX, y: finalY },
+                { x: finalX + shapeWidth * Math.cos(totalRotation), y: finalY + shapeWidth * Math.sin(totalRotation) },
+                { x: finalX + shapeWidth * Math.cos(totalRotation) - shapeHeight * Math.sin(totalRotation), 
+                  y: finalY + shapeWidth * Math.sin(totalRotation) + shapeHeight * Math.cos(totalRotation) },
+                { x: finalX - shapeHeight * Math.sin(totalRotation), y: finalY + shapeHeight * Math.cos(totalRotation) }
+              ];
+              
+              corners.forEach(corner => {
+                minX = Math.min(minX, corner.x);
+                minY = Math.min(minY, corner.y);
+                maxX = Math.max(maxX, corner.x);
+                maxY = Math.max(maxY, corner.y);
+              });
 
               this.approximateRectWithCircles(
                 obj,
@@ -410,6 +414,17 @@ export class MapManager {
               )
             }
           })
+          
+          // Calculate and store the center of the bounding box if we have valid bounds
+          if (minX !== Number.MAX_VALUE) {
+            // Calculate the center of the bounding box
+            const centreX = minX + (maxX - minX) / 2;
+            const centreY = minY + (maxY - minY) / 2;
+            
+            // Store the center in the tileEntity
+            tileEntity.tileCentreX = centreX;
+            tileEntity.tileCentreY = centreY;
+          }
         }
 
         // Finally, store our tileEntity in the list

@@ -380,7 +380,6 @@ export class ProjectileManager {
         collisionbody!.x,
         collisionbody!.y,
       )
-      console.log(projectile.x, collisionbody!.x)
       this.projectileSpark(
         (projectile.x + collisionbody!.x) / 2,
         (projectile.y + collisionbody!.y) / 2,
@@ -609,6 +608,8 @@ export class ProjectileManager {
     baseDamage: number,
     weapon: WeaponSpec | EnemyWeaponSpec,
   ): void {
+
+    // terrain tile damage
     const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
       x - radius,
       y - radius,
@@ -649,12 +650,13 @@ export class ProjectileManager {
       })
     }
 
+    // map object damage
     for (const mapEntity of this.scene.mapMgr.tileEntities) {
       const distance = Phaser.Math.Distance.Between(
         x,
         y,
-        mapEntity.sprite.x,
-        mapEntity.sprite.y,
+        mapEntity.tileCentreX,
+        mapEntity.tileCentreY,
       )
       if (distance <= radius) {
         let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))

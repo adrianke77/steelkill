@@ -659,15 +659,13 @@ export class ProjectileManager {
         mapEntity.tileCentreY,
       )
       if (distance <= radius) {
-        let damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
-        if (weapon.terrainDamageMultiplier) {
-          damage = damage * weapon.terrainDamageMultiplier
-        }
+        const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
 
         // Same armor/damage logic as terrain tiles
         if (damage > mapEntity.armor / 2) {
           const effectiveDamage = damage * 10 - mapEntity.armor / 2
           mapEntity.health -= effectiveDamage
+          console.log(effectiveDamage, mapEntity.health)
           if (mapEntity.health <= 0) {
             // Destroy the map object
             this.scene.mapMgr.destroyMapTileEntity(mapEntity)

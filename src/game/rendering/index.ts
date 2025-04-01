@@ -170,6 +170,7 @@ function addCombinedDecal(scene: Game) {
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
   combinedDecalsImage.setPipeline('Light2D')
+  combinedDecalsImage.setDepth(ct.depths.decals)
   scene.decalCount = 0
   scene.combinedDecals.push({
     texture: combinedTexture,

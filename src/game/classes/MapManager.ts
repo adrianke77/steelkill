@@ -246,59 +246,60 @@ export class MapManager {
 
         // Get base scale from the object
         let finalScale = obj.scale ?? 1
-        
+
         // For tree sprites, apply random scaling and adjust position
         if (treeGids.includes(obj.gid)) {
           // First apply the base scale to get the original dimensions
           sprite.setScale(finalScale)
-        
+
           // Store original dimensions and center position
           const originalWidth = sprite.displayWidth
           const originalHeight = sprite.displayHeight
 
-        
           // Generate random scale factor between 0.5 and 1.5
           const randomScaleFactor = Phaser.Math.FloatBetween(0.5, 1.5)
           finalScale *= randomScaleFactor
-        
+
           // Apply the new scale
           sprite.setScale(finalScale)
-        
+
           // Calculate new dimensions
           const newWidth = sprite.displayWidth
           const newHeight = sprite.displayHeight
-        
+
           // Calculate new top-left position to maintain the center
           // We need to account for rotation when repositioning
           const cosR = Math.cos(tiledRotationRad)
           const sinR = Math.sin(tiledRotationRad)
-        
+
           // Calculate the offset from the original top-left to maintain center
           const offsetX = (originalWidth - newWidth) / 2
           const offsetY = (originalHeight - newHeight) / 2
-        
+
           // Apply rotation to the offset
           const rotatedOffsetX = offsetX * cosR - offsetY * sinR
           const rotatedOffsetY = offsetX * sinR + offsetY * cosR
-        
+
           // Apply the offset to the sprite position
           sprite.x += rotatedOffsetX
           sprite.y += rotatedOffsetY
-        
+
           // Also apply random alpha variation for trees
           sprite.setAlpha(Phaser.Math.FloatBetween(0.8, 1.0))
         } else {
           // For non-tree sprites, just apply the scale directly
           sprite.setScale(finalScale)
         }
-        
-        sprite.setDepth(ct.depths.buildings)
 
         const props = obj.properties || {}
+        
+        // if object has no health property, is background object like roads
+        sprite.setDepth(props.health? ct.depths.buildings : ct.depths.terrain)
+        
         const health = props.health || 0
         const armor = props.armor || 0
 
-        // Create a new entity object for this tile
+        // Create a new entity object for this tile with health
         const tileEntity: MapTileEntity = {
           objectId: obj.id,
           sprite: sprite,
@@ -307,12 +308,15 @@ export class MapManager {
           armor,
           source: obj.tileSource,
           entityType: 'mapEntity',
+          tileCentreX: 0,
+          tileCentreY: 0,
         }
 
+        
         // If collisionShapes exist, create colliders.
         if (obj.collisionShapes) {
           // For trees with random scaling, we need to scale the collision shapes too
-        
+
           // Store references to created bodies:
           obj.arcadeCollisionBodies = []
 
@@ -331,12 +335,20 @@ export class MapManager {
 
           obj.collisionShapes.forEach((shape: any) => {
             // Apply the tree's random scale to the collision shape if needed
-            const shapeWidth = shape.width * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
-            const shapeHeight = shape.height * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
-            
+            const shapeWidth =
+              shape.width *
+              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
+            const shapeHeight =
+              shape.height *
+              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
+
             // Local shape coords before final sprite transform.
-            const localX = shape.x * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
-            const localY = shape.y * (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1);
+            const localX =
+              shape.x *
+              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
+            const localY =
+              shape.y *
+              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
 
             // Step 1: account for sprite's top-left origin offset.
             const worldX = localX + originOffsetX
@@ -379,7 +391,7 @@ export class MapManager {
               this.collisionShapesGroup.add(circleSprite)
               this.collisionShapesGroup.refresh()
               tileEntity.collisionBodies.push(circleSprite)
-              
+
               // Update bounding box coordinates
               minX = Math.min(minX, finalX + shapeWidth / 2 - radius)
               minY = Math.min(minY, finalY + shapeHeight / 2 - radius)
@@ -390,18 +402,32 @@ export class MapManager {
               // Since the rectangle is rotated, we need to check all four corners
               const corners = [
                 { x: finalX, y: finalY },
-                { x: finalX + shapeWidth * Math.cos(totalRotation), y: finalY + shapeWidth * Math.sin(totalRotation) },
-                { x: finalX + shapeWidth * Math.cos(totalRotation) - shapeHeight * Math.sin(totalRotation), 
-                  y: finalY + shapeWidth * Math.sin(totalRotation) + shapeHeight * Math.cos(totalRotation) },
-                { x: finalX - shapeHeight * Math.sin(totalRotation), y: finalY + shapeHeight * Math.cos(totalRotation) }
-              ];
-              
+                {
+                  x: finalX + shapeWidth * Math.cos(totalRotation),
+                  y: finalY + shapeWidth * Math.sin(totalRotation),
+                },
+                {
+                  x:
+                    finalX +
+                    shapeWidth * Math.cos(totalRotation) -
+                    shapeHeight * Math.sin(totalRotation),
+                  y:
+                    finalY +
+                    shapeWidth * Math.sin(totalRotation) +
+                    shapeHeight * Math.cos(totalRotation),
+                },
+                {
+                  x: finalX - shapeHeight * Math.sin(totalRotation),
+                  y: finalY + shapeHeight * Math.cos(totalRotation),
+                },
+              ]
+
               corners.forEach(corner => {
-                minX = Math.min(minX, corner.x);
-                minY = Math.min(minY, corner.y);
-                maxX = Math.max(maxX, corner.x);
-                maxY = Math.max(maxY, corner.y);
-              });
+                minX = Math.min(minX, corner.x)
+                minY = Math.min(minY, corner.y)
+                maxX = Math.max(maxX, corner.x)
+                maxY = Math.max(maxY, corner.y)
+              })
 
               this.approximateRectWithCircles(
                 obj,
@@ -414,16 +440,16 @@ export class MapManager {
               )
             }
           })
-          
+
           // Calculate and store the center of the bounding box if we have valid bounds
           if (minX !== Number.MAX_VALUE) {
             // Calculate the center of the bounding box
-            const centreX = minX + (maxX - minX) / 2;
-            const centreY = minY + (maxY - minY) / 2;
-            
+            const centreX = minX + (maxX - minX) / 2
+            const centreY = minY + (maxY - minY) / 2
+
             // Store the center in the tileEntity
-            tileEntity.tileCentreX = centreX;
-            tileEntity.tileCentreY = centreY;
+            tileEntity.tileCentreX = centreX
+            tileEntity.tileCentreY = centreY
           }
         }
 

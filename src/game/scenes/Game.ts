@@ -192,13 +192,14 @@ export class Game extends Scene {
       this.mapMgr.collisionShapesGroup,
       (projectileObj, collisionBody) => {
         const projectile = projectileObj as Projectile
+        const body = collisionBody as Phaser.GameObjects.Sprite
         const tileEntity = this.mapMgr.tileEntities.find(t =>
           t.collisionBodies.includes(
-            collisionBody as Phaser.GameObjects.Sprite,
+            body as Phaser.GameObjects.Sprite,
           ),
         )
         if (tileEntity) {
-          this.projectileMgr.projectileHitsTarget(projectile, tileEntity, collisionBody)
+          this.projectileMgr.projectileHitsTarget(projectile, tileEntity, body)
         }
       },
     )

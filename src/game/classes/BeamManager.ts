@@ -1,5 +1,5 @@
 import { Game } from '../scenes/Game'
-import { WeaponSpec, EnemySprite, TerrainTile, MapTileEntity } from '../interfaces'
+import { WeaponSpec, EnemySprite, TerrainTile, MapObject } from '../interfaces'
 import { Constants as ct } from '../constants'
 import {
   destroyEnemyAndCreateCorpseDecals,
@@ -155,9 +155,9 @@ export class BeamManager {
               beamEndX,
               beamEndY,
             )
-          } else if (this.scene.mapMgr.isAMapTileEntity(hitObject)) {
-            this.beamHitMapTileEntity(
-              hitObject as MapTileEntity,
+          } else if (this.scene.mapMgr.isAMapObject(hitObject)) {
+            this.beamHitMapObject(
+              hitObject as MapObject,
               weapon,
               startX,
               startY,
@@ -198,7 +198,8 @@ export class BeamManager {
       this.scene.terrainMgr.getTileData(tile).color,
     )
 
-    tile.health -= damage
+    const effectiveDamage = damage - tile.armor / 2
+    tile.health -= effectiveDamage > 0 ? effectiveDamage : 0
     if (tile.health <= 0) {
       this.scene.terrainMgr.destroyTile(tile)
     }
@@ -255,7 +256,7 @@ export class BeamManager {
   ): {
     beamEndX: number
     beamEndY: number
-    hitObject: EnemySprite | TerrainTile | MapTileEntity | null
+    hitObject: EnemySprite | TerrainTile | MapObject | null
   } {
     const tileSize = this.scene.terrainMgr.map.tileWidth
     const layer = this.scene.terrainMgr.terrainLayer
@@ -264,7 +265,7 @@ export class BeamManager {
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     let closestEnemy: EnemySprite | null = null
     let closestTile: TerrainTile | null = null
-    let closestMapObject: MapTileEntity | null = null
+    let closestMapObject: MapObject | null = null
     let closestDistance = weapon.maxRange!
     let beamEndX = maxEndX
     let beamEndY = maxEndY
@@ -414,7 +415,7 @@ export class BeamManager {
     }
 
     // map object collision
-    for (const tileEntity of this.scene.mapMgr.tileEntities) {
+    for (const tileEntity of this.scene.mapMgr.mapObjects) {
       for (const colliderSprite of tileEntity.collisionBodies) {
         const body = colliderSprite.body as Phaser.Physics.Arcade.Body
         // Example circle collision (if using setCircle)
@@ -890,8 +891,8 @@ export class BeamManager {
     }
   }
 
-  private beamHitMapTileEntity(
-    entity: MapTileEntity,
+  private beamHitMapObject(
+    entity: MapObject,
     weapon: WeaponSpec,
     beamStartX: number,
     beamStartY: number,
@@ -910,15 +911,23 @@ export class BeamManager {
       1,
       4000,
       Math.min(weapon.damage * 40, 100),
-      0x666666 // Or pick any color relevant to the map tile entity
+      0x666666, // Or pick any color relevant to the map tile entity
     )
 
-    // Subtract health from the entity
-    entity.health -= damage
+    if (damage > entity.armor / 2) {
+      const effectiveDamage = damage * 2 - entity.armor / 2
+      entity.health -= effectiveDamage > 0 ? effectiveDamage : 0
 
-    // If health is depleted, remove it
-    if (entity.health <= 0) {
-      this.scene.mapMgr.destroyMapTileEntity(entity)
+      // If health is depleted, remove it
+      if (entity.health <= 0) {
+        const directionRadians = Phaser.Math.Angle.Between(
+          beamStartX,
+          beamStartY,
+          entity.centreX,
+          entity.centreY,
+        )
+        this.scene.mapMgr.destroyMapObject(entity, directionRadians)
+      }
     }
 
     this.beamHitSpark(beamStartX, beamStartY, beamEndX, beamEndY, weapon)
@@ -949,7 +958,11 @@ export class BeamManager {
       weapon.beamHitLightRadius!,
     )
     if (!enemy.active) return
-    enemy.health -= weapon.damage!
+    // beam weapons do double damage to map objects
+    const damage = weapon.damage! * 2 // beam weapons do double damage to map objects
+    const effectiveDamage = Math.max(damage - enemy.armor, 0)
+    enemy.health -= effectiveDamage
+
     this.beamHitSpark(startX, startY, enemy.x, enemy.y, weapon)
 
     if (enemy.health <= 0) {
@@ -1019,7 +1032,9 @@ export class BeamManager {
 
     for (const targetData of chainedTargets) {
       const target = targetData.enemy
-      target.health -= weapon.damage! * 0.5
+      const chainDamage = weapon.damage! * 0.5
+      const effectiveDamage = Math.max(chainDamage - target.armor, 0)
+      target.health -= effectiveDamage
 
       this.beamHitSpark(enemy.x, enemy.y, target.x, target.y, weapon)
 

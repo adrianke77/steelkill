@@ -1,5 +1,5 @@
 import { Game } from '../scenes/Game'
-import { MapTileEntity } from '../interfaces'
+import { MapObject } from '../interfaces'
 import { Constants as ct, weaponConstants } from '../constants'
 import { enemyWeapons } from '../constants/weapons'
 import {
@@ -285,7 +285,7 @@ export class ProjectileManager {
 
   projectileHitsTarget(
     projectile: Projectile,
-    target: EnemySprite | TerrainTile | MapTileEntity,
+    target: EnemySprite | TerrainTile | MapObject,
     // only used for hitting map objects
     collisionBody?: Phaser.GameObjects.Sprite,
   ): boolean {
@@ -366,7 +366,7 @@ export class ProjectileManager {
 
   private applyProjectileDamageAndEffectsToTarget(
     projectile: Projectile,
-    target: EnemySprite | TerrainTile | MapTileEntity,
+    target: EnemySprite | TerrainTile | MapObject,
     damageFactor: number,
     // only used for hitting map objects
     collisionbody?: Phaser.GameObjects.Sprite,
@@ -387,7 +387,14 @@ export class ProjectileManager {
         directionRadians,
       )
       if (target.health <= 0) {
-        this.scene.mapMgr.destroyMapTileEntity(target)
+        const directionRadians = Phaser.Math.Angle.Between(
+          projectile.x,
+          projectile.y,
+          target.centreX,
+          target.centreY,
+        )
+
+        this.scene.mapMgr.destroyMapObject(target, directionRadians)
       }
     } else if (target instanceof Phaser.Tilemaps.Tile) {
       const tileData = this.scene.terrainMgr.getTileData(target)
@@ -458,7 +465,7 @@ export class ProjectileManager {
       enemyData,
     )
     if (!enemyData.tooSmallToBleedWhenHit) {
-      createBloodSplat(this.scene, enemy.x, enemy.y, enemyData.bloodColor, 100)
+      createBloodSplat(this.scene, projectile.x, projectile.y, enemyData.bloodColor, 25)
     }
     if (enemy.health <= 0) {
       const directionRadians = Phaser.Math.Angle.Between(
@@ -650,25 +657,30 @@ export class ProjectileManager {
       })
     }
 
-    // map object damage
-    for (const mapEntity of this.scene.mapMgr.tileEntities) {
+    for (const mapEntity of this.scene.mapMgr.mapObjects) {
       const distance = Phaser.Math.Distance.Between(
         x,
         y,
-        mapEntity.tileCentreX,
-        mapEntity.tileCentreY,
+        mapEntity.centreX,
+        mapEntity.centreY,
       )
       if (distance <= radius) {
         const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
 
-        // Same armor/damage logic as terrain tiles
         if (damage > mapEntity.armor / 2) {
-          const effectiveDamage = damage * 10 - mapEntity.armor / 2
+          
+          const effectiveDamage = damage * 2 - mapEntity.armor / 2
           mapEntity.health -= effectiveDamage
-          console.log(effectiveDamage, mapEntity.health)
           if (mapEntity.health <= 0) {
             // Destroy the map object
-            this.scene.mapMgr.destroyMapTileEntity(mapEntity)
+            const directionRadians = Phaser.Math.Angle.Between(
+              x,
+              y,
+              mapEntity.centreX,
+              mapEntity.centreY,
+            )
+            
+            this.scene.mapMgr.destroyMapObject(mapEntity, directionRadians)
           }
         }
       }

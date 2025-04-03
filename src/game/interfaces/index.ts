@@ -1,3 +1,8 @@
+export interface ExtendedSprite extends Phaser.GameObjects.Sprite {
+  originalAlpha?: number;
+  originalTint?: number;
+}
+
 export interface WeaponSpec {
   name: string
   fireDelay: number
@@ -185,14 +190,15 @@ export interface TerrainChunk {
   armor: number;
 }
 
-export interface MapTileEntity {
+export interface MapObject {
   objectId: number;
   sprite: Phaser.GameObjects.Sprite;
   collisionBodies: Phaser.GameObjects.Sprite[];
   health: number;
   armor: number;
+  averageColor: number;
   source: string;
   entityType: string;
-  tileCentreX: number; // New property
-  tileCentreY: number; // New property
+  centreX: number; // New property
+  centreY: number; // New property
 }

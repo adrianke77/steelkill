@@ -744,7 +744,7 @@ export class TerrainManager {
       }
     }
 
-    this.renderTileDestructionEffect(tile)
+    this.renderTerrainTileDestruction(tile)
     this.drawTerrainOutlines([{ x: tile.x, y: tile.y }])
   }
 
@@ -753,7 +753,7 @@ export class TerrainManager {
     return tile ? tile.type : 0 // Return 0 if tile doesn't exist
   }
 
-  renderTileDestructionEffect(tile: TerrainTile) {
+  renderTerrainTileDestruction(tile: TerrainTile) {
     const worldX = tile.getCenterX()
     const worldY = tile.getCenterY()
     const tileData = this.getTileData(tile)

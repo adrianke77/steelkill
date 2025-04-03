@@ -1,7 +1,10 @@
 import { Game } from '../scenes/Game'
 import { XMLParser } from 'fast-xml-parser'
 import { Constants as ct } from '../constants/index'
-import { MapTileEntity } from '../interfaces'
+import { MapObject } from '../interfaces'
+import { createDustCloud } from '../rendering'
+import { getAverageColor, getSoundPan } from '../utils'
+import { ExtendedSprite } from '../interfaces'
 
 const MAP_SCALE = 0.5
 const MIN_CIRCLE_DIAMETER = 12 // for approximateRectWithCircles
@@ -10,15 +13,43 @@ const MIN_CIRCLE_DIAMETER = 12 // for approximateRectWithCircles
 // note that these are the ids in the raw tileset XML, plus 1
 const treeGids = [1, 9]
 
+const treeRubble = {
+  1: {
+    fallen: ['fallentree1', 'fallentree2', 'fallentree3'],
+    bits: ['treebits1', 'treebits2', 'treebits3'],
+  },
+  9: {
+    fallen: ['fallenpalm1'],
+    bits: ['treebits1', 'treebits2', 'treebits3'],
+  },
+}
+
+const rubbleImages = ['rubble1', 'rubble2', 'rubble3', 'rubble4', 'rubble5']
+
+const scatteredRubbleImages = ['scatteredRubble1', 'scatteredRubble2']
+
+const buildingCollapseSounds: [string, number][] = [
+  ['buildingcollapse1', 1],
+  ['buildingcollapse2', 1],
+  ['buildingcollapse3', 1],
+  ['buildingcollapse4', 1],
+  ['buildingcollapse5', 1],
+  ['buildingcollapse6', 1],
+]
+
+const treeCollapseSounds: [string, number][] = [
+  ['treecollapse1', 3],
+  ['treecollapse2', 3],
+]
+
 //handles importing and rendering maps created in the Tiled map creator
 export class MapManager {
   private scene: Game
   private xmlParser: XMLParser
 
-  // New: Keep a collection of all tile "entities"
-  public tileEntities: MapTileEntity[] = []
-
+  public mapObjects: MapObject[] = []
   public collisionShapesGroup: Phaser.Physics.Arcade.StaticGroup
+  public rubbleGroup: Phaser.GameObjects.Group
 
   constructor(scene: Game) {
     this.scene = scene
@@ -28,7 +59,31 @@ export class MapManager {
       parseAttributeValue: true,
       allowBooleanAttributes: true,
     })
+    this.rubbleGroup = this.scene.add.group()
     this.collisionShapesGroup = this.scene.physics.add.staticGroup()
+
+    this.scene.load.setPath('assets')
+    buildingCollapseSounds.forEach(([soundKey]) => {
+      this.scene.load.audio(soundKey, `audio/${soundKey}.mp3`)
+    })
+    treeCollapseSounds.forEach(([soundKey]) => {
+      this.scene.load.audio(soundKey, `audio/${soundKey}.mp3`)
+    })
+    rubbleImages.forEach(image => {
+      this.scene.load.image(image, `${image}.png`)
+    })
+    scatteredRubbleImages.forEach(image => {
+      this.scene.load.image(image, `${image}.png`)
+    })
+    Object.values(treeRubble).forEach(rubbleSet => {
+      rubbleSet.fallen.forEach(image => {
+        this.scene.load.image(image, `${image}.png`)
+      })
+
+      rubbleSet.bits.forEach(image => {
+        this.scene.load.image(image, `${image}.png`)
+      })
+    })
   }
 
   /**
@@ -62,7 +117,7 @@ export class MapManager {
     )
 
     // 5) Draw the objects
-    this.drawMapObjects(baseUrl, mapLayersWithScaling, treeGids)
+    this.drawMapObjects(baseUrl, mapLayersWithScaling)
 
     // Return essential map dimension info for reference
     return {
@@ -219,15 +274,15 @@ export class MapManager {
     return resultLayers
   }
 
-  public drawMapObjects(
-    mapBaseUrl: string,
-    mapLayers: any[],
-    treeGids: number[] = [],
-  ): void {
+  public drawMapObjects(mapBaseUrl: string, mapLayers: any[]): void {
+    const infraredIsOn = this.scene.viewMgr.infraredIsOn
+
     mapLayers.forEach(layer => {
       if (!layer.objects) return
 
       layer.objects.forEach((obj: any) => {
+        const isTree = treeGids.includes(obj.gid)
+
         if (typeof obj.gid !== 'number') return
         const tileIndex = obj.gid - 1
         const textureKey = `${mapBaseUrl}_${tileIndex}`
@@ -236,7 +291,15 @@ export class MapManager {
         const startY = obj.y
 
         // Create the sprite
-        const sprite = this.scene.addSprite(startX, startY, textureKey)
+        // effects layer if tree in order to draw it "higher" and avoid flashlight
+        // else normal sprite
+        const sprite = isTree
+          ? (this.scene.addSpriteEffect(
+              startX,
+              startY,
+              textureKey,
+            ) as ExtendedSprite)
+          : (this.scene.addSprite(startX, startY, textureKey) as ExtendedSprite)
         sprite.setPipeline('Light2D')
         sprite.setOrigin(0, 0) // Tiled tile origins are (0, 0)
 
@@ -247,86 +310,114 @@ export class MapManager {
         // Get base scale from the object
         let finalScale = obj.scale ?? 1
 
+        const props = obj.properties || {}
+
+        let health = props.health || 0
+        const armor = props.armor || 0
+
         // For tree sprites, apply random scaling and adjust position
-        if (treeGids.includes(obj.gid)) {
+        if (isTree) {
           // First apply the base scale to get the original dimensions
           sprite.setScale(finalScale)
 
-          // Store original dimensions and center position
+          // Store original dimensions
           const originalWidth = sprite.displayWidth
           const originalHeight = sprite.displayHeight
+
+          // Calculate original center position
+          const cosR = Math.cos(tiledRotationRad)
+          const sinR = Math.sin(tiledRotationRad)
+
+          // Calculate the center point of the original rectangle
+          const originalCenterX =
+            sprite.x + (originalWidth / 2) * cosR - (originalHeight / 2) * sinR
+          const originalCenterY =
+            sprite.y + (originalWidth / 2) * sinR + (originalHeight / 2) * cosR
+
+          // Draw a blue circle at the original calculated center (for debugging)
+          // this.scene.add.circle(originalCenterX, originalCenterY, 5, 0x0000ff, 1);
 
           // Generate random scale factor between 0.5 and 1.5
           const randomScaleFactor = Phaser.Math.FloatBetween(0.5, 1.5)
           finalScale *= randomScaleFactor
 
-          // Apply the new scale
+          // adjust health of tree to the square of the scale factor
+          health *= randomScaleFactor * randomScaleFactor
+
+          // Generate a random rotation angle (0 to 2π)
+          const finalRotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
+
+          // Save the original rotation for collision calculations
+          obj.originalRotation = tiledRotationRad
+
+          // 1. First change the origin to center
+          sprite.setOrigin(0.5, 0.5)
+
+          // 2. Position at the original center point
+          sprite.x = originalCenterX
+          sprite.y = originalCenterY
+
+          // 3. Save the sprite's position for collision calculation
+          obj.savedPosition = { x: originalCenterX, y: originalCenterY }
+
+          // 4. Apply scale and rotation
           sprite.setScale(finalScale)
+          sprite.setRotation(finalRotation)
 
-          // Calculate new dimensions
-          const newWidth = sprite.displayWidth
-          const newHeight = sprite.displayHeight
-
-          // Calculate new top-left position to maintain the center
-          // We need to account for rotation when repositioning
-          const cosR = Math.cos(tiledRotationRad)
-          const sinR = Math.sin(tiledRotationRad)
-
-          // Calculate the offset from the original top-left to maintain center
-          const offsetX = (originalWidth - newWidth) / 2
-          const offsetY = (originalHeight - newHeight) / 2
-
-          // Apply rotation to the offset
-          const rotatedOffsetX = offsetX * cosR - offsetY * sinR
-          const rotatedOffsetY = offsetX * sinR + offsetY * cosR
-
-          // Apply the offset to the sprite position
-          sprite.x += rotatedOffsetX
-          sprite.y += rotatedOffsetY
-
-          // Also apply random alpha variation for trees
-          sprite.setAlpha(Phaser.Math.FloatBetween(0.8, 1.0))
+          // trees are all partially see through
+          sprite.setAlpha(0.9)
         } else {
           // For non-tree sprites, just apply the scale directly
           sprite.setScale(finalScale)
         }
 
-        const props = obj.properties || {}
-        
         // if object has no health property, is background object like roads
-        sprite.setDepth(props.health? ct.depths.buildings : ct.depths.terrain)
-        
-        const health = props.health || 0
-        const armor = props.armor || 0
+        sprite.setDepth(
+          !props.health
+            ? ct.depths.terrain
+            : isTree
+              ? ct.depths.trees
+              : ct.depths.buildings,
+        )
+
+        // get average color of sprite
+        const averageColor = getAverageColor(sprite)
 
         // Create a new entity object for this tile with health
-        const tileEntity: MapTileEntity = {
-          objectId: obj.id,
+        const newMapObject: MapObject = {
+          objectId: obj.gid,
           sprite: sprite,
           collisionBodies: [],
           health,
           armor,
+          averageColor,
           source: obj.tileSource,
           entityType: 'mapEntity',
-          tileCentreX: 0,
-          tileCentreY: 0,
+          centreX: 0,
+          centreY: 0,
         }
 
-        
+        if (infraredIsOn) {
+          this.scene.viewMgr.setBuildingToInfraredColors(sprite)
+        }
+
         // If collisionShapes exist, create colliders.
         if (obj.collisionShapes) {
-          // For trees with random scaling, we need to scale the collision shapes too
-
           // Store references to created bodies:
           obj.arcadeCollisionBodies = []
 
-          const finalRotation = sprite.rotation
+          // Use the original rotation for collision calculations if it's a tree
+          const finalRotation =
+            isTree && obj.originalRotation !== undefined
+              ? obj.originalRotation
+              : sprite.rotation
+
           const originOffsetX = -sprite.originX * sprite.displayWidth
           const originOffsetY = -sprite.originY * sprite.displayHeight
           const cosR = Math.cos(finalRotation)
           const sinR = Math.sin(finalRotation)
 
-          // Track min/max coordinates to draw bounding box
+          // Track min/max coordinates of collision areas to draw bounding box
           // this is for calculating the general centre of sprite and saving this later
           let minX = Number.MAX_VALUE
           let minY = Number.MAX_VALUE
@@ -336,19 +427,13 @@ export class MapManager {
           obj.collisionShapes.forEach((shape: any) => {
             // Apply the tree's random scale to the collision shape if needed
             const shapeWidth =
-              shape.width *
-              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
+              shape.width * (isTree ? finalScale / obj.scale : 1)
             const shapeHeight =
-              shape.height *
-              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
+              shape.height * (isTree ? finalScale / obj.scale : 1)
 
             // Local shape coords before final sprite transform.
-            const localX =
-              shape.x *
-              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
-            const localY =
-              shape.y *
-              (treeGids.includes(obj.gid) ? finalScale / obj.scale : 1)
+            const localX = shape.x * (isTree ? finalScale / obj.scale : 1)
+            const localY = shape.y * (isTree ? finalScale / obj.scale : 1)
 
             // Step 1: account for sprite's top-left origin offset.
             const worldX = localX + originOffsetX
@@ -359,19 +444,34 @@ export class MapManager {
             const ry = worldX * sinR + worldY * cosR
 
             // Step 3: position offset by sprite in world coords.
-            const finalX = sprite.x + rx
-            const finalY = sprite.y + ry
+            let finalX = sprite.x + rx
+            let finalY = sprite.y + ry
+
+            // Special adjustment for trees with fixed rotation
+            if (isTree && obj.savedPosition) {
+              // Use the saved position instead of the current sprite position
+              finalX = obj.savedPosition.x + rx
+              finalY = obj.savedPosition.y + ry
+            }
 
             // Combine shape's own rotation with sprite rotation.
             const shapeRotationRad = Phaser.Math.DegToRad(shape.rotation || 0)
             const totalRotation = finalRotation + shapeRotationRad
 
             if (shape.ellipse) {
-              // 1) Debug-draw a circle with diameter = average of shape.width and shape.height
               const diameter = (shapeWidth + shapeHeight) / 2
               const radius = diameter / 2
 
-              // 2) Create a corresponding circle collider at the same position
+              // draw the collision circle for debugging
+              // const debugCircle = this.scene.add.circle(
+              //   finalX + shapeWidth / 2,
+              //   finalY + shapeHeight / 2,
+              //   radius,
+              //   0xff0000,
+              //   0.3,
+              // )
+              // debugCircle.setStrokeStyle(2, 0xff0000)
+
               const circleSprite = this.scene.add
                 .sprite(finalX + shapeWidth / 2, finalY + shapeHeight / 2, '')
                 .setAlpha(0)
@@ -390,7 +490,7 @@ export class MapManager {
               obj.arcadeCollisionBodies.push(circleSprite)
               this.collisionShapesGroup.add(circleSprite)
               this.collisionShapesGroup.refresh()
-              tileEntity.collisionBodies.push(circleSprite)
+              newMapObject.collisionBodies.push(circleSprite)
 
               // Update bounding box coordinates
               minX = Math.min(minX, finalX + shapeWidth / 2 - radius)
@@ -436,7 +536,7 @@ export class MapManager {
                 shapeWidth,
                 shapeHeight,
                 totalRotation,
-                tileEntity,
+                newMapObject,
               )
             }
           })
@@ -447,14 +547,14 @@ export class MapManager {
             const centreX = minX + (maxX - minX) / 2
             const centreY = minY + (maxY - minY) / 2
 
-            // Store the center in the tileEntity
-            tileEntity.tileCentreX = centreX
-            tileEntity.tileCentreY = centreY
+            // Store the center in the newMapObject
+            newMapObject.centreX = centreX
+            newMapObject.centreY = centreY
           }
         }
 
-        // Finally, store our tileEntity in the list
-        this.tileEntities.push(tileEntity)
+        // Finally, store our newMapObject in the list
+        this.mapObjects.push(newMapObject)
       })
     })
   }
@@ -466,7 +566,7 @@ export class MapManager {
     rectWidth: number,
     rectHeight: number,
     rotationRad: number,
-    tileEntity: MapTileEntity,
+    tileEntity: MapObject,
   ): void {
     // 1) Determine circle diameter/ radius from the rectangle's shorter dimension
     const longSide = Math.max(rectWidth, rectHeight)
@@ -554,19 +654,417 @@ export class MapManager {
     }
   }
 
-  // to be expanded
-  public destroyMapTileEntity(entity: MapTileEntity): void {
-    const index = this.tileEntities.indexOf(entity)
+  public isAMapObject(obj: any): boolean {
+    return obj && obj.entityType === 'mapEntity'
+  }
+
+  public isTree(mapObject: MapObject): boolean {
+    return treeGids.includes(mapObject.objectId)
+  }
+
+  public destroyMapObject(
+    mapObject: MapObject,
+    directionRadians: number,
+  ): void {
+    const isTree = this.isTree(mapObject)
+    const index = this.mapObjects.indexOf(mapObject)
     if (index !== -1) {
-      this.tileEntities.splice(index, 1)
+      this.mapObjects.splice(index, 1)
     }
-    entity.sprite.destroy()
-    for (const shape of entity.collisionBodies) {
-      shape.destroy()
+
+    // Start rendering destruction effects immediately so they can fade in
+    // while the original object is fading out
+    this.renderMapObjectDestruction(mapObject, directionRadians)
+
+    // For trees, add movement in the direction of impact
+    if (isTree) {
+      // Calculate how far to move (50% of the sprite's width)
+      const moveDistance = mapObject.sprite.displayWidth * 0.5
+
+      // Calculate the x and y components of the movement
+      const moveX = Math.cos(directionRadians) * moveDistance
+      const moveY = Math.sin(directionRadians) * moveDistance
+
+      // Start position
+      const startX = mapObject.sprite.x
+      const startY = mapObject.sprite.y
+
+      // Fade out the sprite over 2 seconds with movement
+      this.scene.tweens.add({
+        targets: mapObject.sprite,
+        alpha: 0,
+        x: startX + moveX,
+        y: startY + moveY,
+        duration: 3000,
+        onComplete: () => {
+          mapObject.sprite.destroy()
+        },
+      })
+    } else {
+      // Regular fade out for non-tree objects
+      this.scene.tweens.add({
+        targets: mapObject.sprite,
+        alpha: 0,
+        duration: 3000,
+        onComplete: () => {
+          mapObject.sprite.destroy()
+        },
+      })
+    }
+
+    // Fade out collision bodies after a slight delay to maintain collision during initial fade
+    for (const shape of mapObject.collisionBodies) {
+      // We can't fade them since they're invisible, but we can delay their destruction
+      this.scene.time.delayedCall(1800, () => {
+        shape.destroy()
+      })
     }
   }
 
-  public isAMapTileEntity(obj: any): boolean {
-    return obj && obj.entityType === 'mapEntity'
+  private renderMapObjectDestruction(
+    mapObject: MapObject,
+    directionRadians?: number,
+  ) {
+    const isTree = this.isTree(mapObject)
+    const [x, y] = [mapObject.centreX, mapObject.centreY]
+    const objectSize =
+      mapObject.sprite.displayWidth + mapObject.sprite.displayHeight
+    const infraredIsOn = this.scene.viewMgr.infraredIsOn
+
+    // Get player position and rotation for sound positioning
+    const playerX = this.scene.player.mechContainer.x
+    const playerY = this.scene.player.mechContainer.y
+    const playerRotation = this.scene.player.mechContainer.rotation
+
+    // Calculate pan value based on relative positions
+    const pan = getSoundPan(x, y, playerX, playerY, playerRotation)
+
+    // Calculate size-based volume scale
+    // Get the sprite's original dimensions and compare to default size
+    const originalWidth = mapObject.sprite.displayWidth
+    const originalHeight = mapObject.sprite.displayHeight
+    const defaultSize = isTree ? 100 : 250
+    const sizeRatio = (originalWidth + originalHeight) / (defaultSize * 2)
+
+    const volumeMultiplier = 1 + (sizeRatio - 1) * 0.8
+
+    if (isTree) {
+      // Play one random tree collapse sound with pan and size-based volume
+      const shuffledTreeSounds = Phaser.Utils.Array.Shuffle([
+        ...treeCollapseSounds,
+      ])
+      const [soundKey, baseVolume] = shuffledTreeSounds[0]
+      this.scene.sound.play(soundKey, {
+        volume: (baseVolume as number) * volumeMultiplier,
+        pan: pan,
+      })
+
+      // Get the tree's gid to select appropriate images
+      const treeGid = mapObject.objectId
+      const treeRubbleSet = treeRubble[treeGid as keyof typeof treeRubble]
+
+      if (treeRubbleSet) {
+        // 1. Create fallen tree
+        const fallenTreeImages = treeRubbleSet.fallen
+        const fallenTreeKey = Phaser.Utils.Array.GetRandom(fallenTreeImages)
+
+        const fallenTree = this.scene.addSprite(
+          x,
+          y,
+          fallenTreeKey as string,
+        ) as ExtendedSprite
+
+        // 2. Scale fallen tree to match original tree width
+        const fallenTreeNaturalWidth = fallenTree.width
+        const scaleFactor = originalWidth / fallenTreeNaturalWidth
+
+        fallenTree.setScale(scaleFactor)
+
+        // 3. Position and rotate fallen tree
+        fallenTree.setOrigin(0.5, 1) // Bottom center origin
+        if (directionRadians !== undefined) {
+          fallenTree.setRotation(directionRadians + Math.PI / 2)
+        } else {
+          // Default random rotation if direction not provided
+          fallenTree.setRotation(Phaser.Math.FloatBetween(0, Math.PI * 2))
+        }
+
+        // flip tree half the time
+        if (Phaser.Math.Between(0, 1) === 1) {
+          fallenTree.setFlipX(true)
+        }
+
+        fallenTree.setDepth(ct.depths.terrain + 1)
+        fallenTree.setPipeline('Light2D')
+        fallenTree.setAlpha(0)
+
+        this.scene.tweens.add({
+          targets: fallenTree,
+          alpha: 1,
+          duration: 3000,
+          ease: 'Power2',
+        })
+
+        if (infraredIsOn) {
+          this.scene.viewMgr.setBuildingToInfraredColors(fallenTree)
+        }
+
+        this.rubbleGroup.add(fallenTree)
+
+        // 4. Add four random tree bit images
+        const treeBitsImages = treeRubbleSet.bits
+
+        for (let i = 0; i < 4; i++) {
+          const treeBitKey = Phaser.Utils.Array.GetRandom(treeBitsImages)
+
+          const treeBit = this.scene.addSprite(
+            x,
+            y,
+            treeBitKey,
+          ) as ExtendedSprite
+
+          // Random rotation
+          const randomRotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
+          treeBit.setRotation(randomRotation)
+
+          const widthRatio = Phaser.Math.FloatBetween(0.4, 0.6)
+          const targetWidth = originalWidth * widthRatio
+          const bitScaleFactor = targetWidth / treeBit.width
+
+          treeBit.setScale(bitScaleFactor)
+
+          treeBit.setDepth(ct.depths.terrain + 1)
+          treeBit.setPipeline('Light2D')
+          treeBit.setAlpha(0)
+
+          this.scene.tweens.add({
+            targets: treeBit,
+            alpha: 1,
+            duration: 3000,
+            ease: 'Power2',
+          })
+
+          if (infraredIsOn) {
+            this.scene.viewMgr.setBuildingToInfraredColors(treeBit)
+          }
+
+          this.rubbleGroup.add(treeBit)
+        }
+      }
+
+      // Create dust clouds for trees
+      const numClouds = Phaser.Math.Between(2, 4)
+      for (let i = 0; i < numClouds; i++) {
+        const offsetX = Phaser.Math.FloatBetween(
+          -objectSize / 5,
+          objectSize / 5,
+        )
+        const offsetY = Phaser.Math.FloatBetween(
+          -objectSize / 5,
+          objectSize / 5,
+        )
+
+        createDustCloud(
+          this.scene,
+          x + offsetX,
+          y + offsetY,
+          0,
+          0,
+          1,
+          6000,
+          objectSize * 0.7,
+          undefined,
+          true,
+        )
+      }
+    } else {
+      // Play two random building collapse sounds with pan and size-based volume
+      const shuffledSounds = Phaser.Utils.Array.Shuffle([
+        ...buildingCollapseSounds,
+      ])
+      for (let i = 0; i < 2 && i < shuffledSounds.length; i++) {
+        const [soundKey, baseVolume] = shuffledSounds[i]
+        this.scene.sound.play(soundKey, {
+          volume: (baseVolume as number) * volumeMultiplier,
+          pan: pan,
+          // Slight delay between sounds for better effect
+          delay: i * Phaser.Math.FloatBetween(0.1, 0.4),
+        })
+      }
+
+      // Keep the existing dust cloud effects
+      const numClouds = Phaser.Math.Between(3, 5)
+
+      for (let i = 0; i < numClouds; i++) {
+        // Calculate random offsets within objectSize distance
+        const offsetX = Phaser.Math.FloatBetween(
+          -objectSize / 5,
+          objectSize / 5,
+        )
+        const offsetY = Phaser.Math.FloatBetween(
+          -objectSize / 5,
+          objectSize / 5,
+        )
+
+        createDustCloud(
+          this.scene,
+          x + offsetX,
+          y + offsetY,
+          0,
+          0,
+          1,
+          6000,
+          objectSize * 1.5,
+          // make one dust cloud the roof color if not tree
+          i === numClouds - 1 ? mapObject.averageColor : undefined,
+          true,
+        )
+      }
+
+      // Randomly select 3 from rubbleImages array
+      const selectedRubbleImages = Phaser.Utils.Array.Shuffle([
+        ...rubbleImages,
+      ]).slice(0, 3)
+
+      // Create 2 regular rubble piles
+      for (let i = 0; i < 2; i++) {
+        const offsetX = Phaser.Math.FloatBetween(
+          -objectSize / 10,
+          objectSize / 10,
+        )
+        const offsetY = Phaser.Math.FloatBetween(
+          -objectSize / 10,
+          objectSize / 10,
+        )
+
+        const rubbleKey = selectedRubbleImages[i].replace('.png', '')
+        const rubble = this.scene.addSprite(
+          x + offsetX,
+          y + offsetY,
+          rubbleKey,
+        ) as ExtendedSprite
+        rubble.setOrigin(0.5, 0.5)
+
+        const randomRotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
+        rubble.setRotation(randomRotation)
+
+        rubble.displayWidth = originalWidth
+        rubble.displayHeight = originalHeight
+
+        rubble.setDepth(ct.depths.terrain + 1)
+        rubble.setPipeline('Light2D')
+        rubble.setAlpha(0)
+
+        this.scene.tweens.add({
+          targets: rubble,
+          alpha: 1,
+          duration: 3000,
+          ease: 'Power2',
+        })
+
+        if (infraredIsOn) {
+          this.scene.viewMgr.setBuildingToInfraredColors(rubble)
+        }
+
+        this.rubbleGroup.add(rubble)
+      }
+
+      // Create 1 roof-colored rubble pile
+      const offsetX = Phaser.Math.FloatBetween(
+        -objectSize / 10,
+        objectSize / 10,
+      )
+      const offsetY = Phaser.Math.FloatBetween(
+        -objectSize / 10,
+        objectSize / 10,
+      )
+
+      const roofRubbleKey = selectedRubbleImages[2].replace('.png', '')
+      const roofRubble = this.scene.addSprite(
+        x + offsetX,
+        y + offsetY,
+        roofRubbleKey,
+      ) as ExtendedSprite
+      roofRubble.setOrigin(0.5, 0.5)
+
+      const randomRotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
+      roofRubble.setRotation(randomRotation)
+
+      roofRubble.displayWidth = originalWidth * 1.3
+      roofRubble.displayHeight = originalHeight * 1.3
+      roofRubble.setDepth(ct.depths.terrain + 1)
+      roofRubble.setPipeline('Light2D')
+      roofRubble.setAlpha(0)
+
+      if (mapObject.averageColor) {
+        roofRubble.setTint(mapObject.averageColor)
+      }
+
+      this.scene.tweens.add({
+        targets: roofRubble,
+        alpha: 0.7,
+        duration: 3000,
+        ease: 'Power2',
+      })
+
+      if (infraredIsOn) {
+        this.scene.viewMgr.setBuildingToInfraredColors(roofRubble)
+      }
+
+      this.rubbleGroup.add(roofRubble)
+
+      // Randomly select 2 from scatteredRubbleImages array (with replacement if needed)
+      const selectedScatteredImages = []
+      for (let i = 0; i < 2; i++) {
+        const randomIndex = Phaser.Math.Between(
+          0,
+          scatteredRubbleImages.length - 1,
+        )
+        selectedScatteredImages.push(scatteredRubbleImages[randomIndex])
+      }
+
+      // Add scattered rubble
+      for (let i = 0; i < 2; i++) {
+        // Create scattered rubble with wider distribution
+        const scatterDistance = objectSize / 4
+        const offsetX = Phaser.Math.FloatBetween(
+          -scatterDistance,
+          scatterDistance,
+        )
+        const offsetY = Phaser.Math.FloatBetween(
+          -scatterDistance,
+          scatterDistance,
+        )
+
+        const scatteredKey = selectedScatteredImages[i].replace('.png', '')
+        const scattered = this.scene.addSprite(
+          x + offsetX,
+          y + offsetY,
+          scatteredKey,
+        ) as ExtendedSprite
+        scattered.setOrigin(0.5, 0.5)
+
+        const randomRotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
+        scattered.setRotation(randomRotation)
+        scattered.setDepth(ct.depths.terrain + 1)
+        scattered.setPipeline('Light2D')
+        scattered.setAlpha(0)
+        scattered.displayWidth = originalWidth * 0.75
+        scattered.displayHeight = originalHeight * 0.75
+
+        this.scene.tweens.add({
+          targets: scattered,
+          alpha: 0.9,
+          duration: 3000,
+          ease: 'Power2',
+        })
+
+        if (infraredIsOn) {
+          this.scene.viewMgr.setBuildingToInfraredColors(scattered)
+        }
+
+        this.rubbleGroup.add(scattered)
+      }
+    }
   }
 }

@@ -5,6 +5,7 @@ import { StaticPostFxPipeline } from '../shaders/staticShader'
 import { InfraredPostFxPipeline } from '../shaders/infraredShader'
 import { Constants as ct } from '../constants'
 import { FlashlightPostFxPipeline } from '../shaders/fragment/FlashlightPostFxPipeline'
+import { ExtendedSprite, MapObject } from '../interfaces'
 
 const PipelinesWithFlashlight = [
   'FlashlightPostFxPipeline',
@@ -149,7 +150,7 @@ export class ViewManager {
       this.flashlightPipeline = this.mainCam.getPostPipeline(
         'FlashlightPostFxPipeline',
       ) as FlashlightPostFxPipeline
-      this.flashlightPipeline.setRadius(1000)
+      this.flashlightPipeline.setRadius(1500)
       this.flashlightPipeline.setConeAngle(Math.PI / 2)
     })
   }
@@ -171,6 +172,15 @@ export class ViewManager {
     // If you rotate the mainCam or apply other transformations, mirror them here:
     // this.effectsCam.rotation = this.mainCam.rotation
     // or any other transformations you apply to mainCam
+  }
+
+  public setBuildingToInfraredColors(sprite: ExtendedSprite): void {
+    sprite.originalTint = sprite.tint
+    sprite.setTint(0x404040)
+  }
+
+  public resetBuildingToOriginalColors(sprite: ExtendedSprite): void {
+    sprite.setTint(sprite.originalTint)
   }
 
   public updateFlashlightCone(
@@ -230,6 +240,20 @@ export class ViewManager {
           return true
         },
       )
+      this.scene.mapMgr.rubbleGroup.children.iterate(
+        (item: Phaser.GameObjects.GameObject) => {
+          const rubble = item as ExtendedSprite
+          this.setBuildingToInfraredColors(rubble)
+          return true
+        },
+      )
+      this.scene.mapMgr.mapObjects.forEach(
+        (mapObject: MapObject) => {
+          const sprite = mapObject.sprite as ExtendedSprite
+          this.setBuildingToInfraredColors(sprite)
+          return true
+        },
+      )
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
     } else {
       this.mainCam.resetPostPipeline()
@@ -246,6 +270,22 @@ export class ViewManager {
         },
       )
       this.scene.enemyMgr.switchEnemiesToNonInfraredColors()
+      this.scene.mapMgr.rubbleGroup.children.iterate(
+        (item: Phaser.GameObjects.GameObject) => {
+          const rubble = item as ExtendedSprite
+          this.resetBuildingToOriginalColors(rubble)
+          return true
+        },
+      )
+      this.scene.mapMgr.mapObjects.forEach(
+        (mapObject: MapObject) => {
+          const sprite = mapObject.sprite as ExtendedSprite
+          this.resetBuildingToOriginalColors(sprite)
+          return true
+        },
+      )
     }
   }
+
+  
 }

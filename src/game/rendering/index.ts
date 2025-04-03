@@ -505,13 +505,13 @@ export function renderExplosion(
   if (optionals && optionals.color) {
     explosion.setTint(optionals.color)
   }
-  explosion.setAlpha(Phaser.Math.FloatBetween(0.3, 0.6))
+  explosion.setAlpha(Phaser.Math.FloatBetween(0.6, 0.9))
   explosion.play('explosion')
   const scorch = scene.addImage(x, y, 'scorch1')
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.5)
+  scorch.setAlpha(0.3)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )

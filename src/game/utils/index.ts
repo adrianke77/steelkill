@@ -145,3 +145,55 @@ export function normalDistribution(mean: number, stdDev: number): number {
   while (v === 0) v = Math.random();
   return mean + stdDev * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
+
+export function getAverageColor(sprite: Phaser.GameObjects.Sprite): number {
+  // Get the texture
+  const texture = sprite.texture;
+  const frame = sprite.frame;
+  
+  // Create a temporary canvas to draw the sprite
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Set canvas dimensions to match the frame
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+  
+  // Draw the sprite frame to the canvas
+  ctx!.drawImage(
+    texture.getSourceImage() as HTMLImageElement,
+    frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight,
+    0, 0, frame.width, frame.height
+  );
+  
+  // Get the pixel data
+  const imageData = ctx!.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  
+  // Calculate the sum of all pixel values
+  let r = 0, g = 0, b = 0, count = 0;
+  
+  for (let i = 0; i < pixels.length; i += 4) {
+    // Skip transparent pixels
+    if (pixels[i + 3] > 0) {
+      r += pixels[i];
+      g += pixels[i + 1];
+      b += pixels[i + 2];
+      count++;
+    }
+  }
+  
+  // Clean up resources
+  canvas.width = 0;
+  canvas.height = 0;
+  
+  if (count === 0) return 0xFFFFFF; // Default to white if no visible pixels
+  
+  // Calculate the average and convert to hex
+  const rHex = Math.round(r / count);
+  const gHex = Math.round(g / count);
+  const bHex = Math.round(b / count);
+  
+  // Combine into a single hex color value (0xRRGGBB format)
+  return (rHex << 16) | (gHex << 8) | bHex;
+}

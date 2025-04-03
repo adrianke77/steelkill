@@ -150,6 +150,11 @@ export class Game extends Scene {
     )
 
     this.physics.add.collider(
+      this.enemyMgr.enemies,
+      this.mapMgr.collisionShapesGroup,
+    )
+
+    this.physics.add.collider(
       this.player.mechContainer,
       this.enemyMgr.enemies,
       undefined,
@@ -193,7 +198,7 @@ export class Game extends Scene {
       (projectileObj, collisionBody) => {
         const projectile = projectileObj as Projectile
         const body = collisionBody as Phaser.GameObjects.Sprite
-        const tileEntity = this.mapMgr.tileEntities.find(t =>
+        const tileEntity = this.mapMgr.mapObjects.find(t =>
           t.collisionBodies.includes(
             body as Phaser.GameObjects.Sprite,
           ),
@@ -300,6 +305,7 @@ export class Game extends Scene {
 
           // // Check if the position is at least 3 tiles away from any terrain
           if (
+            this.terrainMgr &&
             !this.terrainMgr.isTerrainNear(
               tileX,
               tileY,

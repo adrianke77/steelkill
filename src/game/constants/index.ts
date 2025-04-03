@@ -31,7 +31,7 @@ const depths = {
 }
 
 export const Constants = {
-  ambientLightColor: 0x151515,
+  ambientLightColor: 0x252525,
   tileSize: 14,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,

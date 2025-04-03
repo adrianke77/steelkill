@@ -81,10 +81,9 @@ export const increaseColorIntensity = (color: number): number => {
   let g = (color >> 8) & 0xff
   let b = color & 0xff
 
-  // Double each component's value
-  r = Math.min(255, r + 100)
-  g = Math.min(255, g + 60)
-  b = Math.min(255, b + 60)
+  r = Math.min(255, r + 150)
+  g = Math.min(255, g + 100)
+  b = Math.min(255, b + 100)
 
   // Combine the adjusted components back into a single color
   return (r << 16) | (g << 8) | b

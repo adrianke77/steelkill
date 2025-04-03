@@ -2,7 +2,7 @@ import { Game } from '../scenes/Game'
 import { XMLParser } from 'fast-xml-parser'
 import { Constants as ct } from '../constants/index'
 import { MapObject } from '../interfaces'
-import { createDustCloud } from '../rendering'
+import { createDustCloud, drawDecal } from '../rendering'
 import { getAverageColor, getSoundPan } from '../utils'
 import { ExtendedSprite } from '../interfaces'
 
@@ -49,7 +49,6 @@ export class MapManager {
 
   public mapObjects: MapObject[] = []
   public collisionShapesGroup: Phaser.Physics.Arcade.StaticGroup
-  public rubbleGroup: Phaser.GameObjects.Group
 
   constructor(scene: Game) {
     this.scene = scene
@@ -59,7 +58,6 @@ export class MapManager {
       parseAttributeValue: true,
       allowBooleanAttributes: true,
     })
-    this.rubbleGroup = this.scene.add.group()
     this.collisionShapesGroup = this.scene.physics.add.staticGroup()
 
     this.scene.load.setPath('assets')
@@ -93,12 +91,12 @@ export class MapManager {
    */
   public async loadMap(baseUrl: string) {
     // 1) Load the Tiled map JSON (map.tmj)
-    const mapDataFetchResponse = await fetch('/assets/' + baseUrl + '/map.tmj')
+    const mapDataFetchResponse = await fetch(`assets/${baseUrl}/map.tmj`)
     const mapData = await mapDataFetchResponse.json()
 
     // 2) Load the .tsx tileset
     const tileSet1FileName = mapData.tilesets[0].source
-    const tsxFullUrl = '/assets/' + baseUrl + '/' + tileSet1FileName
+    const tsxFullUrl = `assets/${baseUrl}/${tileSet1FileName}`
     const tilesetData = (await this.importTilesetData(tsxFullUrl)) as any
     const tileDefs = Array.isArray(tilesetData.tileset.tile)
       ? tilesetData.tileset.tile
@@ -149,7 +147,7 @@ export class MapManager {
       this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
       tilesetData.forEach(tile => {
         const key = `${mapBaseUrl}_${tile.id}`
-        this.scene.load.image(key, mapBaseUrl + '/' + tile.image.source)
+        this.scene.load.image(key, `${mapBaseUrl}/${tile.image.source}`)
       })
       this.scene.load.start()
     })
@@ -803,13 +801,14 @@ export class MapManager {
           alpha: 1,
           duration: 3000,
           ease: 'Power2',
+          onComplete: () => {
+            drawDecal(this.scene, fallenTree)
+          },
         })
 
         if (infraredIsOn) {
           this.scene.viewMgr.setBuildingToInfraredColors(fallenTree)
         }
-
-        this.rubbleGroup.add(fallenTree)
 
         // 4. Add four random tree bit images
         const treeBitsImages = treeRubbleSet.bits
@@ -842,13 +841,14 @@ export class MapManager {
             alpha: 1,
             duration: 3000,
             ease: 'Power2',
+            onComplete: () => {
+              drawDecal(this.scene, treeBit)
+            },
           })
 
           if (infraredIsOn) {
             this.scene.viewMgr.setBuildingToInfraredColors(treeBit)
           }
-
-          this.rubbleGroup.add(treeBit)
         }
       }
 
@@ -960,13 +960,15 @@ export class MapManager {
           alpha: 1,
           duration: 3000,
           ease: 'Power2',
+          onComplete: () => {
+            drawDecal(this.scene, rubble)
+          },
         })
 
         if (infraredIsOn) {
           this.scene.viewMgr.setBuildingToInfraredColors(rubble)
         }
 
-        this.rubbleGroup.add(rubble)
       }
 
       // Create 1 roof-colored rubble pile
@@ -1005,13 +1007,14 @@ export class MapManager {
         alpha: 0.7,
         duration: 3000,
         ease: 'Power2',
+        onComplete: () => {
+          drawDecal(this.scene, roofRubble)
+        },
       })
 
       if (infraredIsOn) {
         this.scene.viewMgr.setBuildingToInfraredColors(roofRubble)
       }
-
-      this.rubbleGroup.add(roofRubble)
 
       // Randomly select 2 from scatteredRubbleImages array (with replacement if needed)
       const selectedScatteredImages = []
@@ -1057,13 +1060,15 @@ export class MapManager {
           alpha: 0.9,
           duration: 3000,
           ease: 'Power2',
+          onComplete: () => {
+            drawDecal(this.scene, scattered)
+          },
         })
 
         if (infraredIsOn) {
           this.scene.viewMgr.setBuildingToInfraredColors(scattered)
         }
 
-        this.rubbleGroup.add(scattered)
       }
     }
   }

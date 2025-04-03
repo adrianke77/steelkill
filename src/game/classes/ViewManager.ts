@@ -104,10 +104,7 @@ export class ViewManager {
     this.dustClouds = this.scene.add.group()
 
     // move minimap camera to topmost
-    this.scene.cameras.cameras.push(this.miniMapCam);
-
-    // temporarily hide minimap cam for debugging
-    this.miniMapCam.setVisible(false);
+    this.scene.cameras.cameras.push(this.miniMapCam)
 
   }
 
@@ -176,7 +173,7 @@ export class ViewManager {
 
   public setBuildingToInfraredColors(sprite: ExtendedSprite): void {
     sprite.originalTint = sprite.tint
-    sprite.setTint(0x404040)
+    sprite.setTint(0xB0B0B0)
   }
 
   public resetBuildingToOriginalColors(sprite: ExtendedSprite): void {
@@ -224,6 +221,7 @@ export class ViewManager {
   toggleInfrared(): void {
     this.infraredIsOn = !this.infraredIsOn
     if (this.infraredIsOn) {
+      // turn off infrared
       const InfraredPipelines = [
         'InfraredPostFxPipeline',
         ...PipelinesWithoutFlashlight,
@@ -232,7 +230,7 @@ export class ViewManager {
       this.mainCam.setPostPipeline(InfraredPipelines)
       this.effectsCam.resetPostPipeline()
       this.effectsCam.setPostPipeline(InfraredPipelines)
-      this.scene.lights.setAmbientColor(0xffffff)
+      this.scene.lights.setAmbientColor(0x606060)
       this.background.setTint(0x999999)
       this.dustClouds.children.iterate(
         (dustCloud: Phaser.GameObjects.GameObject) => {
@@ -240,22 +238,14 @@ export class ViewManager {
           return true
         },
       )
-      this.scene.mapMgr.rubbleGroup.children.iterate(
-        (item: Phaser.GameObjects.GameObject) => {
-          const rubble = item as ExtendedSprite
-          this.setBuildingToInfraredColors(rubble)
-          return true
-        },
-      )
-      this.scene.mapMgr.mapObjects.forEach(
-        (mapObject: MapObject) => {
-          const sprite = mapObject.sprite as ExtendedSprite
-          this.setBuildingToInfraredColors(sprite)
-          return true
-        },
-      )
+      this.scene.mapMgr.mapObjects.forEach((mapObject: MapObject) => {
+        const sprite = mapObject.sprite as ExtendedSprite
+        this.setBuildingToInfraredColors(sprite)
+        return true
+      })
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
     } else {
+      // turn on infrared
       this.mainCam.resetPostPipeline()
       this.mainCam.setPostPipeline(PipelinesWithFlashlight)
       this.effectsCam.resetPostPipeline()
@@ -270,22 +260,11 @@ export class ViewManager {
         },
       )
       this.scene.enemyMgr.switchEnemiesToNonInfraredColors()
-      this.scene.mapMgr.rubbleGroup.children.iterate(
-        (item: Phaser.GameObjects.GameObject) => {
-          const rubble = item as ExtendedSprite
-          this.resetBuildingToOriginalColors(rubble)
-          return true
-        },
-      )
-      this.scene.mapMgr.mapObjects.forEach(
-        (mapObject: MapObject) => {
-          const sprite = mapObject.sprite as ExtendedSprite
-          this.resetBuildingToOriginalColors(sprite)
-          return true
-        },
-      )
+      this.scene.mapMgr.mapObjects.forEach((mapObject: MapObject) => {
+        const sprite = mapObject.sprite as ExtendedSprite
+        this.resetBuildingToOriginalColors(sprite)
+        return true
+      })
     }
   }
-
-  
 }

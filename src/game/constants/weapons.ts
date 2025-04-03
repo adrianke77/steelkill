@@ -264,7 +264,7 @@ export const enemyWeapons = {
     explodeAfterGlowTint: 0x99ff99,
     explodeAfterGlowIntensity: 3,
     explodeAfterGlowRadius: 150,
-    scorchTint: 0x227777,
+    scorchTint: 0x113333,
     penetration: 0,
     muzzleFlashSize: 3,
     fireSound: 'alienshot',

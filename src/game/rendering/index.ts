@@ -153,7 +153,9 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
     addCombinedDecal(scene)
   }
   const currentTexture = scene.combinedDecals.slice(-1)[0].texture
-  image.setBlendMode(Phaser.BlendModes.NORMAL)
+  // strip existing Light 2d pipelines else this will affect the drawn image
+  image.resetPipeline()
+  image.clearAlpha()
   currentTexture.draw(image, image.x, image.y)
   image.destroy()
   scene.decalCount++
@@ -554,6 +556,6 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
     2000,
     200,
     undefined,
-    true
+    true,
   )
 }

@@ -4,7 +4,7 @@ import { enemyWeapons } from './weapons'
 export const enemies = {
   ant: {
     spawnPeriod: 100,
-    speed: 100,
+    speed: 50,
     health: 60,
     armor: 5,
     displaySize: 40,
@@ -31,7 +31,7 @@ export const enemies = {
   },
   fireant: {
     spawnPeriod: 1000,
-    speed: 80,
+    speed: 40,
     health: 300,
     armor: 10,
     displaySize: 60,

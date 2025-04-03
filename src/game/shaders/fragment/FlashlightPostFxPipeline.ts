@@ -74,7 +74,7 @@ export class FlashlightPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
 
         // Compute the final brightness factor 
         // No brightening at or above thresholdFactor=0
-        float brightness = 1.0 + intensity * fadeFactor * 7.0 * thresholdFactor;
+        float brightness = 1.0 + intensity * fadeFactor * 10.0 * thresholdFactor;
 
         vec3 finalColor = baseColor.rgb * brightness;
         gl_FragColor = vec4(finalColor, baseColor.a);

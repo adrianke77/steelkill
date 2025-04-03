@@ -150,7 +150,7 @@ export class ViewManager {
       this.flashlightPipeline = this.mainCam.getPostPipeline(
         'FlashlightPostFxPipeline',
       ) as FlashlightPostFxPipeline
-      this.flashlightPipeline.setRadius(1500)
+      this.flashlightPipeline.setRadius(1000)
       this.flashlightPipeline.setConeAngle(Math.PI / 2)
     })
   }

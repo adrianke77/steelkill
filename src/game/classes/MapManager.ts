@@ -114,6 +114,8 @@ export class MapManager {
       MAP_SCALE,
     )
 
+    mapLayersWithScaling
+
     // 5) Draw the objects
     this.drawMapObjects(baseUrl, mapLayersWithScaling)
 

@@ -27,7 +27,7 @@ export const weapons = {
     beamGlowWidth: 15,
     beamGlowColor: 0xff0033,
     beamParticleInitialSize: 4,
-    beamParticlesDensity: 1,
+    beamParticlesDensity: 3,
     beamParticlesColor: 0xff0033,
     beamParticlesFadeTime: 1000,
     beamLightRadius: 150,

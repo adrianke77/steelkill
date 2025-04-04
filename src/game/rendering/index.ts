@@ -162,13 +162,13 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
 }
 
 function addCombinedDecal(scene: Game) {
-  const combinedTexture = scene.add.renderTexture(
+  const combinedTexture = new Phaser.GameObjects.RenderTexture(
+    scene,
     0,
     0,
-    scene.mapHeight,
     scene.mapWidth,
-  )
-  scene.viewMgr.mainLayer.add(combinedTexture)
+    scene.mapHeight
+  );
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
   combinedDecalsImage.setPipeline('Light2D')
@@ -513,7 +513,7 @@ export function renderExplosion(
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.3)
+  scorch.setAlpha(0.8)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )

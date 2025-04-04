@@ -107,25 +107,26 @@ export class BeamManager {
     }
   }
 
-  updateBeams(time: number): void {
+  private updateBeams(time: number): void {
     for (const weaponIndexStr in this.activeBeams) {
       const weaponIndex = Number(weaponIndexStr)
       const beam = this.activeBeams[weaponIndex]
       if (!beam) continue
-
+  
       const weapon = this.scene.player.weapons[weaponIndex]
-
+  
       if (!this.handleFireDelay(weaponIndex, time)) continue
-
+  
       const { startX, startY, maxEndX, maxEndY } =
         this.calculateBeamPositions(weaponIndex)
-
+  
       // Update beam positions
       beam.startX = startX
       beam.startY = startY
-
+  
+      // Default to fade if beam reaches max range without hitting anything
       let beamFades = true
-
+  
       // Perform collision detection every frame
       if (weapon.arcTargeting) {
         this.handleArcTargeting(beam, weapon, startX, startY)
@@ -137,13 +138,21 @@ export class BeamManager {
           maxEndY,
           weapon,
         )
-
+  
         beam.endX = beamEndX
         beam.endY = beamEndY
-
+  
+        // Calculate how far along the max range the beam ends
+        const maxDistance = Phaser.Math.Distance.Between(startX, startY, maxEndX, maxEndY);
+        const actualDistance = Phaser.Math.Distance.Between(startX, startY, beamEndX, beamEndY);
+        const distanceRatio = actualDistance / maxDistance;
+  
         // Handle beam hits
         if (hitObject) {
-          beamFades = false
+          // If beam hits before 75% of max range, don't fade
+          // If beam hits between 75% and max range, fade appropriately
+          beamFades = distanceRatio > 0.75;
+          
           if (this.scene.enemyMgr.isAnEnemy(hitObject)) {
             this.beamHitEnemy(hitObject as EnemySprite, weapon, startX, startY)
           } else if (this.scene.terrainMgr.isATerrainTile(hitObject)) {
@@ -167,10 +176,10 @@ export class BeamManager {
           }
         }
       }
-
+  
       // Redraw the beam every frame
       this.resetAndDrawBeam(beam, weapon, startX, startY, beamFades)
-
+  
       this.consumeAmmo(weaponIndex)
     }
   }
@@ -198,7 +207,8 @@ export class BeamManager {
       this.scene.terrainMgr.getTileData(tile).color,
     )
 
-    const effectiveDamage = damage - tile.armor / 2
+    // due to beam weapons being high ROF and low damage weapons, armor is less effective 
+    const effectiveDamage = damage - tile.armor / 3
     tile.health -= effectiveDamage > 0 ? effectiveDamage : 0
     if (tile.health <= 0) {
       this.scene.terrainMgr.destroyTile(tile)
@@ -456,8 +466,23 @@ export class BeamManager {
     startY: number,
     beamFades: boolean,
   ): void {
-    beam.graphics.clear()
-    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam, beamFades)
+    beam.graphics.clear();
+    
+    // Calculate the max beam distance for fading calculations
+    const maxBeamLength = weapon.maxRange!;
+    const actualBeamLength = Phaser.Math.Distance.Between(
+      startX, startY, beam.endX, beam.endY
+    );
+    
+    // Only fade if the beam extends to at least 75% of max range
+    const shouldFade = beamFades && (actualBeamLength > maxBeamLength * 0.75);
+    
+    this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam, shouldFade);
+    
+    // Debug visualization to confirm fading is working
+    if (shouldFade) {
+      console.log(`Beam fading: ${actualBeamLength.toFixed(0)} / ${maxBeamLength.toFixed(0)}`);
+    }
   }
 
   private handleArcTargeting(
@@ -466,6 +491,7 @@ export class BeamManager {
     startX: number,
     startY: number,
   ): void {
+    console.log('running')
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     const mechRotation = this.scene.player.mechContainer.rotation - Math.PI / 2
     const weaponArcHalfAngle = weapon.arcTargetingAngle! / 2
@@ -488,6 +514,8 @@ export class BeamManager {
       return Math.abs(angleDiff) <= weaponArcHalfAngle
     })
 
+    console.log(potentialTargets)
+
     // perform collision detection on the filtered list
     let targetEnemy: EnemySprite | null = null
     let minDistance = weaponMaxRange
@@ -502,14 +530,14 @@ export class BeamManager {
       )
 
       // Check if there is a line of sight to the enemy
-      if (!hitObject || this.scene.terrainMgr.isATerrainTile(hitObject)) {
+      if (!hitObject || hitObject === enemy) {
         const distance = Phaser.Math.Distance.Between(
           startX,
           startY,
           enemy.x,
           enemy.y,
         )
-
+      
         if (distance < minDistance) {
           minDistance = distance
           targetEnemy = enemy
@@ -518,6 +546,8 @@ export class BeamManager {
     }
 
     let beamFades = true
+
+    console.log(targetEnemy)
 
     if (targetEnemy) {
       beamFades = false
@@ -605,7 +635,7 @@ export class BeamManager {
     const isBeamFragment = !beam
 
     const length = Phaser.Math.Distance.Between(startX, startY, endX, endY)
-    const segments = weapon.lightningSegments ? weapon.lightningSegments : 10
+    const segments = weapon.lightningSegments ? weapon.lightningSegments : 20
     const segmentCount = Math.ceil((length / weapon.maxRange!) * segments)
 
     const points = this.generateBeamPoints(
@@ -622,17 +652,17 @@ export class BeamManager {
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth!,
-        alpha: 0.2,
+        alpha: 0.15,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.5 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.2,
+        alpha: 0.15,
       },
       {
         color: weapon.beamGlowColor!,
         width: weapon.beamGlowWidth! * 0.2 * Phaser.Math.Between(0.5, 1.5),
-        alpha: 0.2,
+        alpha: 0.15,
       },
       { color: weapon.beamColor!, width: weapon.beamWidth!, alpha: 0.7 },
     ]
@@ -659,48 +689,35 @@ export class BeamManager {
     segmentCount: number,
     displacement: number,
   ): Phaser.Math.Vector2[] {
-    const segmentsBetweenAlignedPoints = weapon.renderAsLightning ? 3 : 1
+    const segmentsBetweenAlignedPoints = weapon.renderAsLightning ? 3 : 1;
     const points: Phaser.Math.Vector2[] = [
       new Phaser.Math.Vector2(startX, startY),
-    ]
-    const deltaX = (endX - startX) / segmentCount
-    const deltaY = (endY - startY) / segmentCount
-    // Decide which segment index is 10% from the end
-    const lastSegmentIndex = Math.floor(segmentCount * 0.9)
+    ];
+    const deltaX = (endX - startX) / segmentCount;
+    const deltaY = (endY - startY) / segmentCount;
 
     for (let i = 1; i < segmentCount; i++) {
-      const prevPoint = points[i - 1]
-      if (i < lastSegmentIndex) {
-        // Normal random offset calculation
-        const randomX =
-          i % segmentsBetweenAlignedPoints === 0
-            ? 0
-            : Phaser.Math.FloatBetween(-displacement, displacement)
-        const randomY =
-          i % segmentsBetweenAlignedPoints === 0
-            ? 0
-            : Phaser.Math.FloatBetween(-displacement, displacement)
-        points.push(
-          new Phaser.Math.Vector2(
-            prevPoint.x + deltaX + randomX,
-            prevPoint.y + deltaY + randomY,
-          ),
-        )
-      } else {
-        // Smoothly interpolate from the last offset point to the end, with no added displacement
-        const fraction =
-          (i - lastSegmentIndex + 1) / (segmentCount - lastSegmentIndex)
-        points.push(
-          new Phaser.Math.Vector2(
-            Phaser.Math.Linear(prevPoint.x, endX, fraction),
-            Phaser.Math.Linear(prevPoint.y, endY, fraction),
-          ),
-        )
-      }
+      const prevPoint = points[i - 1];
+      
+      // Use consistent displacement throughout the entire beam
+      const randomX =
+        i % segmentsBetweenAlignedPoints === 0
+          ? 0
+          : Phaser.Math.FloatBetween(-displacement, displacement);
+      const randomY =
+        i % segmentsBetweenAlignedPoints === 0
+          ? 0
+          : Phaser.Math.FloatBetween(-displacement, displacement);
+      points.push(
+        new Phaser.Math.Vector2(
+          prevPoint.x + deltaX + randomX,
+          prevPoint.y + deltaY + randomY,
+        ),
+      );
     }
 
-    points.push(new Phaser.Math.Vector2(endX, endY))
-    return points
+    points.push(new Phaser.Math.Vector2(endX, endY));
+    return points;
   }
 
   drawGlowLayers(
@@ -709,36 +726,43 @@ export class BeamManager {
     fireDelay: number,
     beamFades: boolean = true,
   ): void {
-    const fadeStartIndex = beamFades
-      ? Math.floor(points.length * 0.3)
-      : Infinity
-
+    // Calculate the point index where fading should start - 75% through the beam
+    const totalPoints = points.length;
+    const fadeStartIndex = beamFades ? Math.floor(totalPoints * 0.75) : Infinity;
+  
     for (const layer of glowLayers) {
-      // Use a graphics object that is NOT on the Light2D pipeline
-      const graphics = this.scene.addGraphicsEffect()
-      // For instance, set the TextureTint pipeline or the default pipeline
-      graphics.setPipeline('TextureTintPipeline')
-      graphics.setDepth(ct.depths.projectile)
-
-      for (let i = 0; i < points.length - 1; i++) {
-        let segmentAlpha = layer.alpha
-        if (i >= fadeStartIndex) {
-          const fadeProgress =
-            (i - fadeStartIndex) / (points.length - 1 - fadeStartIndex)
-          segmentAlpha = layer.alpha * (1 - fadeProgress)
+      const graphics = this.scene.addGraphicsEffect();
+      graphics.setPipeline('TextureTintPipeline');
+      graphics.setDepth(ct.depths.projectile);
+  
+      // Draw beam segments with proper fading
+      for (let i = 0; i < totalPoints - 1; i++) {
+        let segmentAlpha = layer.alpha;
+        
+        // Only apply fading if this segment is past the fade start point
+        if (beamFades && i >= fadeStartIndex) {
+          // Calculate fade progress, normalized between 0 and 1
+          const fadeProgress = (i - fadeStartIndex) / Math.max(1, (totalPoints - 1 - fadeStartIndex));
+          // Fade to minimum alpha of 0.1 instead of 0
+          segmentAlpha = Phaser.Math.Linear(layer.alpha, layer.alpha * 0.1, fadeProgress);
         }
-
-        graphics.lineStyle(layer.width, layer.color, segmentAlpha)
-        graphics.beginPath()
-        graphics.moveTo(points[i].x, points[i].y)
-        graphics.lineTo(points[i + 1].x, points[i + 1].y)
-        graphics.strokePath()
-        graphics.setDepth(ct.depths.projectile)
+        
+        // Use a more visible line style for debugging
+        const width = i >= fadeStartIndex && beamFades 
+          ? layer.width * (1 - ((i - fadeStartIndex) / (totalPoints - fadeStartIndex)) * 0.5)
+          : layer.width;
+          
+        graphics.lineStyle(width, layer.color, segmentAlpha);
+        graphics.beginPath();
+        graphics.moveTo(points[i].x, points[i].y);
+        graphics.lineTo(points[i + 1].x, points[i + 1].y);
+        graphics.strokePath();
       }
-
-      this.scene.time.delayedCall(fireDelay, () => graphics.destroy())
+  
+      this.scene.time.delayedCall(fireDelay, () => graphics.destroy());
     }
   }
+  
 
   private updateParticlesAndLights(
     weapon: WeaponSpec,
@@ -914,8 +938,8 @@ export class BeamManager {
       0x666666, // Or pick any color relevant to the map tile entity
     )
 
-    if (damage > entity.armor / 2) {
-      const effectiveDamage = damage * 2 - entity.armor / 2
+    if (damage > entity.armor / 3) {
+      const effectiveDamage = damage * 2 - entity.armor / 3
       entity.health -= effectiveDamage > 0 ? effectiveDamage : 0
 
       // If health is depleted, remove it
@@ -960,7 +984,7 @@ export class BeamManager {
     if (!enemy.active) return
     // beam weapons do double damage to map objects
     const damage = weapon.damage! * 2 // beam weapons do double damage to map objects
-    const effectiveDamage = Math.max(damage - enemy.armor, 0)
+    const effectiveDamage = Math.max(damage - enemy.armor /3, 0)
     enemy.health -= effectiveDamage
 
     this.beamHitSpark(startX, startY, enemy.x, enemy.y, weapon)
@@ -1033,7 +1057,7 @@ export class BeamManager {
     for (const targetData of chainedTargets) {
       const target = targetData.enemy
       const chainDamage = weapon.damage! * 0.5
-      const effectiveDamage = Math.max(chainDamage - target.armor, 0)
+      const effectiveDamage = Math.max(chainDamage - target.armor/3, 0)
       target.health -= effectiveDamage
 
       this.beamHitSpark(enemy.x, enemy.y, target.x, target.y, weapon)
@@ -1063,12 +1087,12 @@ export class BeamManager {
     endY: number,
     weapon: WeaponSpec,
   ): void {
-    // Existing spark effect (unchanged)
+    // reverse direction so the spark is back towards the beam
     const directionRadians = Phaser.Math.Angle.Between(
-      endX,
-      endY,
       startX,
       startY,
+      endX,
+      endY,
     )
     this.scene.projectileMgr.hitSpark(
       endX,
@@ -1084,8 +1108,8 @@ export class BeamManager {
     const randomFactor = 1 + Phaser.Math.FloatBetween(-variation, variation)
 
     // Circles from center outward
-    const circleRatios = [1.0, 0.6, 0.3]
-    const baseRadius = 12
+    const circleRatios = [1, 0.6, 0.3]
+    const baseRadius = 15
 
     // For each circle, use a separate Graphics instance so overlapping visually stacks
     for (let i = 0; i < circleRatios.length; i++) {

@@ -216,8 +216,7 @@ export class Game extends Scene {
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
 
-    const { width, height, tilewidth, tileheight } =
-      await this.mapMgr.loadMap('maps/ruralVillage1')
+    const { width, height, tilewidth, tileheight } = await this.mapMgr.loadMap('maps/ruralVillage1')
 
     // Calculate total pixel width/height from Tiled’s data
     // map size in game is half of Tiled's in width and height each
@@ -395,6 +394,17 @@ export class Game extends Scene {
   ) {
     const image = this.add.image(x, y, texture, frame)
     this.viewMgr.mainLayer.add(image)
+    return image
+  }
+  
+  addImageEffect(
+    x: number,
+    y: number,
+    texture: string | Phaser.Textures.Texture,
+    frame?: string | number,
+  ) {
+    const image = this.add.image(x, y, texture, frame)
+    this.viewMgr.effectsLayer.add(image)
     return image
   }
 

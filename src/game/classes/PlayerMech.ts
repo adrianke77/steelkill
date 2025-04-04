@@ -149,6 +149,9 @@ export class PlayerMech {
 
     this.scene.viewMgr.updateCameraOffset(this.mechContainer.rotation)
 
+    // update 'running lights' on the mech, a small amount of light centred on the mech at all times
+    createLightFlash(this.scene, this.mechContainer.x, this.mechContainer.y, 0xffffff, 50, 0.3,100)
+
     const moveStates = this.scene.inputMgr.moveBindingStates
     const isBoosting =
       moveStates.boost &&

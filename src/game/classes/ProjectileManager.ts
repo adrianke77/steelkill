@@ -129,12 +129,15 @@ export class ProjectileManager {
     startY: number,
     weapon: WeaponSpec | EnemyWeaponSpec,
   ): Projectile {
-    const projectile = this.scene.createInGroup(
-      this.projectiles,
+    // Create the sprite in the effects layer
+    const projectile = this.scene.addSpriteEffect(
       startX,
       startY,
       weapon.image,
     ) as Projectile
+
+    // Add it to the physics group
+    this.projectiles.add(projectile)
     projectile.setCollideWorldBounds(true)
     projectile.setName('projectile')
     const body = projectile.body as Phaser.Physics.Arcade.Body
@@ -204,7 +207,7 @@ export class ProjectileManager {
           if (!projectile.active) {
             return
           }
-          const trailImage = this.scene.addImage(
+          const trailImage = this.scene.addImageEffect(
             projectile.x,
             projectile.y,
             weapon.image,
@@ -465,7 +468,13 @@ export class ProjectileManager {
       enemyData,
     )
     if (!enemyData.tooSmallToBleedWhenHit) {
-      createBloodSplat(this.scene, projectile.x, projectile.y, enemyData.bloodColor, 25)
+      createBloodSplat(
+        this.scene,
+        projectile.x,
+        projectile.y,
+        enemyData.bloodColor,
+        25,
+      )
     }
     if (enemy.health <= 0) {
       const directionRadians = Phaser.Math.Angle.Between(
@@ -615,7 +624,6 @@ export class ProjectileManager {
     baseDamage: number,
     weapon: WeaponSpec | EnemyWeaponSpec,
   ): void {
-
     // terrain tile damage
     const tiles = this.scene.terrainMgr.map.getTilesWithinWorldXY(
       x - radius,
@@ -668,7 +676,6 @@ export class ProjectileManager {
         const damage = baseDamage * (0.5 + 0.5 * (1 - distance / radius))
 
         if (damage > mapEntity.armor / 2) {
-          
           const effectiveDamage = damage * 2 - mapEntity.armor / 2
           mapEntity.health -= effectiveDamage
           if (mapEntity.health <= 0) {
@@ -679,7 +686,7 @@ export class ProjectileManager {
               mapEntity.centreX,
               mapEntity.centreY,
             )
-            
+
             this.scene.mapMgr.destroyMapObject(mapEntity, directionRadians)
           }
         }

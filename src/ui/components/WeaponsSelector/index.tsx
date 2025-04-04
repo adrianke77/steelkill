@@ -4,11 +4,11 @@ import { dataStore } from '../../../DataStore'
 
 const reservedKeys = ['v']
 
-const initialWeapons = ['machineGun1', 'machineGun1', 'machineGun1', 'rockets1']
+const initialWeapons = ['arc1', 'arc1', 'arc1', 'arc1']
 const initialBindings = [
   ['0', 'mouse'],
-  ['0', 'mouse'],
-  ['0', 'mouse'],
+  ['1', 'mouse'],
+  ['1', 'mouse'],
   ['1', 'mouse'],
 ]
 

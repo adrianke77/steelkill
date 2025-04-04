@@ -689,13 +689,12 @@ export class MapManager {
       const startX = mapObject.sprite.x
       const startY = mapObject.sprite.y
 
-      // Fade out the sprite over 2 seconds with movement
       this.scene.tweens.add({
         targets: mapObject.sprite,
         alpha: 0,
         x: startX + moveX,
         y: startY + moveY,
-        duration: 3000,
+        duration: 2000,
         onComplete: () => {
           mapObject.sprite.destroy()
         },
@@ -794,28 +793,30 @@ export class MapManager {
           fallenTree.setFlipX(true)
         }
 
-        fallenTree.setDepth(ct.depths.terrain + 1)
+        fallenTree.setDepth(ct.depths.rubble)
         fallenTree.setPipeline('Light2D')
         fallenTree.setAlpha(0)
 
-        this.scene.tweens.add({
-          targets: fallenTree,
-          alpha: 1,
-          duration: 3000,
-          ease: 'Power2',
-          onComplete: () => {
-            drawDecal(this.scene, fallenTree)
-          },
+        this.scene.time.delayedCall(1500, () => {
+          this.scene.tweens.add({
+            targets: fallenTree,
+            alpha: 1,
+            duration: 1500,
+            ease: 'Power2',
+            onComplete: () => {
+              drawDecal(this.scene, fallenTree)
+            },
+          })
         })
 
         if (infraredIsOn) {
           this.scene.viewMgr.setBuildingToInfraredColors(fallenTree)
         }
 
-        // 4. Add four random tree bit images
+        // 4. Add random tree bit images
         const treeBitsImages = treeRubbleSet.bits
 
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
           const treeBitKey = Phaser.Utils.Array.GetRandom(treeBitsImages)
 
           const treeBit = this.scene.addSprite(
@@ -834,7 +835,7 @@ export class MapManager {
 
           treeBit.setScale(bitScaleFactor)
 
-          treeBit.setDepth(ct.depths.terrain + 1)
+          treeBit.setDepth(ct.depths.rubble)
           treeBit.setPipeline('Light2D')
           treeBit.setAlpha(0)
 
@@ -873,11 +874,36 @@ export class MapManager {
           0,
           0,
           1,
-          6000,
-          objectSize * 0.7,
+          5000,
+          objectSize * 0.5,
           undefined,
           true,
         )
+
+        const impactDelay = Phaser.Math.FloatBetween(800, 1200)
+
+        this.scene.time.delayedCall(impactDelay, () => {
+          // Calculate position up the fallen tree trunk
+          const treeRotation = directionRadians!
+
+          const distanceUpTrunk = originalWidth * 0.6
+
+          // Calculate the offset from the base using the tree's rotation
+          const impactX = x + Math.cos(treeRotation) * distanceUpTrunk
+          const impactY = y + Math.sin(treeRotation) * distanceUpTrunk
+          createDustCloud(
+            this.scene,
+            impactX,
+            impactY,
+            0,
+            0,
+            1,
+            5000,
+            objectSize * 1,
+            undefined,
+            true,
+          )
+        })
       }
     } else {
       // Play two random building collapse sounds with pan and size-based volume
@@ -894,7 +920,6 @@ export class MapManager {
         })
       }
 
-      // Keep the existing dust cloud effects
       const numClouds = Phaser.Math.Between(3, 5)
 
       for (let i = 0; i < numClouds; i++) {
@@ -953,7 +978,7 @@ export class MapManager {
         rubble.displayWidth = originalWidth
         rubble.displayHeight = originalHeight
 
-        rubble.setDepth(ct.depths.terrain + 1)
+        rubble.setDepth(ct.depths.rubble)
         rubble.setPipeline('Light2D')
         rubble.setAlpha(0)
 
@@ -970,7 +995,6 @@ export class MapManager {
         if (infraredIsOn) {
           this.scene.viewMgr.setBuildingToInfraredColors(rubble)
         }
-
       }
 
       // Create 1 roof-colored rubble pile
@@ -996,7 +1020,7 @@ export class MapManager {
 
       roofRubble.displayWidth = originalWidth * 1.3
       roofRubble.displayHeight = originalHeight * 1.3
-      roofRubble.setDepth(ct.depths.terrain + 1)
+      roofRubble.setDepth(ct.depths.rubble)
       roofRubble.setPipeline('Light2D')
       roofRubble.setAlpha(0)
 
@@ -1051,7 +1075,7 @@ export class MapManager {
 
         const randomRotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
         scattered.setRotation(randomRotation)
-        scattered.setDepth(ct.depths.terrain + 1)
+        scattered.setDepth(ct.depths.rubble)
         scattered.setPipeline('Light2D')
         scattered.setAlpha(0)
         scattered.displayWidth = originalWidth * 0.75
@@ -1070,7 +1094,6 @@ export class MapManager {
         if (infraredIsOn) {
           this.scene.viewMgr.setBuildingToInfraredColors(scattered)
         }
-
       }
     }
   }

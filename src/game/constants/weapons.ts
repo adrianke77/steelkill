@@ -12,7 +12,7 @@ export const weapons = {
     baseSpread: 0,
     roundHeight: 0,
     roundWidth: 0,
-    damage: 5,
+    damage: 4,
     penetration: 0,
     totalAmmo: 5000,
     magSize: 5000,

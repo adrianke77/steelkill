@@ -84,7 +84,4 @@
  <tile id="10">
   <image source="objects/vectorroad.png" width="800" height="60"/>
  </tile>
- <tile id="11">
-  <image source="../../assets/darksand.jpg"/>
- </tile>
 </tileset>

@@ -27,7 +27,8 @@ const depths = {
   terrain: 1,
   dustClouds: 1100,
   trees: 1000,
-  buildings: 500
+  buildings: 500,
+  rubble:755
 }
 
 export const Constants = {

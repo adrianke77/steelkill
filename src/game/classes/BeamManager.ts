@@ -479,10 +479,6 @@ export class BeamManager {
     
     this.drawBeam(weapon, startX, startY, beam.endX, beam.endY, beam, shouldFade);
     
-    // Debug visualization to confirm fading is working
-    if (shouldFade) {
-      console.log(`Beam fading: ${actualBeamLength.toFixed(0)} / ${maxBeamLength.toFixed(0)}`);
-    }
   }
 
   private handleArcTargeting(
@@ -491,7 +487,6 @@ export class BeamManager {
     startX: number,
     startY: number,
   ): void {
-    console.log('running')
     const enemies = this.scene.enemyMgr.enemies.getChildren() as EnemySprite[]
     const mechRotation = this.scene.player.mechContainer.rotation - Math.PI / 2
     const weaponArcHalfAngle = weapon.arcTargetingAngle! / 2
@@ -514,7 +509,6 @@ export class BeamManager {
       return Math.abs(angleDiff) <= weaponArcHalfAngle
     })
 
-    console.log(potentialTargets)
 
     // perform collision detection on the filtered list
     let targetEnemy: EnemySprite | null = null
@@ -547,7 +541,6 @@ export class BeamManager {
 
     let beamFades = true
 
-    console.log(targetEnemy)
 
     if (targetEnemy) {
       beamFades = false
@@ -1087,12 +1080,11 @@ export class BeamManager {
     endY: number,
     weapon: WeaponSpec,
   ): void {
-    // reverse direction so the spark is back towards the beam
     const directionRadians = Phaser.Math.Angle.Between(
-      startX,
-      startY,
       endX,
       endY,
+      startX,
+      startY,
     )
     this.scene.projectileMgr.hitSpark(
       endX,

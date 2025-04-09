@@ -958,4 +958,76 @@ export class TerrainManager {
   isATerrainTile(obj: any): boolean {
     return obj instanceof Phaser.Tilemaps.Tile
   }
+
+  isPointInPolygon(point: { x: number; y: number }, polygon: { x: number; y: number }[]): boolean {
+    let isInside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+  
+      const intersect = ((yi > point.y) !== (yj > point.y)) &&
+        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) isInside = !isInside;
+    }
+    return isInside;
+  }
+
+  public generateTerrainInPolygon(polygon: { x: number; y: number }[]): void {
+    // Calculate the bounding box of the polygon for optimization
+    const minX = Math.min(...polygon.map(p => p.x)) / ct.tileSize;
+    const maxX = Math.max(...polygon.map(p => p.x)) / ct.tileSize;
+    const minY = Math.min(...polygon.map(p => p.y)) / ct.tileSize;
+    const maxY = Math.max(...polygon.map(p => p.y)) / ct.tileSize;
+  
+    // Generate a temporary grid for the initial state
+    let tempGrid: boolean[][] = [];
+  
+    for (let x = 0; x < this.map.width; x++) {
+      tempGrid[x] = [];
+      for (let y = 0; y < this.map.height; y++) {
+        // Skip if outside the bounding box of the polygon (optimization)
+        if (x < minX || x > maxX || y < minY || y > maxY) {
+          tempGrid[x][y] = false;
+          continue;
+        }
+        
+        const worldX = x * ct.tileSize;
+        const worldY = y * ct.tileSize;
+  
+        // Check if the tile's center is inside the polygon
+        if (this.isPointInPolygon({ x: worldX, y: worldY }, polygon)) {
+          const isSolid = Math.random() < 0.45; // Adjust fill probability as needed
+          tempGrid[x][y] = isSolid;
+        } else {
+          tempGrid[x][y] = false;
+        }
+      }
+    }
+  
+    // Apply the cellular automata rules
+    for (let i = 0; i < 7; i++) { // Adjust iterations as needed
+      tempGrid = this.runAutomataStep(tempGrid);
+    }
+  
+    // Apply the generated terrain
+    for (let x = 0; x < this.map.width; x++) {
+      for (let y = 0; y < this.map.height; y++) {
+        if (tempGrid[x][y]) {
+          this.setAutotileAt(x, y, 1); // Set all initial solid tiles to a default type
+        } else {
+          this.terrainLayer.removeTileAt(x, y);
+        }
+      }
+    }
+  
+    // Assign terrain types to each clump after cellular automata
+    this.assignTerrainTypesToClumps();
+  
+    // Apply autotiling to update tile graphics
+    this.applyAutotiling();
+  
+    this.drawTerrainOutlines();
+  }
+
+  
 }

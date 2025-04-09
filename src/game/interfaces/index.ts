@@ -46,6 +46,8 @@ export interface WeaponSpec {
   // firesounds must be unique for repeating sound weapons
   fireSound: string
   fireSoundVol: number
+  fireDetuneRange?: number
+  fireAverageDetune?: number
   repeatingContinuousFireSound?: boolean
   stopFireSoundOnHit?: boolean
   reloadSound: string

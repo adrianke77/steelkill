@@ -19,7 +19,7 @@ const treeRubble = {
     bits: ['treebits1', 'treebits2', 'treebits3'],
   },
   9: {
-    fallen: ['fallenpalm1'],
+    fallen: ['fallenpalm1','fallenpalm2','fallenpalm3'],
     bits: ['treebits1', 'treebits2', 'treebits3'],
   },
 }
@@ -694,7 +694,7 @@ export class MapManager {
         alpha: 0,
         x: startX + moveX,
         y: startY + moveY,
-        duration: 2000,
+        duration: 1500,
         onComplete: () => {
           mapObject.sprite.destroy()
         },

@@ -227,6 +227,7 @@ export class Game extends Scene {
     this.terrainMgr = new TerrainManager(this)
 
     // this.terrainMgr.createTerrain()
+    this.terrainMgr.generateTerrainInPolygon([{ x: 100, y: 100 },{ x: 100, y: 200 },{ x: 200, y: 200 }])
 
     this.physics.world.setBounds(0, 0, this.mapWidth, this.mapHeight)
 

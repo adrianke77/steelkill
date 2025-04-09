@@ -862,7 +862,9 @@ export class ProjectileManager {
       weapon.fireSoundVol ? weapon.fireSoundVol : 1,
     ])
     projectile.setData('fireSoundInstance', soundInstance)
-    const detune = Phaser.Math.Between(-100, 100)
+    const detune = weapon.fireAverageDetune
+      ? weapon.fireAverageDetune + Phaser.Math.Between(-weapon.fireDetuneRange!, weapon.fireDetuneRange!)
+      : Phaser.Math.Between(-100, 100)
     soundInstance.play({ detune })
     soundInstance.once('complete', () => {
       soundInstance.destroy()

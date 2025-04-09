@@ -1101,7 +1101,7 @@ export class BeamManager {
 
     // Circles from center outward
     const circleRatios = [1, 0.6, 0.3]
-    const baseRadius = 15
+    const baseRadius = 30
 
     // For each circle, use a separate Graphics instance so overlapping visually stacks
     for (let i = 0; i < circleRatios.length; i++) {
@@ -1113,7 +1113,7 @@ export class BeamManager {
 
       singleCircleGraphics.fillStyle(weapon.beamColor!, 0.1)
       singleCircleGraphics.fillCircle(endX, endY, radius)
-      singleCircleGraphics.setAlpha(0.3)
+      singleCircleGraphics.setAlpha(0.6)
 
       this.scene.time.delayedCall(80, () => {
         singleCircleGraphics.destroy()

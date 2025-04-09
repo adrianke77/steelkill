@@ -333,6 +333,7 @@ export function createBloodSplat(
   y: number,
   bloodColor: number,
   splatSize: number,
+  duration?: number, // Optional duration parameter
 ) {
   const bloodSplat = scene.addImage(
     x,
@@ -345,9 +346,24 @@ export function createBloodSplat(
   bloodSplat.displayWidth = splatSize
   bloodSplat.setTint(bloodColor)
   bloodSplat.setPipeline('Light2D')
-  bloodSplat.setAlpha(1)
-  drawDecal(scene, bloodSplat)
+  bloodSplat.setAlpha(0) // Start with alpha 0 for fade-in effect
+  bloodSplat.setDepth(ct.depths.initialDeadBody)
+
+  if (duration) {
+    scene.tweens.add({
+      targets: bloodSplat,
+      alpha: 1,
+      duration: duration,
+      onComplete: () => {
+        drawDecal(scene, bloodSplat)
+      },
+    })
+  } else {
+    bloodSplat.setAlpha(1)
+    drawDecal(scene, bloodSplat)
+  }
 }
+
 export function destroyEnemyAndCreateCorpseDecals(
   scene: Game,
   enemy: EnemySprite,
@@ -367,15 +383,26 @@ export function destroyEnemyAndCreateCorpseDecals(
     enemy.y,
     enemyData.bloodColor,
     enemyData.corpseSize * 1.5,
+    500, 
   )
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   deadEnemy.displayHeight = enemyData.corpseSize
   deadEnemy.displayWidth = enemyData.corpseSize
-  deadEnemy.alpha = 0.5
+  deadEnemy.alpha = 0 // Start with alpha 0 for fade-in effect
   deadEnemy.setTint(enemyData.color)
   deadEnemy.setPipeline('Light2D')
-  drawDecal(scene, deadEnemy)
+  deadEnemy.setDepth(ct.depths.initialDeadBody)
+
+  // Tween to fade in the dead enemy sprite
+  scene.tweens.add({
+    targets: deadEnemy,
+    alpha: 1, // Final alpha value
+    duration: 1000, // 1-second fade-in duration
+    onComplete: () => {
+      drawDecal(scene, deadEnemy)
+    },
+  })
   enemyDeathSpray(
     scene,
     (enemy.x + deathCauseX) / 2,

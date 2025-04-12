@@ -50,7 +50,11 @@ export class MapManager {
   public collisionShapesGroup: Phaser.Physics.Arcade.StaticGroup
   // this stores randomTerrainPolygon data as terrainManager is not available on loadMap
   // so generating the terrain is delayed until the terrainManager is available
-  private randomTerrainPolygons: Phaser.Geom.Point[][] = [];
+  private randomTerrainPolygons: {
+    polygon: Phaser.Geom.Point[];
+    fillProbability?: number;
+    iterations?: number;
+  }[] = [];
   constructor(scene: Game) {
     this.scene = scene
     this.xmlParser = new XMLParser({
@@ -128,12 +132,25 @@ export class MapManager {
           const polygon = zone.polygon.map((point: any) => ({
             x: (zone.x + point.x) * ct.tiledLoadedMapScaling,
             y: (zone.y + point.y) * ct.tiledLoadedMapScaling,
-          }))
-          this.randomTerrainPolygons.push(polygon)
+          }));
+  
+          // Extract fillProbability and iterations from properties
+          const fillProbability = zone.properties?.find(
+            (prop: any) => prop.name === "fillProbability"
+          )?.value;
+          const iterations = zone.properties?.find(
+            (prop: any) => prop.name === "iterations"
+          )?.value;
+  
+          // Store the polygon along with its properties
+          this.randomTerrainPolygons.push({
+            polygon,
+            fillProbability: fillProbability ? parseFloat(fillProbability) : undefined,
+            iterations: iterations ? parseInt(iterations, 10) : undefined,
+          });
         }
-      })
+      });
     }
-
     // 5) Draw the objects
     this.drawMapObjects(baseUrl, mapLayersWithScaling)
 
@@ -1115,11 +1132,11 @@ export class MapManager {
 
   public generateTerrainFromLastLoadedRandomTerrainPolygons(): void {
     if (this.scene.terrainMgr) {
-      this.randomTerrainPolygons.forEach(polygon => {
-        this.scene.terrainMgr.generateTerrainInPolygon(polygon)
-      })
+      this.randomTerrainPolygons.forEach(({ polygon, fillProbability, iterations }) => {
+        this.scene.terrainMgr.generateTerrainInPolygon(polygon, fillProbability, iterations);
+      });
       // Clear the stored polygons after processing
-      this.randomTerrainPolygons = []
+      this.randomTerrainPolygons = [];
     }
   }
 }

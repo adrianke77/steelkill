@@ -55,42 +55,73 @@ function App() {
   return (
     <EventDataProvider>
       <div id="app">
-        <PhaserGame ref={phaserRef} currentActiveScene={currentScene}/>
+        <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
         {sceneName === 'mainmenu' && (
           <div className="startScreenCentre flexCenter">
-            <div className="hudFont" style={{ fontSize: "2rem", marginBottom: 10 }}>
+            <div
+              className="hudFont"
+              style={{ fontSize: '2rem', marginBottom: 10 }}
+            >
               Deadnought
             </div>
             <div
               className="hudFont"
-              style={{ fontSize: "1rem", marginBottom: "1.4rem" }}
+              style={{ fontSize: '1rem', marginBottom: '1.4rem' }}
             >
               Combat Demo
             </div>
-            <div className="hudFont flexCenter"style={{ fontSize: "0.7rem", fontStyle: 'italic', marginBottom:"5rem" }}>
-                <b>a dead monster floats on flames and kills strange horrors with steel and fire</b>
+            <div
+              className="hudFont flexCenter"
+              style={{
+                fontSize: '0.7rem',
+                fontStyle: 'italic',
+                marginBottom: '5rem',
+              }}
+            >
+              <b>
+                a dead monster floats on flames and kills strange horrors with
+                steel and fire
+              </b>
             </div>
             <div
               className="hudFont flexCenter"
-              style={{ fontSize: "0.8rem", marginBottom: "1.4rem" }}
+              style={{ fontSize: '0.8rem', marginBottom: '1.4rem' }}
             >
-              <div style={{marginBottom:"0.5rem"}}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <b>mouse</b> : &nbsp;&nbsp;aim
               </div>
-              <div style={{marginBottom:"0.5rem"}}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <b>V</b> : &nbsp;&nbsp;infrared vision
               </div>
-              <div style={{marginBottom:"1.5rem"}}>
+              <div style={{ marginBottom: '1.5rem' }}>
                 <b>MOVE KEY + BOOST</b> : &nbsp;&nbsp;rocket boosted drifting
-              </div >
-
+              </div>
             </div>
             <WeaponSelector />
-            <br/>
+            <br />
             <MovementKeyBinding />
+            <div
+              className="lcdphoneFont flexCenter"
+              style={{
+                color: 'white',
+                fontSize: '1.5rem',
+                fontStyle: 'italic',
+                marginBottom: '5rem',
+                marginTop: '2rem',
+              }}
+            >
+              <b>
+                suggestion: there are other weapons to try in this demo, try
+                switching them up!
+              </b>
+            </div>
             <button
               className="button"
-              style={{ marginTop: 30, fontSize: "1rem" , backgroundColor: 'red' }}
+              style={{
+                marginTop: 30,
+                fontSize: '1rem',
+                backgroundColor: 'red',
+              }}
               onClick={startGame}
             >
               Start Game
@@ -98,12 +129,19 @@ function App() {
           </div>
         )}
         {sceneName === 'game' && (
-          <div className="lowerLeftHud" style={{ pointerEvents: 'none', fontSize:18 }}>
+          <div
+            className="lowerLeftHud"
+            style={{ pointerEvents: 'none', fontSize: 18 }}
+          >
             <WeaponsInfo weapons={dataStore.data.weaponsData} />
             <BoostInfo />
             <MechHealthInfo />
             <br></br>
-            <button className="button" onClick={endGame} style={{ pointerEvents: 'all', backgroundColor: 'red'  }}>
+            <button
+              className="button"
+              onClick={endGame}
+              style={{ pointerEvents: 'all', backgroundColor: 'red' }}
+            >
               End Game
             </button>
           </div>

@@ -45,7 +45,7 @@ export const Constants = {
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,
-  maxEnemies: 0,
+  maxEnemies: 100,
   playerStartingX: 1000,
   playerStartingY: 1900,
   mechStepPeriod: 500,

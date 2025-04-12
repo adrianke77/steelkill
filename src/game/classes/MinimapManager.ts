@@ -3,9 +3,9 @@ import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
 import { clipLineToRect } from '../utils'
 
-const MINIMAP_WIDTH = 200 // Width of the minimap in pixels
-const MINIMAP_HEIGHT = 200 // Height of the minimap in pixels
-const MINIMAP_SCALE = 0.05 // smaller value means more of the field is visible in the minimap
+const MINIMAP_WIDTH = 300 // Width of the minimap in pixels
+const MINIMAP_HEIGHT = 300 // Height of the minimap in pixels
+const MINIMAP_SCALE = 0.1 // smaller value means more of the field is visible in the minimap
 const MINIMAP_X = 30 // X position of the minimap on screen
 const MINIMAP_Y = 40 // Y position of the minimap on screen
 const MINIMAP_BKGRND_ALPHA = 0.4 // Transparency of the minimap background
@@ -203,7 +203,7 @@ export class MinimapManager {
           relativeY >= 0 &&
           relativeY <= MINIMAP_HEIGHT
         ) {
-          this.minimap.fillStyle(0x888888, 1); // Set a color for terrain tiles
+          this.minimap.fillStyle(0x8888BB, 1); // Set a color for terrain tiles
           this.minimap.fillRect(
             MINIMAP_X + relativeX,
             MINIMAP_Y + relativeY,
@@ -213,5 +213,29 @@ export class MinimapManager {
         }
       });
     }
+
+        // Draw map objects on the minimap
+        this.scene.mapMgr.mapObjects.forEach(mapObject => {
+          const sprite = mapObject.sprite;
+          // Calculate the position relative to the minimap
+          const relativeX = (sprite.x - minimapX) * MINIMAP_SCALE;
+          const relativeY = (sprite.y - minimapY) * MINIMAP_SCALE;
+  
+          // Only draw if the map object is within the visible minimap area
+          if (
+              relativeX >= 0 &&
+              relativeX <= MINIMAP_WIDTH &&
+              relativeY >= 0 &&
+              relativeY <= MINIMAP_HEIGHT
+          ) {
+              this.minimap.fillStyle(0x4444aa, 1); // Set a color for map objects
+              this.minimap.fillRect(
+                  MINIMAP_X + relativeX,
+                  MINIMAP_Y + relativeY,
+                  2, // Width of the map object on the minimap
+                  2  // Height of the map object on the minimap
+              );
+          }
+      });
   }
 }

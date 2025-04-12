@@ -102,6 +102,66 @@
                  "width":200,
                  "x":1446.90676906974,
                  "y":3743.7046511418
+                }, 
+                {
+                 "gid":8,
+                 "height":50,
+                 "id":354,
+                 "name":"",
+                 "rotation":4,
+                 "type":"",
+                 "visible":true,
+                 "width":800,
+                 "x":1456.825,
+                 "y":2542.15
+                }, 
+                {
+                 "gid":8,
+                 "height":50,
+                 "id":355,
+                 "name":"",
+                 "rotation":-3,
+                 "type":"",
+                 "visible":true,
+                 "width":800,
+                 "x":2249.155,
+                 "y":2598.15
+                }, 
+                {
+                 "gid":2,
+                 "height":50,
+                 "id":356,
+                 "name":"",
+                 "rotation":101.136630259071,
+                 "type":"",
+                 "visible":true,
+                 "width":200,
+                 "x":2593.41045370425,
+                 "y":2616.68710716361
+                }, 
+                {
+                 "gid":2,
+                 "height":50,
+                 "id":357,
+                 "name":"dirttrack2",
+                 "rotation":83,
+                 "type":"",
+                 "visible":true,
+                 "width":200,
+                 "x":1974.155,
+                 "y":2383.48
+                }, 
+                {
+                 "gid":2,
+                 "height":50,
+                 "id":358,
+                 "name":"",
+                 "rotation":70,
+                 "type":"",
+                 "visible":true,
+                 "width":200,
+                 "x":2556.175,
+                 "y":2785.10333333333
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -116,7 +176,7 @@
          "objects":[
                 {
                  "height":0,
-                 "id":486,
+                 "id":487,
                  "name":"",
                  "polygon":[
                         {
@@ -124,34 +184,59 @@
                          "y":0
                         }, 
                         {
-                         "x":32,
-                         "y":3232
+                         "x":536,
+                         "y":-3344
                         }, 
                         {
-                         "x":3000,
-                         "y":3256
+                         "x":-368,
+                         "y":-4392
                         }, 
                         {
-                         "x":3000,
-                         "y":-24
-                        }],
-                 "properties":[
-                        {
-                         "name":"fillProbability",
-                         "type":"string",
-                         "value":"0.8"
+                         "x":-2744,
+                         "y":-5152
                         }, 
                         {
-                         "name":"iterations",
-                         "type":"string",
-                         "value":"7"
+                         "x":-3008,
+                         "y":-6024
+                        }, 
+                        {
+                         "x":312,
+                         "y":-5912
+                        }, 
+                        {
+                         "x":1440,
+                         "y":-4880
+                        }, 
+                        {
+                         "x":2808,
+                         "y":-5872
+                        }, 
+                        {
+                         "x":2904,
+                         "y":-3320
+                        }, 
+                        {
+                         "x":1928,
+                         "y":-1680
+                        }, 
+                        {
+                         "x":2712,
+                         "y":88
+                        }, 
+                        {
+                         "x":1272,
+                         "y":-416
+                        }, 
+                        {
+                         "x":152,
+                         "y":184
                         }],
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":3376,
-                 "y":3136
+                 "x":3240,
+                 "y":6104
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -461,8 +546,8 @@
                  "type":"",
                  "visible":true,
                  "width":200,
-                 "x":2547.205,
-                 "y":2829.865
+                 "x":2558.705,
+                 "y":2813.865
                 }, 
                 {
                  "gid":6,
@@ -558,78 +643,6 @@
                  "width":1248,
                  "x":2567.83333333333,
                  "y":-450.166666666667
-                }, 
-                {
-                 "gid":8,
-                 "height":50,
-                 "id":354,
-                 "name":"",
-                 "rotation":4,
-                 "type":"",
-                 "visible":true,
-                 "width":800,
-                 "x":1456.825,
-                 "y":2542.15
-                }, 
-                {
-                 "gid":8,
-                 "height":50,
-                 "id":355,
-                 "name":"",
-                 "rotation":-3,
-                 "type":"",
-                 "visible":true,
-                 "width":800,
-                 "x":2249.155,
-                 "y":2598.15
-                }, 
-                {
-                 "gid":2,
-                 "height":50,
-                 "id":356,
-                 "name":"",
-                 "rotation":80,
-                 "type":"",
-                 "visible":true,
-                 "width":200,
-                 "x":2508.155,
-                 "y":2637.15333333333
-                }, 
-                {
-                 "gid":2,
-                 "height":50,
-                 "id":357,
-                 "name":"dirttrack2",
-                 "rotation":83,
-                 "type":"",
-                 "visible":true,
-                 "width":200,
-                 "x":1974.155,
-                 "y":2383.48
-                }, 
-                {
-                 "gid":2,
-                 "height":50,
-                 "id":358,
-                 "name":"",
-                 "rotation":70,
-                 "type":"",
-                 "visible":true,
-                 "width":200,
-                 "x":2541.675,
-                 "y":2824.60333333333
-                }, 
-                {
-                 "gid":1,
-                 "height":200,
-                 "id":370,
-                 "name":"",
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":200,
-                 "x":2253.825,
-                 "y":2335.33
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -1913,6 +1926,18 @@
                  "width":200,
                  "x":136.91,
                  "y":2585.88
+                }, 
+                {
+                 "gid":1,
+                 "height":200,
+                 "id":370,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":200,
+                 "x":2253.825,
+                 "y":2335.33
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -1921,7 +1946,7 @@
          "y":0
         }],
  "nextlayerid":11,
- "nextobjectid":487,
+ "nextobjectid":488,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

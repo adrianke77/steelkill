@@ -18,7 +18,7 @@ const treeRubble = {
     bits: ['treebits1', 'treebits2', 'treebits3'],
   },
   9: {
-    fallen: ['fallenpalm1','fallenpalm2','fallenpalm3'],
+    fallen: ['fallenpalm1', 'fallenpalm2', 'fallenpalm3'],
     bits: ['treebits1', 'treebits2', 'treebits3'],
   },
 }
@@ -51,10 +51,10 @@ export class MapManager {
   // this stores randomTerrainPolygon data as terrainManager is not available on loadMap
   // so generating the terrain is delayed until the terrainManager is available
   private randomTerrainPolygons: {
-    polygon: Phaser.Geom.Point[];
-    fillProbability?: number;
-    iterations?: number;
-  }[] = [];
+    polygon: Phaser.Geom.Point[]
+    fillProbability?: number
+    iterations?: number
+  }[] = []
   constructor(scene: Game) {
     this.scene = scene
     this.xmlParser = new XMLParser({
@@ -123,33 +123,35 @@ export class MapManager {
     )
 
     const randomTerrainZonesLayer = mapData.layers.find(
-      (layer: any) => layer.name === "Random Terrain Zones"
+      (layer: any) => layer.name === 'Random Terrain Zones',
     )
-    
+
     if (randomTerrainZonesLayer && randomTerrainZonesLayer.objects) {
       randomTerrainZonesLayer.objects.forEach((zone: any) => {
         if (zone.polygon) {
           const polygon = zone.polygon.map((point: any) => ({
             x: (zone.x + point.x) * ct.tiledLoadedMapScaling,
             y: (zone.y + point.y) * ct.tiledLoadedMapScaling,
-          }));
-  
+          }))
+
           // Extract fillProbability and iterations from properties
           const fillProbability = zone.properties?.find(
-            (prop: any) => prop.name === "fillProbability"
-          )?.value;
+            (prop: any) => prop.name === 'fillProbability',
+          )?.value
           const iterations = zone.properties?.find(
-            (prop: any) => prop.name === "iterations"
-          )?.value;
-  
+            (prop: any) => prop.name === 'iterations',
+          )?.value
+
           // Store the polygon along with its properties
           this.randomTerrainPolygons.push({
             polygon,
-            fillProbability: fillProbability ? parseFloat(fillProbability) : undefined,
+            fillProbability: fillProbability
+              ? parseFloat(fillProbability)
+              : undefined,
             iterations: iterations ? parseInt(iterations, 10) : undefined,
-          });
+          })
         }
-      });
+      })
     }
     // 5) Draw the objects
     this.drawMapObjects(baseUrl, mapLayersWithScaling)
@@ -1130,11 +1132,17 @@ export class MapManager {
 
   public generateTerrainFromLastLoadedRandomTerrainPolygons(): void {
     if (this.scene.terrainMgr) {
-      this.randomTerrainPolygons.forEach(({ polygon, fillProbability, iterations }) => {
-        this.scene.terrainMgr.generateTerrainInPolygon(polygon, fillProbability, iterations);
-      });
+      this.randomTerrainPolygons.forEach(
+        ({ polygon, fillProbability, iterations }) => {
+          this.scene.terrainMgr.generateTerrainInPolygon(
+            polygon,
+            fillProbability,
+            iterations,
+          )
+        },
+      )
       // Clear the stored polygons after processing
-      this.randomTerrainPolygons = [];
+      this.randomTerrainPolygons = []
     }
   }
 }

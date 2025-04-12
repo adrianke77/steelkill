@@ -145,7 +145,7 @@ export function normalDistribution(mean: number, stdDev: number): number {
   return mean + stdDev * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
-export function getAverageColor(sprite: Phaser.GameObjects.Sprite): number {
+export function getAverageColor(sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image): number {
   // Get the texture
   const texture = sprite.texture;
   const frame = sprite.frame;
@@ -194,5 +194,47 @@ export function getAverageColor(sprite: Phaser.GameObjects.Sprite): number {
   const bHex = Math.round(b / count);
   
   // Combine into a single hex color value (0xRRGGBB format)
+  return (rHex << 16) | (gHex << 8) | bHex;
+}
+
+export function getAverageColorOfTileSprite(tileSprite: Phaser.GameObjects.TileSprite): number {
+  const texture = tileSprite.texture;
+  const frame = tileSprite.frame;
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+
+  ctx!.drawImage(
+    texture.getSourceImage() as HTMLImageElement,
+    frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight,
+    0, 0, frame.width, frame.height
+  );
+
+  const imageData = ctx!.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+
+  let r = 0, g = 0, b = 0, count = 0;
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] > 0) {
+      r += pixels[i];
+      g += pixels[i + 1];
+      b += pixels[i + 2];
+      count++;
+    }
+  }
+
+  canvas.width = 0;
+  canvas.height = 0;
+
+  if (count === 0) return 0xFFFFFF;
+
+  const rHex = Math.round(r / count);
+  const gHex = Math.round(g / count);
+  const bHex = Math.round(b / count);
+
   return (rHex << 16) | (gHex << 8) | bHex;
 }

@@ -1,11 +1,11 @@
 // TerrainManager.ts
 
 import { Game } from '../scenes/Game'
-import { Projectile, TerrainTile } from '../interfaces'
+import { Projectile, TerrainTile, TerrainTileProperties } from '../interfaces'
 import { createDustCloud } from '../rendering'
 import { Constants as ct } from '../constants'
 import { tileProperties } from '../constants/tileProperties'
-import { blendColors } from '../utils'
+import { blendColors, getAverageColor } from '../utils'
 
 // Bitmask definitions for rounded corners
 const CORNER_BITS = {
@@ -64,6 +64,8 @@ export class TerrainManager {
   outlineSegments = new Map<string, Phaser.GameObjects.Graphics>()
   tilesetColumns: number
   tilesetRows: number
+  currentBackgroundAvgColor: number
+  currentTileProperties: { [key: number]: TerrainTileProperties } = {}
 
   constructor(scene: Game) {
     this.scene = scene
@@ -132,11 +134,35 @@ export class TerrainManager {
     this.scene.viewMgr.mainLayer.add(this.terrainLayer)
 
     this.terrainLayer.setDepth(ct.depths.terrain)
-    this.terrainLayer.setAlpha(0.17)
+    this.terrainLayer.setAlpha(0.23)
   }
 
-  getTileData(tile: TerrainTile) {
-    return tileProperties[tile.type as keyof typeof tileProperties]
+  setBackgroundAverageColorAndTerrainTileColors() {
+    this.currentBackgroundAvgColor = getAverageColor(
+      this.scene.viewMgr.background,
+    )
+    this.currentTileProperties = {}
+
+    Object.keys(tileProperties).forEach((key: any) => {
+      const constantProperties =
+        tileProperties[key as keyof typeof tileProperties]
+      const type = key as number
+      console.log(this.currentBackgroundAvgColor)
+      const color = blendColors(
+        this.currentBackgroundAvgColor,
+        0xFF00000,
+        constantProperties.redness,
+      )
+      this.currentTileProperties[type] = {
+        ...constantProperties,
+        color,
+      }
+    })
+  }
+
+  // can take either the actual tile or just the tile.type value
+  getTileData(tile: TerrainTile ) {
+    return this.currentTileProperties[tile.type]
   }
 
   createTerrain() {
@@ -175,10 +201,9 @@ export class TerrainManager {
     const worldX = tile.pixelX
     const worldY = tile.pixelY
 
-    // Create a new Graphics object for this tile, using effects layer as the outlines are 'added by computer' instead of being in the world
-    const gfx = this.scene.addGraphicsEffect()
-    gfx.setAlpha(0.6)
-    gfx.lineStyle(4, outlineColor, 0.9)
+    const gfx = this.scene.addGraphics()
+    gfx.setAlpha(0.8)
+    gfx.lineStyle(4, outlineColor, 0.5)
 
     // For each side, check if a neighboring tile is missing. If so, draw an outline segment.
     if (!this.isSolidTileAt(x, y - 1)) {
@@ -901,7 +926,7 @@ export class TerrainManager {
     tile.type = tileType
 
     // Update tile properties based on tile type
-    const properties = tileProperties[tileType as keyof typeof tileProperties]
+    const properties = this.getTileData(tile)
     tile.armor = properties.armor
     tile.health = properties.health
     tile.tint = properties.color

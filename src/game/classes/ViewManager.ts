@@ -28,7 +28,7 @@ export class ViewManager {
   miniMapCam: Phaser.Cameras.Scene2D.Camera
   infraredIsOn: boolean
   dustClouds: Phaser.GameObjects.Group
-  background: Phaser.GameObjects.TileSprite
+  background: Phaser.GameObjects.Image
   darkOverlay: Phaser.GameObjects.Graphics
   flashlightPipeline: FlashlightPostFxPipeline
 
@@ -129,17 +129,18 @@ export class ViewManager {
     this.mainCam.setSize(ct.gameWidth, ct.gameHeight)
     this.effectsCam.setBounds(0, 0, width, height)
     this.effectsCam.setSize(ct.gameWidth, ct.gameHeight)
-    const background = this.scene.add.tileSprite(
+    const background = this.scene.add.image(
       this.scene.mapWidth / 2,
       this.scene.mapHeight / 2,
-      this.scene.mapWidth,
-      this.scene.mapHeight,
-      'background',
-    )
-    background.setDepth(-1)
-    background.setPipeline('Light2D')
-    this.background = background
-    this.mainLayer.add(background)
+      'background'
+    );
+    
+    // Set the display size to cover the entire game area
+    background.setDisplaySize(this.scene.mapWidth, this.scene.mapHeight);
+    background.setDepth(-1);
+    background.setPipeline('Light2D');
+    this.background = background;
+    this.mainLayer.add(background);
   }
 
   private setupFlashlightPipeline(): void {

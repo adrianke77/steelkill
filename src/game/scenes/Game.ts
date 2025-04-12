@@ -199,9 +199,7 @@ export class Game extends Scene {
         const projectile = projectileObj as Projectile
         const body = collisionBody as Phaser.GameObjects.Sprite
         const tileEntity = this.mapMgr.mapObjects.find(t =>
-          t.collisionBodies.includes(
-            body as Phaser.GameObjects.Sprite,
-          ),
+          t.collisionBodies.includes(body as Phaser.GameObjects.Sprite),
         )
         if (tileEntity) {
           this.projectileMgr.projectileHitsTarget(projectile, tileEntity, body)
@@ -216,7 +214,7 @@ export class Game extends Scene {
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
 
-    const { width, height  } = await this.mapMgr.loadMap('maps/ruralVillage1')
+    const { width, height } = await this.mapMgr.loadMap('maps/ruralVillage1')
 
     // Calculate total pixel width/height from Tiled’s data
     // map size in game is half of Tiled's in width and height each
@@ -226,13 +224,17 @@ export class Game extends Scene {
     // needs mapWidth and mapHeight to initialise
     this.terrainMgr = new TerrainManager(this)
 
-    // random terrain polygons already loaded from map when MapManager was initialized
-    this.mapMgr.generateTerrainFromLastLoadedRandomTerrainPolygons()
-
     this.physics.world.setBounds(0, 0, this.mapWidth, this.mapHeight)
 
     this.viewMgr.setMapSize(this.mapWidth, this.mapHeight)
     this.minimapMgr.setMapSize(this.mapWidth, this.mapHeight)
+
+    // needs viewMgr to set background first, which is done in its setMapSize
+    this.terrainMgr.setBackgroundAverageColorAndTerrainTileColors()
+
+    // random terrain polygons already loaded from map when MapManager was initialized
+    this.mapMgr.generateTerrainFromLastLoadedRandomTerrainPolygons()
+
     this.viewMgr.startCamFollowingPlayerMech()
 
     EventBus.emit('current-scene-ready', this)
@@ -397,7 +399,7 @@ export class Game extends Scene {
     this.viewMgr.mainLayer.add(image)
     return image
   }
-  
+
   addImageEffect(
     x: number,
     y: number,
@@ -419,6 +421,12 @@ export class Game extends Scene {
     const sprite = this.physics.add.sprite(x, y, key, frame)
     this.viewMgr.effectsLayer.add(sprite)
     return sprite
+  }
+
+  addGraphics(optionalArgs?: any) {
+    const graphics = this.add.graphics(optionalArgs)
+    this.viewMgr.mainLayer.add(graphics)
+    return graphics 
   }
 
   addGraphicsEffect(optionalArgs?: any) {
@@ -457,6 +465,19 @@ export class Game extends Scene {
     const particles = this.add.particles(x, y, texture, config)
     this.viewMgr.effectsLayer.add(particles)
     return particles
+  }
+
+  addEllipse(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    fillColor: number,
+    fillAlpha: number,
+  ) {
+    const ellipse = this.add.ellipse(x, y, width, height, fillColor, fillAlpha)
+    this.viewMgr.mainLayer.add(ellipse)
+    return ellipse
   }
 
   playRandomCombatMusic() {

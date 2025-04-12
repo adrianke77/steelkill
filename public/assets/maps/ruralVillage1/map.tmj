@@ -231,6 +231,17 @@
                          "x":152,
                          "y":184
                         }],
+                 "properties":[
+                        {
+                         "name":"fillProbability",
+                         "type":"string",
+                         "value":"0.43"
+                        }, 
+                        {
+                         "name":"iterations",
+                         "type":"string",
+                         "value":"5"
+                        }],
                  "rotation":0,
                  "type":"",
                  "visible":true,

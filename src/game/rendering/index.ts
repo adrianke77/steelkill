@@ -27,7 +27,7 @@ export function loadRenderingAssets(scene: Game) {
     frameWidth: 165,
     frameHeight: 165,
   })
-  scene.load.image('dust', 'dust.png')
+  scene.load.image('dust', 'smalldust.png')
 }
 
 export const baseProjectileSparkConfig = {
@@ -249,7 +249,7 @@ export function createDustCloud(
   tint?: number,
 ): void {
   // todo: this will be user adjustable for performance settings
-  const DUST_CLOUD_PROXIMITY_CHECK_DISTANCE = 20;
+  const DUST_CLOUD_PROXIMITY_CHECK_DISTANCE = 30;
 
   // Check if a dust cloud nearby already exists with the same tint and has opacity > 0.5
   for (const child of scene.viewMgr.dustClouds.getChildren()) {
@@ -296,8 +296,8 @@ export function createDustCloud(
     displayHeight: { from: initialSize, to: finalSize },
     rotation: { from: initialRotation, to: finalRotation },
     // if given duration is small, the fade in is also faster
-    duration: duration ? Math.min(1000, duration) : 1000,
-    ease: 'Quad.easeOut',
+    duration: duration ? Math.min(300, duration) : 300,
+    ease: 'Linear',
   })
 
   // Tween for alpha fade-out
@@ -307,7 +307,7 @@ export function createDustCloud(
     displayWidth: finalSize,
     displayHeight: finalSize,
     duration: duration || 1000,
-    ease: 'Quad.easeOut',
+    ease: 'Linear',
     onUpdate: (_tween, target: DustCloud) => {
       // On each update, recalc the actual alpha
       dustCloud.setAlpha(target.tweenAlpha * target.infraredControlledAlpha)

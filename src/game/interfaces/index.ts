@@ -181,9 +181,16 @@ export type SoundTracker = { [key: string]: SoundTuple[] }
 export type DataFromReact = [string, any]
 
 export interface TerrainTile extends Phaser.Tilemaps.Tile {
-  type: number // see tileProperties for different terrain types and properties
+  type: number // see tileProperties constants for different terrain types and properties
   health: number
   armor: number
+}
+
+// for storing properties of terrain tiles in map manager
+export interface TerrainTileProperties {
+  health: number
+  armor: number
+  color: number
 }
 
 export interface TerrainChunk {

@@ -1,10 +1,7 @@
 // TerrainManager.ts
 
 import { Game } from '../scenes/Game'
-import {
-  Projectile,
-  TerrainTile,
-} from '../interfaces'
+import { Projectile, TerrainTile } from '../interfaces'
 import { createDustCloud } from '../rendering'
 import { Constants as ct } from '../constants'
 import { tileProperties } from '../constants/tileProperties'
@@ -132,8 +129,10 @@ export class TerrainManager {
     ) as Phaser.Tilemaps.Tileset
 
     this.terrainLayer = this.map.createBlankLayer('Terrain', tileset)!
+    this.scene.viewMgr.mainLayer.add(this.terrainLayer)
 
     this.terrainLayer.setDepth(ct.depths.terrain)
+    this.terrainLayer.setAlpha(0.17)
   }
 
   getTileData(tile: TerrainTile) {
@@ -141,18 +140,11 @@ export class TerrainManager {
   }
 
   createTerrain() {
-    this.populateTerrain()
-
-    this.scene.viewMgr.mainLayer.add(this.terrainLayer)
-
     this.terrainLayer.setCollisionBetween(
       0,
       this.tilesetColumns * this.tilesetRows - 1,
     )
     this.terrainLayer.setPipeline('Light2D')
-    this.terrainLayer.setAlpha(0.7)
-
-    // this.displayTilesetForDebug()
 
     this.setupColliders()
     this.debrisSprayEmitter = this.scene.addParticles(
@@ -178,14 +170,14 @@ export class TerrainManager {
     const key = `${x},${y}`
 
     const tileData = this.getTileData(tile)
-    const outlineColor = blendColors(tileData.color, 0x000000, 0.85)
+    const outlineColor = blendColors(tileData.color, 0x000000, 0.9)
     const tileSize = this.map.tileWidth
     const worldX = tile.pixelX
     const worldY = tile.pixelY
 
-    // Create a new Graphics object for this tile
-    const gfx = this.scene.add.graphics()
-    gfx.setPipeline('Light2D')
+    // Create a new Graphics object for this tile, using effects layer as the outlines are 'added by computer' instead of being in the world
+    const gfx = this.scene.addGraphicsEffect()
+    gfx.setAlpha(0.6)
     gfx.lineStyle(4, outlineColor, 0.9)
 
     // For each side, check if a neighboring tile is missing. If so, draw an outline segment.
@@ -214,7 +206,6 @@ export class TerrainManager {
 
     // Store the Graphics object so we can remove/replace it later
     this.outlineSegments.set(key, gfx)
-    // Optionally place it in the mainLayer if desired
     this.scene.viewMgr.mainLayer.add(gfx)
   }
 
@@ -367,11 +358,10 @@ export class TerrainManager {
     )
 
     // Increase to make terrain denser, decrease for sparser terrain
-    const fillProbability = 0.45
+    const fillProbability = ct.terrainDefaultFillProbability
     // Increasing iterations: Can smooth out the terrain and potentially make it more filled in or homogeneous.
     // Decreasing iterations: May result in more random, rugged, or fragmented terrain patterns.
-    const iterations = 7
-
+    const iterations = ct.terrainDefaultIterations
     // Generate a temporary grid for the initial state, including margins
     let tempGrid: boolean[][] = []
 
@@ -766,7 +756,7 @@ export class TerrainManager {
       0,
       0,
       0.8,
-      6000,
+      7000,
       250,
       tileData.color,
     )
@@ -818,6 +808,10 @@ export class TerrainManager {
   }
 
   isSolidTileAt(x: number, y: number, tileType?: number): boolean {
+    // Check if the terrain layer has been initialized, sometimes happens if isSolidTileAt is in a running update loop and when game is restarted
+    if (!this.terrainLayer.scene) {
+      return false
+    }
     if (x < 0 || x >= this.map.width || y < 0 || y >= this.map.height) {
       return false // Treat out-of-bounds as empty
     }
@@ -911,7 +905,6 @@ export class TerrainManager {
     tile.armor = properties.armor
     tile.health = properties.health
     tile.tint = properties.color
-    tile.alpha = 0.5
   }
 
   isTerrainNear(
@@ -959,75 +952,89 @@ export class TerrainManager {
     return obj instanceof Phaser.Tilemaps.Tile
   }
 
-  isPointInPolygon(point: { x: number; y: number }, polygon: { x: number; y: number }[]): boolean {
-    let isInside = false;
+  isPointInPolygon(
+    point: { x: number; y: number },
+    polygon: { x: number; y: number }[],
+  ): boolean {
+    let isInside = false
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x, yi = polygon[i].y;
-      const xj = polygon[j].x, yj = polygon[j].y;
-  
-      const intersect = ((yi > point.y) !== (yj > point.y)) &&
-        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-      if (intersect) isInside = !isInside;
+      const xi = polygon[i].x,
+        yi = polygon[i].y
+      const xj = polygon[j].x,
+        yj = polygon[j].y
+
+      const intersect =
+        yi > point.y !== yj > point.y &&
+        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi
+      if (intersect) isInside = !isInside
     }
-    return isInside;
+    return isInside
   }
 
-  public generateTerrainInPolygon(polygon: { x: number; y: number }[]): void {
+  public generateTerrainInPolygon(
+    polygon: { x: number; y: number }[],
+    fillProbability: number = ct.terrainDefaultFillProbability,
+    iterations: number = ct.terrainDefaultIterations,
+  ): void {
     // Calculate the bounding box of the polygon for optimization
-    const minX = Math.min(...polygon.map(p => p.x)) / ct.tileSize;
-    const maxX = Math.max(...polygon.map(p => p.x)) / ct.tileSize;
-    const minY = Math.min(...polygon.map(p => p.y)) / ct.tileSize;
-    const maxY = Math.max(...polygon.map(p => p.y)) / ct.tileSize;
-  
+    const minX = Math.min(...polygon.map(p => p.x)) / ct.tileSize
+    const maxX = Math.max(...polygon.map(p => p.x)) / ct.tileSize
+    const minY = Math.min(...polygon.map(p => p.y)) / ct.tileSize
+    const maxY = Math.max(...polygon.map(p => p.y)) / ct.tileSize
+
     // Generate a temporary grid for the initial state
-    let tempGrid: boolean[][] = [];
-  
+    let tempGrid: boolean[][] = []
+
     for (let x = 0; x < this.map.width; x++) {
-      tempGrid[x] = [];
+      tempGrid[x] = []
       for (let y = 0; y < this.map.height; y++) {
         // Skip if outside the bounding box of the polygon (optimization)
         if (x < minX || x > maxX || y < minY || y > maxY) {
-          tempGrid[x][y] = false;
-          continue;
+          tempGrid[x][y] = false
+          continue
         }
-        
-        const worldX = x * ct.tileSize;
-        const worldY = y * ct.tileSize;
-  
+
+        const worldX = x * ct.tileSize
+        const worldY = y * ct.tileSize
+
         // Check if the tile's center is inside the polygon
         if (this.isPointInPolygon({ x: worldX, y: worldY }, polygon)) {
-          const isSolid = Math.random() < 0.45; // Adjust fill probability as needed
-          tempGrid[x][y] = isSolid;
+          const isSolid = Math.random() < fillProbability
+          tempGrid[x][y] = isSolid
         } else {
-          tempGrid[x][y] = false;
+          tempGrid[x][y] = false
         }
       }
     }
-  
+
     // Apply the cellular automata rules
-    for (let i = 0; i < 7; i++) { // Adjust iterations as needed
-      tempGrid = this.runAutomataStep(tempGrid);
+    for (let i = 0; i < iterations; i++) {
+      tempGrid = this.runAutomataStep(tempGrid)
     }
-  
+
     // Apply the generated terrain
     for (let x = 0; x < this.map.width; x++) {
       for (let y = 0; y < this.map.height; y++) {
         if (tempGrid[x][y]) {
-          this.setAutotileAt(x, y, 1); // Set all initial solid tiles to a default type
+          this.setAutotileAt(x, y, 1) // Set all initial solid tiles to a default type
         } else {
-          this.terrainLayer.removeTileAt(x, y);
+          this.terrainLayer.removeTileAt(x, y)
         }
       }
     }
-  
-    // Assign terrain types to each clump after cellular automata
-    this.assignTerrainTypesToClumps();
-  
-    // Apply autotiling to update tile graphics
-    this.applyAutotiling();
-  
-    this.drawTerrainOutlines();
-  }
 
-  
+    // Assign terrain types to each clump after cellular automata
+    this.assignTerrainTypesToClumps()
+
+    // Apply autotiling to update tile graphics
+    this.applyAutotiling()
+
+    this.drawTerrainOutlines()
+
+    this.terrainLayer.setCollisionBetween(
+      0,
+      this.tilesetColumns * this.tilesetRows - 1,
+    )
+    this.setupColliders()
+  }
 }

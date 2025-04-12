@@ -204,3 +204,8 @@ export interface MapObject {
   centreX: number; // New property
   centreY: number; // New property
 }
+
+export interface DustCloud extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
+  tweenAlpha: number
+  infraredControlledAlpha: number
+}

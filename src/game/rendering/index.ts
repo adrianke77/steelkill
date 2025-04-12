@@ -6,6 +6,7 @@ import {
   EnemyWeaponSpec,
   Projectile,
   WeaponSpec,
+  DustCloud
 } from '../interfaces'
 import { blendColors } from '../utils'
 
@@ -246,32 +247,34 @@ export function createDustCloud(
   duration?: number,
   size?: number,
   tint?: number,
-  skipProximityCheck?: boolean,
 ): void {
-  if (!skipProximityCheck) {
-    // Check for nearby dust clouds first
-    const proximityThreshold = 20 // Adjust this value based on desired minimum distance
-    const nearbyCloud = scene.viewMgr.dustClouds.getChildren().some(cloud => {
-      const distance = Phaser.Math.Distance.Between(x, y, cloud.x, cloud.y)
-      return distance < proximityThreshold
-    })
+  // todo: this will be user adjustable for performance settings
+  const DUST_CLOUD_PROXIMITY_CHECK_DISTANCE = 20;
 
-    // Skip creation if nearby cloud found
-    if (nearbyCloud) {
-      return
+  // Check if a dust cloud nearby already exists with the same tint and has opacity > 0.5
+  for (const child of scene.viewMgr.dustClouds.getChildren()) {
+    const existingCloud = child as DustCloud;
+    // If the existing cloud has a similar tint, high opacity, and is near this location, skip creating a new one
+    if (
+      tint &&
+      existingCloud.tint === tint &&
+      existingCloud.tweenAlpha > 0.5 &&
+      Phaser.Math.Distance.Between(x, y, existingCloud.x, existingCloud.y) <
+        DUST_CLOUD_PROXIMITY_CHECK_DISTANCE
+    ) {
+      return; // Skip creation
     }
   }
 
-  const dustCloud = scene.addSprite(x, y, 'dust')
-  const initialSize = size !== undefined ? size / 2 : 50
+  // Create the dust cloud sprite
+  const dustCloud = scene.addSprite(x, y, 'dust') as DustCloud
+  const initialSize = size !== undefined ? size / 3 : 50
   const finalSize = size
-
   const initialRotation = Phaser.Math.Between(0, 2 * Math.PI)
   const finalRotation =
     initialRotation + Phaser.Math.Between(-Math.PI / 16, Math.PI / 16)
 
   dustCloud.setRotation(initialRotation)
-  dustCloud.setAlpha(opacity)
   dustCloud.setDisplaySize(initialSize, initialSize)
   dustCloud.setVelocity(directionX / 2, directionY / 2)
   dustCloud.setPipeline('Light2D', { lightFactor: 0.1 })
@@ -279,32 +282,44 @@ export function createDustCloud(
   if (tint) {
     dustCloud.setTint(tint)
   }
-  scene.viewMgr.dustClouds.add(dustCloud)
-  if (scene.viewMgr.infraredIsOn) {
-    dustCloud.visible = false
-  }
 
+  scene.viewMgr.dustClouds.add(dustCloud)
+
+  dustCloud.tweenAlpha = opacity
+  dustCloud.infraredControlledAlpha = scene.viewMgr.infraredIsOn ? ct.infraredAlphaFactor : 1
+  dustCloud.alpha = dustCloud.tweenAlpha * dustCloud.infraredControlledAlpha
+
+  // Tween for initial expansion and rotation
   scene.tweens.add({
     targets: dustCloud,
     displayWidth: { from: initialSize, to: finalSize },
     displayHeight: { from: initialSize, to: finalSize },
     rotation: { from: initialRotation, to: finalRotation },
-    duration: 1000, // Duration for the expansion in milliseconds
-    ease: 'Quad.easeOut', // Easing function for smooth expansion
+    // if given duration is small, the fade in is also faster
+    duration: duration ? Math.min(1000, duration) : 1000,
+    ease: 'Quad.easeOut',
   })
 
+  // Tween for alpha fade-out
   scene.tweens.add({
     targets: dustCloud,
-    alpha: 0,
+    tweenAlpha: 0, // fade tweenAlpha down to 0
     displayWidth: finalSize,
     displayHeight: finalSize,
-    duration: duration ? duration : 500,
+    duration: duration || 1000,
     ease: 'Quad.easeOut',
+    onUpdate: (_tween, target: DustCloud) => {
+      // On each update, recalc the actual alpha
+      dustCloud.setAlpha(target.tweenAlpha * target.infraredControlledAlpha)
+    },
     onComplete: () => {
       dustCloud.destroy()
     },
   })
 }
+
+
+
 export function createLightFlash(
   scene: Game,
   x: number,
@@ -382,7 +397,7 @@ export function destroyEnemyAndCreateCorpseDecals(
     enemy.x,
     enemy.y,
     enemyData.bloodColor,
-    enemyData.corpseSize * 1.5,
+    enemyData.corpseSize + 5,
     500, 
   )
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
@@ -555,7 +570,7 @@ export function renderExplosion(
     damage / 60,
     diameter * 3,
   )
-  createDustCloud(scene, x, y, 0, 0, 0.5, 4000, diameter * 1.4, undefined, true)
+  createDustCloud(scene, x, y, 0, 0, 0.5, 3000, diameter * 1.4, undefined)
 
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(
@@ -581,8 +596,9 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
     scene.player.mechContainer.body!.velocity.y,
     opacity,
     2000,
-    200,
+    150,
     undefined,
-    true,
   )
 }
+
+

@@ -67,6 +67,9 @@ function App() {
             >
               Combat Demo
             </div>
+            <div className="hudFont flexCenter"style={{ fontSize: "0.7rem", fontStyle: 'italic', marginBottom:"5rem" }}>
+                <b>a dead monster floats on flames and kills strange horrors with steel and fire</b>
+            </div>
             <div
               className="hudFont flexCenter"
               style={{ fontSize: "0.8rem", marginBottom: "1.4rem" }}
@@ -80,9 +83,7 @@ function App() {
               <div style={{marginBottom:"1.5rem"}}>
                 <b>MOVE KEY + BOOST</b> : &nbsp;&nbsp;rocket boosted drifting
               </div >
-              <div style={{ fontSize: "1 rem", fontStyle: 'italic' }}>
-                <b>Every weapon is different. Try them all against the hordes.</b>
-              </div>
+
             </div>
             <WeaponSelector />
             <br/>

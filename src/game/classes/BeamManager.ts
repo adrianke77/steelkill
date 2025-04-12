@@ -107,7 +107,7 @@ export class BeamManager {
     }
   }
 
-  private updateBeams(time: number): void {
+  public updateBeams(time: number): void {
     for (const weaponIndexStr in this.activeBeams) {
       const weaponIndex = Number(weaponIndexStr)
       const beam = this.activeBeams[weaponIndex]

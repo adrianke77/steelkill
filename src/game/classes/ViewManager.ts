@@ -5,7 +5,7 @@ import { StaticPostFxPipeline } from '../shaders/staticShader'
 import { InfraredPostFxPipeline } from '../shaders/infraredShader'
 import { Constants as ct } from '../constants'
 import { FlashlightPostFxPipeline } from '../shaders/fragment/FlashlightPostFxPipeline'
-import { ExtendedSprite, MapObject } from '../interfaces'
+import { ExtendedSprite, MapObject, DustCloud } from '../interfaces'
 
 const PipelinesWithFlashlight = [
   'FlashlightPostFxPipeline',
@@ -220,6 +220,7 @@ export class ViewManager {
 
   toggleInfrared(): void {
     this.infraredIsOn = !this.infraredIsOn
+
     if (this.infraredIsOn) {
       // turn off infrared
       const InfraredPipelines = [
@@ -232,18 +233,18 @@ export class ViewManager {
       this.effectsCam.setPostPipeline(InfraredPipelines)
       this.scene.lights.setAmbientColor(0x606060)
       this.background.setTint(0x999999)
-      this.dustClouds.children.iterate(
-        (dustCloud: Phaser.GameObjects.GameObject) => {
-          ;(dustCloud as Phaser.GameObjects.Sprite).visible = false
-          return true
-        },
-      )
+      this.dustClouds.children.iterate(dustCloud => {
+        const sprite = dustCloud as DustCloud
+        sprite.infraredControlledAlpha = ct.infraredAlphaFactor
+        return true
+      })
       this.scene.mapMgr.mapObjects.forEach((mapObject: MapObject) => {
         const sprite = mapObject.sprite as ExtendedSprite
         this.setBuildingToInfraredColors(sprite)
         return true
       })
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
+      this.scene.terrainMgr.terrainLayer.setAlpha(1)
     } else {
       // turn on infrared
       this.mainCam.resetPostPipeline()
@@ -253,18 +254,19 @@ export class ViewManager {
       this.setupFlashlightPipeline()
       this.scene.lights.setAmbientColor(ct.ambientLightColor)
       this.background.clearTint()
-      this.dustClouds.children.iterate(
-        (dustCloud: Phaser.GameObjects.GameObject) => {
-          ;(dustCloud as Phaser.GameObjects.Sprite).visible = true
-          return true
-        },
-      )
+      this.dustClouds.children.iterate(dustCloud => {
+        const sprite = dustCloud as DustCloud
+        sprite.infraredControlledAlpha = 1
+        return true
+      })
+
       this.scene.enemyMgr.switchEnemiesToNonInfraredColors()
       this.scene.mapMgr.mapObjects.forEach((mapObject: MapObject) => {
         const sprite = mapObject.sprite as ExtendedSprite
         this.resetBuildingToOriginalColors(sprite)
         return true
       })
+      this.scene.terrainMgr.terrainLayer.setAlpha(0.2)
     }
   }
 }

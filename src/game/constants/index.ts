@@ -7,7 +7,7 @@ export const music = [
   // ['Torn Flesh - Karl Casey @ White Bat Audio', 1.4],
   // ['Xenomorph - Karl Casey @ White Bat Audio - bass boosted', 1]
   ['horror-ambient-1', 1.5],
-  // ['horror-ambient-2', 1.5],
+  ['horror-ambient-2', 1.5],
 ]
 
 export const weaponConstants = weapons
@@ -24,8 +24,8 @@ const depths = {
   decals: 750,
   initialDeadBody:760,
   particles: 780,
-  projectileSpark: 1150,
-  terrain: 1,
+  projectileSpark: 1050,
+  terrain: 751,
   dustClouds: 1100,
   trees: 1000,
   buildings: 500,
@@ -34,14 +34,18 @@ const depths = {
 
 export const Constants = {
   ambientLightColor: 0x252525,
-  tileSize: 14,
+  infraredAlphaFactor: 0.1,
+  tileSize: 10,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
+  tiledLoadedMapScaling: 0.3,
   mapScaling: 1,
+  terrainDefaultFillProbability: 0.45,
+  terrainDefaultIterations: 7,
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,
-  maxEnemies: 20,
+  maxEnemies: 0,
   playerStartingX: 1000,
   playerStartingY: 1900,
   mechStepPeriod: 500,

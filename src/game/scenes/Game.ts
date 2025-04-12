@@ -216,18 +216,18 @@ export class Game extends Scene {
     this.fpsText.setScrollFactor(0)
     this.fpsText.setDepth(10000)
 
-    const { width, height, tilewidth, tileheight } = await this.mapMgr.loadMap('maps/ruralVillage1')
+    const { width, height  } = await this.mapMgr.loadMap('maps/ruralVillage1')
 
     // Calculate total pixel width/height from Tiled’s data
     // map size in game is half of Tiled's in width and height each
-    this.mapWidth = (width * tilewidth) / 2
-    this.mapHeight = (height * tileheight) / 2
+    this.mapWidth = width * ct.tiledLoadedMapScaling
+    this.mapHeight = height * ct.tiledLoadedMapScaling
 
     // needs mapWidth and mapHeight to initialise
     this.terrainMgr = new TerrainManager(this)
 
-    // this.terrainMgr.createTerrain()
-    this.terrainMgr.generateTerrainInPolygon([{ x: 100, y: 100 },{ x: 100, y: 200 },{ x: 200, y: 200 }])
+    // random terrain polygons already loaded from map when MapManager was initialized
+    this.mapMgr.generateTerrainFromLastLoadedRandomTerrainPolygons()
 
     this.physics.world.setBounds(0, 0, this.mapWidth, this.mapHeight)
 
@@ -499,6 +499,9 @@ export class Game extends Scene {
     const ammoCheck = this.canFireWeapon(weaponIndex, ammoReduction)
     if (!ammoCheck) {
       if (ammoCheck === null) {
+        if (weapon.repeatingContinuousFireSound) {
+          this.projectileMgr.handleRepeatingFireSound(weaponIndex, false)
+        }
         return
       } else {
         this.startReload(weaponIndex, time, weapon.reloadDelay)

@@ -429,8 +429,8 @@ export class ProjectileManager {
         0,
         0,
         0.8,
-        4000,
-        Math.min(damage * 5, 100),
+        2000,
+        100,
         tileData.color,
       )
       if (target.health <= 0) {
@@ -652,8 +652,8 @@ export class ProjectileManager {
           if (weapon.terrainDamageMultiplier) {
             damage = damage * weapon.terrainDamageMultiplier
           }
+          // explosions bypass half of armor
           if (damage > tile.armor / 2) {
-            // enemy projectiles damage to terrain is multipled to have more frequent terrain damage
             const effectiveDamage = damage * 10 - tile.armor / 2
             tile.health -= effectiveDamage
 
@@ -863,7 +863,8 @@ export class ProjectileManager {
     ])
     projectile.setData('fireSoundInstance', soundInstance)
     const detune = weapon.fireAverageDetune
-      ? weapon.fireAverageDetune + Phaser.Math.Between(-weapon.fireDetuneRange!, weapon.fireDetuneRange!)
+      ? weapon.fireAverageDetune +
+        Phaser.Math.Between(-weapon.fireDetuneRange!, weapon.fireDetuneRange!)
       : Phaser.Math.Between(-100, 100)
     soundInstance.play({ detune })
     soundInstance.once('complete', () => {
@@ -952,22 +953,35 @@ export class ProjectileManager {
       }
     }
 
-    // 2) Now see how many total weapons are using this soundKey
+    // 2) Count how many total weapons are currently using this soundKey
     const count = this.getActiveWeaponCountForSoundKey(soundKey)
 
     if (count <= 0) {
       // If no weapons are using this sound, fade out or stop if it’s playing
       if (this.repeatingFireSounds[soundKey]) {
-        const soundInstance = this.repeatingFireSounds[soundKey]
-        // Start fading out
+        const soundInstance = this.repeatingFireSounds[
+          soundKey
+        ] as Phaser.Sound.WebAudioSound
+
+        // Start fading out — use a separate object as tween target, so we don't modify the sound directly
+        // this prevents issues with the sound being destroyed and the tween still trying to adjust the sound
         this.repeatingFireFadeoutSounds[soundKey] = this.scene.tweens.add({
-          targets: soundInstance,
-          volume: 0,
+          targets: { vol: soundInstance.volume || 1 },
+          vol: 0,
           duration: 200,
           ease: 'Linear',
+          onUpdate: (_, targetObj) => {
+            // Only set volume if the sound is still valid
+            if (soundInstance && soundInstance.manager) {
+              soundInstance.setVolume(targetObj.vol)
+            }
+          },
           onComplete: () => {
-            soundInstance.stop()
-            soundInstance.destroy()
+            // Stop and destroy only if the sound still exists
+            if (soundInstance && soundInstance.manager) {
+              soundInstance.stop()
+              soundInstance.destroy()
+            }
             delete this.repeatingFireSounds[soundKey]
             delete this.repeatingFireFadeoutSounds[soundKey]
           },

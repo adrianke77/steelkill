@@ -6,7 +6,6 @@ import { createDustCloud, drawDecal } from '../rendering'
 import { getAverageColor, getSoundPan } from '../utils'
 import { ExtendedSprite } from '../interfaces'
 
-const MAP_SCALE = 0.5
 const MIN_CIRCLE_DIAMETER = 12 // for approximateRectWithCircles
 
 // These tile indices (from the .tsx) are treated as "trees" for random rotation/scale and alpha setting
@@ -49,7 +48,9 @@ export class MapManager {
 
   public mapObjects: MapObject[] = []
   public collisionShapesGroup: Phaser.Physics.Arcade.StaticGroup
-
+  // this stores randomTerrainPolygon data as terrainManager is not available on loadMap
+  // so generating the terrain is delayed until the terrainManager is available
+  private randomTerrainPolygons: Phaser.Geom.Point[][] = [];
   constructor(scene: Game) {
     this.scene = scene
     this.xmlParser = new XMLParser({
@@ -89,7 +90,10 @@ export class MapManager {
    * queues up images, converts map layers for scaling + collision shapes,
    * and then draws them.
    */
-  public async loadMap(baseUrl: string) {
+  public async loadMap(baseUrl: string): Promise<{
+    width: number
+    height: number
+  }> {
     // 1) Load the Tiled map JSON (map.tmj)
     const mapDataFetchResponse = await fetch(`assets/${baseUrl}/map.tmj`)
     const mapData = await mapDataFetchResponse.json()
@@ -111,20 +115,34 @@ export class MapManager {
     const mapLayersWithScaling = this.convertMapDataToUseScaling(
       mapData.layers,
       tileDefs,
-      MAP_SCALE,
+      ct.tiledLoadedMapScaling,
     )
 
-    mapLayersWithScaling
+    const randomTerrainZonesLayer = mapData.layers.find(
+      (layer: any) => layer.name === "Random Terrain Zones"
+    )
+    
+    if (randomTerrainZonesLayer && randomTerrainZonesLayer.objects) {
+      randomTerrainZonesLayer.objects.forEach((zone: any) => {
+        if (zone.polygon) {
+          const polygon = zone.polygon.map((point: any) => ({
+            x: (zone.x + point.x) * ct.tiledLoadedMapScaling,
+            y: (zone.y + point.y) * ct.tiledLoadedMapScaling,
+          }))
+          this.randomTerrainPolygons.push(polygon)
+        }
+      })
+    }
 
     // 5) Draw the objects
     this.drawMapObjects(baseUrl, mapLayersWithScaling)
 
+    console.log(mapData.width * mapData.tilewidth, mapData.height * mapData.tileheight)
+
     // Return essential map dimension info for reference
     return {
-      width: mapData.width,
-      height: mapData.height,
-      tilewidth: mapData.tilewidth,
-      tileheight: mapData.tileheight,
+      width: mapData.width * mapData.tilewidth,
+      height: mapData.height * mapData.tileheight,
     }
   }
 
@@ -877,7 +895,6 @@ export class MapManager {
           5000,
           objectSize * 0.5,
           undefined,
-          true,
         )
 
         const impactDelay = Phaser.Math.FloatBetween(800, 1200)
@@ -901,7 +918,6 @@ export class MapManager {
             5000,
             objectSize * 1,
             undefined,
-            true,
           )
         })
       }
@@ -944,7 +960,6 @@ export class MapManager {
           objectSize * 1.5,
           // make one dust cloud the roof color if not tree
           i === numClouds - 1 ? mapObject.averageColor : undefined,
-          true,
         )
       }
 
@@ -1095,6 +1110,16 @@ export class MapManager {
           this.scene.viewMgr.setBuildingToInfraredColors(scattered)
         }
       }
+    }
+  }
+
+  public generateTerrainFromLastLoadedRandomTerrainPolygons(): void {
+    if (this.scene.terrainMgr) {
+      this.randomTerrainPolygons.forEach(polygon => {
+        this.scene.terrainMgr.generateTerrainInPolygon(polygon)
+      })
+      // Clear the stored polygons after processing
+      this.randomTerrainPolygons = []
     }
   }
 }

@@ -186,5 +186,32 @@ export class MinimapManager {
         this.minimap.strokePath()
       }
     }
+
+    if (this.scene.terrainMgr && this.scene.terrainMgr.terrainLayer) {
+      const terrainLayer = this.scene.terrainMgr.terrainLayer;
+    
+      // Iterate over each tile in the terrain layer
+      terrainLayer.forEachTile(tile => {
+        // Calculate the position relative to the minimap
+        const relativeX = (tile.pixelX - minimapX) * MINIMAP_SCALE;
+        const relativeY = (tile.pixelY - minimapY) * MINIMAP_SCALE;
+    
+        // Only draw if the tile is within the visible minimap area
+        if (
+          relativeX >= 0 &&
+          relativeX <= MINIMAP_WIDTH &&
+          relativeY >= 0 &&
+          relativeY <= MINIMAP_HEIGHT
+        ) {
+          this.minimap.fillStyle(0x888888, 1); // Set a color for terrain tiles
+          this.minimap.fillRect(
+            MINIMAP_X + relativeX,
+            MINIMAP_Y + relativeY,
+            tile.width * MINIMAP_SCALE,
+            tile.height * MINIMAP_SCALE
+          );
+        }
+      });
+    }
   }
 }

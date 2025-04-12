@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.11.2" name="Rural Village Objects" tilewidth="2000" tileheight="2000" tilecount="12" columns="0" objectalignment="topleft">
+<tileset version="1.10" tiledversion="1.11.2" name="Rural Village Objects" tilewidth="2000" tileheight="2000" tilecount="11" columns="0" objectalignment="topleft">
  <grid orientation="orthogonal" width="1" height="1"/>
  <tile id="0">
   <properties>
    <property name="armor" value="5"/>
-   <property name="health" value="500"/>
+   <property name="health" value="250"/>
   </properties>
   <image source="objects/blobbytree-desat.png" width="200" height="200"/>
   <objectgroup draworder="index" id="3">
@@ -69,7 +69,7 @@
  <tile id="8">
   <properties>
    <property name="armor" value="5"/>
-   <property name="health" value="500"/>
+   <property name="health" value="250"/>
   </properties>
   <image source="objects/palmtreedark.png" width="197" height="180"/>
   <objectgroup draworder="index" id="2">

@@ -157,7 +157,7 @@ export const weapons = {
     damage: 7,
     penetration: 7,
     muzzleFlashSize: 1.5,
-    totalAmmo: 1200,
+    totalAmmo: 3000,
     magSize: 300,
     reloadDelay: 3000,
     fireSound: 'minigunfire',
@@ -199,7 +199,7 @@ export const weapons = {
     boosterLightIntensity: 1,
     boosterLightRadius: 150,
     muzzleFlashSize: 1.5,
-    totalAmmo: 48,
+    totalAmmo: 120,
     magSize: 12,
     reloadDelay: 5000,
     fireSound: 'rocketlaunch',
@@ -247,7 +247,7 @@ export const weapons = {
 export const enemyWeapons = {
   enemyPlasmaSpit: {
     name: 'enemyPlasmaSpit',
-    fireDelay: 10000,
+    fireDelay: 20000,
     image: 'bullet1',
     initialSpeed: 400,
     baseSpread: 0.03,

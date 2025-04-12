@@ -154,9 +154,8 @@ export class MapManager {
     // 5) Draw the objects
     this.drawMapObjects(baseUrl, mapLayersWithScaling)
 
-    console.log(mapData.width * mapData.tilewidth, mapData.height * mapData.tileheight)
-
     // Return essential map dimension info for reference
+    // tilewidth and height here are for Tiled tiles, but we don't use those except for calculating total map dimensions
     return {
       width: mapData.width * mapData.tilewidth,
       height: mapData.height * mapData.tileheight,
@@ -399,7 +398,6 @@ export class MapManager {
           sprite.setScale(finalScale)
           sprite.setRotation(finalRotation)
 
-          // trees are all partially see through
           sprite.setAlpha(0.9)
         } else {
           // For non-tree sprites, just apply the scale directly

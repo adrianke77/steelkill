@@ -25,11 +25,11 @@ const depths = {
   initialDeadBody:760,
   particles: 780,
   projectileSpark: 1050,
-  terrain: 751,
+  terrain: 745,
   dustClouds: 1100,
   trees: 1000,
-  buildings: 500,
-  rubble:755
+  buildings: 745,
+  rubble:746
 }
 
 export const Constants = {
@@ -45,7 +45,7 @@ export const Constants = {
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,
-  maxEnemies: 100,
+  maxEnemies: 50,
   playerStartingX: 1000,
   playerStartingY: 1900,
   mechStepPeriod: 500,

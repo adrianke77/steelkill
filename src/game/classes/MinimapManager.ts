@@ -187,7 +187,7 @@ export class MinimapManager {
       }
     }
 
-    if (this.scene.terrainMgr && this.scene.terrainMgr.terrainLayer) {
+    if (this.scene.terrainMgr && this.scene.terrainMgr.terrainLayer && this.scene.terrainMgr.terrainLayer.scene ) {
       const terrainLayer = this.scene.terrainMgr.terrainLayer;
     
       // Iterate over each tile in the terrain layer

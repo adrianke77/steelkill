@@ -22,21 +22,22 @@ const depths = {
   projectile: 800,
   explosion: 850,
   decals: 750,
-  initialDeadBody:760,
+  initialDeadBody: 760,
   particles: 780,
   projectileSpark: 1050,
-  terrain: 745,
+  terrain: 742,
   dustClouds: 1100,
   trees: 1000,
   buildings: 745,
-  rubble:746,
-  shadows:744
+  rubble: 743,
+  shadows: 744,
 }
 
 export const Constants = {
   ambientLightColor: 0x252525,
-  infraredAlphaFactor: 0.1,
-  tileSize: 10,
+  infraredDustCloudAlphaFactor: 0.1,
+  baseInfraredTerrainColor: 0xff00ff,
+  tileSize: 8,
   gameWidth: window.innerWidth,
   gameHeight: window.innerHeight,
   tiledLoadedMapScaling: 0.3,
@@ -46,9 +47,15 @@ export const Constants = {
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,
-  maxEnemies: 50,
+  maxEnemies: 60,
   playerStartingX: 1000,
   playerStartingY: 1900,
+  flashlightAngleDegrees: 60,
+  flashlightShadowDefaultAlpha: 0.8,
+  flashlightRadius: 1000,
+  shadowTextureDarkness: 0.09,
+  // how often to update the shadows, lower is more often
+  shadowUpdateRate: 7,
   mechStepPeriod: 500,
   mechStepSoundVol: 3,
   mechStartingHealth: 500,
@@ -92,7 +99,7 @@ export const Constants = {
   ],
   defaultBeamSegmentCount: 80,
   defaultBeamDisplacement: 13,
-  terrainOutlineUpdateInterval: 1000
+  terrainOutlineUpdateInterval: 1000,
 }
 
 export type MouseButtonsKeys = keyof typeof Constants.MouseButtons

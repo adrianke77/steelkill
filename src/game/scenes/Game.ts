@@ -1,7 +1,11 @@
 import { Scene } from 'phaser'
 import { EventBus } from '../../EventBus'
 import { Constants as ct, music } from '../constants'
-import { createEmittersAndAnimations, loadRenderingAssets } from '../rendering'
+import {
+  createEmittersAndAnimations,
+  loadRenderingAssets,
+  createShadowTexture,
+} from '../rendering'
 import { loadMechAssets, PlayerMech } from '../classes/PlayerMech'
 import {
   ProjectileManager,
@@ -14,10 +18,10 @@ import { MinimapManager } from '../classes/MinimapManager'
 import { BeamManager } from '../classes/BeamManager'
 import { MapManager } from '../classes/MapManager'
 import { WeaponSpec, EnemySprite, Projectile } from '../interfaces'
-import { TerrainManager, loadTerrainAssets } from '../classes/TerrainManager' // Import TerrainManager
+import { TerrainManager, loadTerrainAssets } from '../classes/TerrainManager'
 
 export class Game extends Scene {
-  terrainMgr: TerrainManager // Add TerrainManager property
+  terrainMgr: TerrainManager
   viewMgr: ViewManager
   player: PlayerMech
   enemyMgr: EnemyManager
@@ -27,6 +31,7 @@ export class Game extends Scene {
   beamMgr: BeamManager
   projectileMgr: ProjectileManager
 
+  frameCounter: number = 0
   mapWidth: number
   mapHeight: number
   lastWeaponFireTime: [number, number, number, number]
@@ -48,6 +53,7 @@ export class Game extends Scene {
   fpsText: Phaser.GameObjects.Text
   combatMusic: Phaser.Sound.BaseSound
   previousBindingStates: { [key: string]: boolean } = {}
+  shadowTextureKey: string
 
   constructor() {
     super('Game')
@@ -55,7 +61,46 @@ export class Game extends Scene {
   }
 
   endGame() {
+    // Stop all sounds
     this.sound.stopAll()
+
+    // Destroy all game objects
+    this.decals.clear(true, true)
+    this.combinedDecals.forEach(decal => {
+      decal.texture.destroy()
+      decal.image.destroy()
+    })
+    this.combinedDecals = []
+
+    // Destroy shadows and map objects
+    this.mapMgr.mapObjects.forEach(mapObject => {
+      mapObject.sprite.destroy()
+      if (mapObject.shadow) {
+        mapObject.shadow.destroy()
+      }
+      mapObject.collisionBodies.forEach(body => body.destroy())
+    })
+    this.mapMgr.mapObjects = []
+
+    // Destroy managers and their resources
+    this.viewMgr?.effectsLayer?.destroy(true)
+    this.viewMgr?.mainLayer?.destroy(true)
+    this.mapMgr?.collisionShapesGroup?.clear(true, true)
+    this.projectileMgr?.projectiles?.clear(true, true)
+    this.enemyMgr?.enemies?.clear(true, true)
+
+    // Clear timers and tweens
+    this.time.removeAllEvents()
+    this.tweens.killAll()
+
+    // Remove event listeners
+    EventBus.off('mag-count')
+    EventBus.off('remaining-ammo')
+    EventBus.off('reload-status')
+    EventBus.off('boost-status')
+    EventBus.off('player-health')
+
+    // Start the main menu scene
     this.scene.start('MainMenu')
   }
 
@@ -63,7 +108,6 @@ export class Game extends Scene {
     this.load.setPath('assets')
     this.sound.volume = 0.4
 
-    // Load music files
     music.forEach(musicTuplet => {
       this.load.audio(
         musicTuplet[0] as string,
@@ -71,7 +115,6 @@ export class Game extends Scene {
       )
     })
 
-    // Load other assets
     loadProjectileAssets(this)
     loadRenderingAssets(this)
     loadEnemyAssets(this)
@@ -110,6 +153,9 @@ export class Game extends Scene {
     this.inputMgr = new InputManager(this)
     this.minimapMgr = new MinimapManager(this)
     this.mapMgr = new MapManager(this)
+
+    // universally used soft shadow ellipse
+    this.shadowTextureKey = createShadowTexture(this)
 
     this.inputMgr.initializeInputs()
 
@@ -386,6 +432,14 @@ export class Game extends Scene {
       },
     )
 
+    // if (this.frameCounter % ct.shadowUpdateRate === 0) {
+    //   this.mapMgr.updateShadows(
+    //     this.player.mechContainer.x,
+    //     this.player.mechContainer.y,
+    //     this.player.mechContainer.rotation,
+    //   ) 
+    // }
+
     this.minimapMgr.drawMinimap()
   }
 
@@ -426,7 +480,7 @@ export class Game extends Scene {
   addGraphics(optionalArgs?: any) {
     const graphics = this.add.graphics(optionalArgs)
     this.viewMgr.mainLayer.add(graphics)
-    return graphics 
+    return graphics
   }
 
   addGraphicsEffect(optionalArgs?: any) {

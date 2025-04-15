@@ -24,7 +24,7 @@ export class MinimapManager {
     this.minimap.setDepth(ct.depths.minimap) // Draw on top of everything
     this.scene.viewMgr.minimapLayer.add(this.minimap)
   }
-  
+
   public setMapSize(width: number, height: number) {
     this.mapWidth = width
     this.mapHeight = height
@@ -139,7 +139,7 @@ export class MinimapManager {
       }
       return true
     })
-    
+
     // Draw beams on the minimap
     for (const weaponIndexStr in this.scene.beamMgr.activeBeams) {
       const beam = this.scene.beamMgr.activeBeams[weaponIndexStr]
@@ -187,55 +187,61 @@ export class MinimapManager {
       }
     }
 
-    if (this.scene.terrainMgr && this.scene.terrainMgr.terrainLayer && this.scene.terrainMgr.terrainLayer.scene ) {
-      const terrainLayer = this.scene.terrainMgr.terrainLayer;
-    
-      // Iterate over each tile in the terrain layer
-      terrainLayer.forEachTile(tile => {
-        // Calculate the position relative to the minimap
-        const relativeX = (tile.pixelX - minimapX) * MINIMAP_SCALE;
-        const relativeY = (tile.pixelY - minimapY) * MINIMAP_SCALE;
-    
-        // Only draw if the tile is within the visible minimap area
-        if (
-          relativeX >= 0 &&
-          relativeX <= MINIMAP_WIDTH &&
-          relativeY >= 0 &&
-          relativeY <= MINIMAP_HEIGHT
-        ) {
-          this.minimap.fillStyle(0x8888BB, 1); // Set a color for terrain tiles
-          this.minimap.fillRect(
-            MINIMAP_X + relativeX,
-            MINIMAP_Y + relativeY,
-            tile.width * MINIMAP_SCALE,
-            tile.height * MINIMAP_SCALE
-          );
-        }
-      });
-    }
+    // // draw randomly generated terrain
 
-        // Draw map objects on the minimap
-        this.scene.mapMgr.mapObjects.forEach(mapObject => {
-          const sprite = mapObject.sprite;
-          // Calculate the position relative to the minimap
-          const relativeX = (sprite.x - minimapX) * MINIMAP_SCALE;
-          const relativeY = (sprite.y - minimapY) * MINIMAP_SCALE;
-  
-          // Only draw if the map object is within the visible minimap area
-          if (
-              relativeX >= 0 &&
-              relativeX <= MINIMAP_WIDTH &&
-              relativeY >= 0 &&
-              relativeY <= MINIMAP_HEIGHT
-          ) {
-              this.minimap.fillStyle(0x4444aa, 1); // Set a color for map objects
-              this.minimap.fillRect(
-                  MINIMAP_X + relativeX,
-                  MINIMAP_Y + relativeY,
-                  2, // Width of the map object on the minimap
-                  2  // Height of the map object on the minimap
-              );
-          }
-      });
+    // if (
+    //   this.scene.terrainMgr &&
+    //   this.scene.terrainMgr.terrainLayer &&
+    //   this.scene.terrainMgr.terrainLayer.scene
+    // ) {
+    //   const terrainLayer = this.scene.terrainMgr.terrainLayer
+
+    //   // Iterate over each tile in the terrain layer
+    //   terrainLayer.forEachTile(tile => {
+    //     // Calculate the position relative to the minimap
+    //     const relativeX = (tile.pixelX - minimapX) * MINIMAP_SCALE
+    //     const relativeY = (tile.pixelY - minimapY) * MINIMAP_SCALE
+
+    //     // Only draw if the tile is within the visible minimap area
+    //     if (
+    //       relativeX >= 0 &&
+    //       relativeX <= MINIMAP_WIDTH &&
+    //       relativeY >= 0 &&
+    //       relativeY <= MINIMAP_HEIGHT
+    //     ) {
+    //       this.minimap.fillStyle(0x8888bb, 1) // Set a color for terrain tiles
+    //       this.minimap.fillRect(
+    //         MINIMAP_X + relativeX,
+    //         MINIMAP_Y + relativeY,
+    //         tile.width * MINIMAP_SCALE,
+    //         tile.height * MINIMAP_SCALE,
+    //       )
+    //     }
+    //   })
+    // }
+
+    // Draw map objects on the minimap
+    // this.scene.mapMgr.mapObjects.forEach(mapObject => {
+    //   const sprite = mapObject.sprite
+    //   // Calculate the position relative to the minimap
+    //   const relativeX = (sprite.x - minimapX) * MINIMAP_SCALE
+    //   const relativeY = (sprite.y - minimapY) * MINIMAP_SCALE
+
+    //   // Only draw if the map object is within the visible minimap area
+    //   if (
+    //     relativeX >= 0 &&
+    //     relativeX <= MINIMAP_WIDTH &&
+    //     relativeY >= 0 &&
+    //     relativeY <= MINIMAP_HEIGHT
+    //   ) {
+    //     this.minimap.fillStyle(0x4444aa, 1) // Set a color for map objects
+    //     this.minimap.fillRect(
+    //       MINIMAP_X + relativeX,
+    //       MINIMAP_Y + relativeY,
+    //       2, // Width of the map object on the minimap
+    //       2, // Height of the map object on the minimap
+    //     )
+    //   }
+    // })
   }
 }

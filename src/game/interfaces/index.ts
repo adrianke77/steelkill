@@ -191,6 +191,7 @@ export interface TerrainTileProperties {
   health: number
   armor: number
   color: number
+  darkness: number
 }
 
 export interface TerrainChunk {
@@ -208,11 +209,18 @@ export interface MapObject {
   averageColor: number;
   source: string;
   entityType: string;
-  centreX: number; // New property
-  centreY: number; // New property
+  centreX: number;
+  centreY: number;
+  shadow?: Phaser.GameObjects.Sprite;
 }
 
 export interface DustCloud extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
   tweenAlpha: number
   infraredControlledAlpha: number
+}
+
+export interface OutlineLine {
+  lineObject: Phaser.GameObjects.Line;
+  lineGeom: Phaser.Geom.Line;
+  originalColor: number;
 }

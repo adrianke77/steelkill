@@ -2,7 +2,7 @@ import { Game } from '../scenes/Game'
 import { XMLParser } from 'fast-xml-parser'
 import { Constants as ct } from '../constants/index'
 import { MapObject } from '../interfaces'
-import { createDustCloud, drawDecal } from '../rendering'
+import { createDustCloud, drawDecal} from '../rendering'
 import { getAverageColor, getSoundPan } from '../utils'
 import { ExtendedSprite } from '../interfaces'
 
@@ -586,6 +586,21 @@ export class MapManager {
             newMapObject.centreX = centreX
             newMapObject.centreY = centreY
           }
+          const averageSize = (sprite.displayWidth + sprite.displayHeight) / 2
+          // Create shadow sprite using centreX and centreY
+          const shadow = this.scene.addSprite(
+            newMapObject.centreX,
+            newMapObject.centreY,
+            this.scene.shadowTextureKey,      
+          )
+          shadow.setOrigin(0.5, 0.5)
+          shadow.setDepth(ct.depths.shadows)
+          shadow.setAlpha(ct.flashlightShadowDefaultAlpha)
+          shadow.displayWidth = averageSize
+          shadow.displayHeight = averageSize
+
+          // Store shadow reference in map object
+          newMapObject.shadow = shadow
         }
 
         // Finally, store our newMapObject in the list
@@ -725,30 +740,31 @@ export class MapManager {
       const startY = mapObject.sprite.y
 
       this.scene.tweens.add({
-        targets: mapObject.sprite,
+        targets: [mapObject.sprite, mapObject.shadow],
         alpha: 0,
         x: startX + moveX,
         y: startY + moveY,
         duration: 1500,
         onComplete: () => {
           mapObject.sprite.destroy()
+          mapObject.shadow!.destroy()
         },
       })
     } else {
       // Regular fade out for non-tree objects
       this.scene.tweens.add({
-        targets: mapObject.sprite,
+        targets: [mapObject.sprite, mapObject.shadow],
         alpha: 0,
         duration: 3000,
         onComplete: () => {
           mapObject.sprite.destroy()
+          mapObject.shadow!.destroy()
         },
       })
     }
 
-    // Fade out collision bodies after a slight delay to maintain collision during initial fade
+    // delay destruction of collision bodies to maintain collision during initial fade
     for (const shape of mapObject.collisionBodies) {
-      // We can't fade them since they're invisible, but we can delay their destruction
       this.scene.time.delayedCall(1800, () => {
         shape.destroy()
       })
@@ -837,7 +853,7 @@ export class MapManager {
             targets: fallenTree,
             alpha: 1,
             duration: 1500,
-            ease: 'Power2',
+            ease: 'Linear',
             onComplete: () => {
               drawDecal(this.scene, fallenTree)
             },
@@ -878,7 +894,7 @@ export class MapManager {
             targets: treeBit,
             alpha: 1,
             duration: 3000,
-            ease: 'Power2',
+            ease: 'Linear',
             onComplete: () => {
               drawDecal(this.scene, treeBit)
             },
@@ -1018,7 +1034,7 @@ export class MapManager {
           targets: rubble,
           alpha: 1,
           duration: 3000,
-          ease: 'Power2',
+          ease: 'Linear',
           onComplete: () => {
             drawDecal(this.scene, rubble)
           },
@@ -1064,7 +1080,7 @@ export class MapManager {
         targets: roofRubble,
         alpha: 0.7,
         duration: 3000,
-        ease: 'Power2',
+        ease: 'Linear',
         onComplete: () => {
           drawDecal(this.scene, roofRubble)
         },
@@ -1117,7 +1133,7 @@ export class MapManager {
           targets: scattered,
           alpha: 0.9,
           duration: 3000,
-          ease: 'Power2',
+          ease: 'Linear',
           onComplete: () => {
             drawDecal(this.scene, scattered)
           },
@@ -1144,5 +1160,73 @@ export class MapManager {
       // Clear the stored polygons after processing
       this.randomTerrainPolygons = []
     }
+  }
+
+  public updateShadows(playerX: number, playerY: number, playerRotation: number): void {
+    const playerFacingDirection = playerRotation - Math.PI / 2;
+    const maxShadowDistance = ct.flashlightRadius * 1.1;
+  
+    this.mapObjects.forEach(mapObject => {
+      if (mapObject.shadow) {
+        const dx = mapObject.centreX - playerX;
+        const dy = mapObject.centreY - playerY;
+        const distanceToPlayer = Math.sqrt(dx * dx + dy * dy);
+        const angleToShadow = Math.atan2(dy, dx);
+  
+        const angleDifference = Phaser.Math.Angle.Wrap(
+          angleToShadow - playerFacingDirection,
+        );
+  
+        // Calculate the alpha based on the angle difference and distance
+        const coneAngle = (ct.flashlightAngleDegrees * Math.PI) / 180;
+        const extendedConeAngle = coneAngle * 1.2
+        let alpha = 0;
+  
+        if (distanceToPlayer <= maxShadowDistance) {
+          if (Math.abs(angleDifference) <= coneAngle / 2) {
+            // Fully inside the cone
+            if (distanceToPlayer <= ct.flashlightRadius) {
+              alpha = ct.flashlightShadowDefaultAlpha;
+            } else {
+              // Decrease alpha based on distance beyond flashlightRadius
+              const distanceFactor = (maxShadowDistance - distanceToPlayer) / (maxShadowDistance - ct.flashlightRadius);
+              alpha = ct.flashlightShadowDefaultAlpha * distanceFactor;
+            }
+          } else if (Math.abs(angleDifference) <= extendedConeAngle / 2) {
+            // Calculate alpha for the area between the cone and the extended cone
+            const normalizedDifference =
+              (Math.abs(angleDifference) - coneAngle / 2) /
+              (extendedConeAngle / 2 - coneAngle / 2);
+            alpha = ct.flashlightShadowDefaultAlpha - normalizedDifference;
+  
+            // Further decrease alpha based on distance beyond flashlightRadius
+            if (distanceToPlayer > ct.flashlightRadius) {
+              const distanceFactor = (maxShadowDistance - distanceToPlayer) / (maxShadowDistance - ct.flashlightRadius);
+              alpha *= distanceFactor;
+            }
+          }
+        }
+  
+        mapObject.shadow.setAlpha(alpha);
+  
+        const spriteAverageSize =
+          (mapObject.sprite.displayWidth + mapObject.sprite.displayHeight) / 2;
+  
+        // Position shadow slightly offset from the object's centre
+        const shadowOffset = spriteAverageSize / 4; // Adjust offset as needed
+        mapObject.shadow.x =
+          mapObject.centreX + Math.cos(angleToShadow) * shadowOffset;
+        mapObject.shadow.y =
+          mapObject.centreY + Math.sin(angleToShadow) * shadowOffset;
+  
+        // Set shadow size to be an ellipse with doubled height
+        const shadowWidth = spriteAverageSize;
+        const shadowHeight = spriteAverageSize * 2;
+        mapObject.shadow.setDisplaySize(shadowWidth, shadowHeight);
+  
+        // Rotate shadow to point away from player
+        mapObject.shadow.setRotation(angleToShadow + Math.PI / 2);
+      }
+    });
   }
 }

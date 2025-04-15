@@ -265,7 +265,7 @@ export class ProjectileManager {
       .setColor(lightColor)
       .setIntensity(lightIntensity)
     if (lightRadius) {
-      light.setRadius(lightRadius)
+      light.setRadius(ct.flashlightRadius)
     }
     projectile[lightName as ProjectileLightFields] = light
   }
@@ -428,9 +428,9 @@ export class ProjectileManager {
         (projectile.y + tileY) / 2,
         0,
         0,
-        0.8,
-        2000,
-        100,
+        1,
+        3000,
+        200,
         tileData.color,
       )
       if (target.health <= 0) {

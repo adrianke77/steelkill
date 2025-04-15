@@ -6,7 +6,7 @@ import {
   EnemyWeaponSpec,
   Projectile,
   WeaponSpec,
-  DustCloud
+  DustCloud,
 } from '../interfaces'
 import { blendColors } from '../utils'
 
@@ -156,7 +156,6 @@ export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
   const currentTexture = scene.combinedDecals.slice(-1)[0].texture
   // strip existing Light 2d pipelines else this will affect the drawn image
   image.resetPipeline()
-  image.clearAlpha()
   currentTexture.draw(image, image.x, image.y)
   image.destroy()
   scene.decalCount++
@@ -168,8 +167,8 @@ function addCombinedDecal(scene: Game) {
     0,
     0,
     scene.mapWidth,
-    scene.mapHeight
-  );
+    scene.mapHeight,
+  )
   const combinedDecalsImage = scene.addImage(0, 0, combinedTexture.texture)
   combinedDecalsImage.setOrigin(0, 0)
   combinedDecalsImage.setPipeline('Light2D')
@@ -249,11 +248,11 @@ export function createDustCloud(
   tint?: number,
 ): void {
   // todo: this will be user adjustable for performance settings
-  const DUST_CLOUD_PROXIMITY_CHECK_DISTANCE = 30;
+  const DUST_CLOUD_PROXIMITY_CHECK_DISTANCE = 30
 
   // Check if a dust cloud nearby already exists with the same tint and has opacity > 0.5
   for (const child of scene.viewMgr.dustClouds.getChildren()) {
-    const existingCloud = child as DustCloud;
+    const existingCloud = child as DustCloud
     // If the existing cloud has a similar tint, high opacity, and is near this location, skip creating a new one
     if (
       tint &&
@@ -262,7 +261,7 @@ export function createDustCloud(
       Phaser.Math.Distance.Between(x, y, existingCloud.x, existingCloud.y) <
         DUST_CLOUD_PROXIMITY_CHECK_DISTANCE
     ) {
-      return; // Skip creation
+      return // Skip creation
     }
   }
 
@@ -286,7 +285,9 @@ export function createDustCloud(
   scene.viewMgr.dustClouds.add(dustCloud)
 
   dustCloud.tweenAlpha = opacity
-  dustCloud.infraredControlledAlpha = scene.viewMgr.infraredIsOn ? ct.infraredAlphaFactor : 1
+  dustCloud.infraredControlledAlpha = scene.viewMgr.infraredIsOn
+    ? ct.infraredDustCloudAlphaFactor
+    : 1
   dustCloud.alpha = dustCloud.tweenAlpha * dustCloud.infraredControlledAlpha
 
   // Tween for initial expansion and rotation
@@ -317,8 +318,6 @@ export function createDustCloud(
     },
   })
 }
-
-
 
 export function createLightFlash(
   scene: Game,
@@ -397,8 +396,8 @@ export function destroyEnemyAndCreateCorpseDecals(
     enemy.x,
     enemy.y,
     enemyData.bloodColor,
-    enemyData.corpseSize + 5,
-    500, 
+    enemyData.corpseSize,
+    500,
   )
   const deadEnemy = scene.addImage(enemy.x, enemy.y, enemyData.corpseImage, 8)
   deadEnemy.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
@@ -549,13 +548,13 @@ export function renderExplosion(
   if (optionals && optionals.color) {
     explosion.setTint(optionals.color)
   }
-  explosion.setAlpha(Phaser.Math.FloatBetween(0.6, 0.9))
+  explosion.setAlpha(Phaser.Math.FloatBetween(0.4, 0.6))
   explosion.play('explosion')
   const scorch = scene.addImage(x, y, 'scorch1')
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.8)
+  scorch.setAlpha(0.6)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )
@@ -601,4 +600,30 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
   )
 }
 
+export function createShadowTexture(scene: Phaser.Scene): string {
+  if (scene.textures.exists('shadowTexture')) {
+    return 'shadowTexture'
+  }
+  const graphics = scene.add.graphics()
+  const shadowSize = 20 // Adjust size as needed
+  const centerX = shadowSize / 2
+  const centerY = shadowSize / 2
+  const maxRadius = shadowSize / 2
+  const numberOfCircles = 20 // Increase the number of circles for smoother gradient
 
+  // Draw concentric circles to simulate a radial gradient
+  for (let i = 0; i < numberOfCircles; i++) {
+    const radius = maxRadius * (1 - i / numberOfCircles)
+    // circles overlap so in the centre all the circles overlap and their alphas add up
+    // less circles overlap going outward, so it fades out
+    graphics.fillStyle(0x000000, ct.shadowTextureDarkness)
+    graphics.fillCircle(centerX, centerY, radius)
+  }
+
+  // Generate texture from graphics
+  const textureKey = 'shadowTexture'
+  graphics.generateTexture(textureKey, shadowSize, shadowSize)
+  graphics.destroy()
+
+  return textureKey // Return the key of the generated texture
+}

@@ -53,8 +53,12 @@ void main() {
         infraredColor = vec4(0.0, 0.7, 0.5, color.a); // Green-Blue
     } else if (average > 0.10) {
         infraredColor = vec4(0.0, 0.2, 1.0, color.a); // Blue
-    } else if (average > 0.05) {
+    } else if (average > 0.07) {
         infraredColor = vec4(0.3, 0.0, 0.3, color.a); // Purple
+    } else if (average > 0.045) {
+        infraredColor = vec4(0.2, 0.0, 0.2, color.a); // Purple
+    } else if (average > 0.02) {
+        infraredColor = vec4(0.1, 0.0, 0.1, color.a); // Purple
     } else {
         infraredColor = vec4(0.0, 0.0, 0.0, color.a); // Black
     }
@@ -62,7 +66,7 @@ void main() {
     // Apply intensity and output the final color
     gl_FragColor = vec4(infraredColor.rgb * intensity, infraredColor.a);
 }
-`;
+`
 
 export class InfraredPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
   .PostFXPipeline {
@@ -77,7 +81,7 @@ export class InfraredPostFxPipeline extends Phaser.Renderer.WebGL.Pipelines
 
   onPreRender() {
     // Pass the resolution to the shader
-    this.set2f('resolution', this.renderer.width, this.renderer.height);
+    this.set2f('resolution', this.renderer.width, this.renderer.height)
 
     // If you wish to adjust 'intensity' at runtime, you can move it back to a uniform:
     // this.set1f('intensity', this.intensity);

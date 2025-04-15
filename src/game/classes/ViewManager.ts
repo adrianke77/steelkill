@@ -105,7 +105,6 @@ export class ViewManager {
 
     // move minimap camera to topmost
     this.scene.cameras.cameras.push(this.miniMapCam)
-
   }
 
   public startCamFollowingPlayerMech(): void {
@@ -148,8 +147,9 @@ export class ViewManager {
       this.flashlightPipeline = this.mainCam.getPostPipeline(
         'FlashlightPostFxPipeline',
       ) as FlashlightPostFxPipeline
-      this.flashlightPipeline.setRadius(1000)
-      this.flashlightPipeline.setConeAngle(Math.PI / 3)
+      this.flashlightPipeline.setRadius(ct.flashlightRadius)
+      const coneAngle = ct.flashlightAngleDegrees * Math.PI / 180
+      this.flashlightPipeline.setConeAngle(coneAngle)
     })
   }
 
@@ -236,7 +236,7 @@ export class ViewManager {
       this.background.setTint(0x999999)
       this.dustClouds.children.iterate(dustCloud => {
         const sprite = dustCloud as DustCloud
-        sprite.infraredControlledAlpha = ct.infraredAlphaFactor
+        sprite.infraredControlledAlpha = ct.infraredDustCloudAlphaFactor
         return true
       })
       this.scene.mapMgr.mapObjects.forEach((mapObject: MapObject) => {

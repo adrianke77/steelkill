@@ -1,11 +1,16 @@
 // TerrainManager.ts
 
 import { Game } from '../scenes/Game'
-import { Projectile, TerrainTile, TerrainTileProperties } from '../interfaces'
 import { createDustCloud } from '../rendering'
 import { Constants as ct } from '../constants'
 import { tileProperties } from '../constants/tileProperties'
 import { blendColors, getAverageColor } from '../utils'
+import {
+  TerrainTile,
+  TerrainTileProperties,
+  Projectile,
+  OutlineLine,
+} from '../interfaces'
 
 // Bitmask definitions for rounded corners
 const CORNER_BITS = {
@@ -53,19 +58,22 @@ export class TerrainManager {
   map: Phaser.Tilemaps.Tilemap
   terrainLayer: Phaser.Tilemaps.TilemapLayer
   debrisSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
-  // Margin variables (in tiles)
-  marginTop: number = 15 // Adjust as needed
-  marginBottom: number = 2 // Adjust as needed
-  marginLeft: number = 2 // Adjust as neededv
-  marginRight: number = 2 // Adjust as
   playerSafeRadius: number = 5
-  outlineGraphics: Phaser.GameObjects.Graphics
-  outlineUpdateTimer: number = 0
-  outlineSegments = new Map<string, Phaser.GameObjects.Graphics>()
+  // line object is for rendering, linegeom is stored for faster flashlight related raycasting
+  tileLineAssociations: Map<
+    string,
+    {
+      lineObject: Phaser.GameObjects.Line
+      lineGeom: Phaser.Geom.Line
+    }[]
+  > = new Map()
   tilesetColumns: number
   tilesetRows: number
   currentBackgroundAvgColor: number
   currentTileProperties: { [key: number]: TerrainTileProperties } = {}
+  clumps: TerrainTile[][] = []
+
+  private litLines: Set<Phaser.GameObjects.Line> = new Set()
 
   constructor(scene: Game) {
     this.scene = scene
@@ -134,7 +142,7 @@ export class TerrainManager {
     this.scene.viewMgr.mainLayer.add(this.terrainLayer)
 
     this.terrainLayer.setDepth(ct.depths.terrain)
-    this.terrainLayer.setAlpha(0.23)
+    this.terrainLayer.setAlpha(0.6)
   }
 
   setBackgroundAverageColorAndTerrainTileColors() {
@@ -147,11 +155,10 @@ export class TerrainManager {
       const constantProperties =
         tileProperties[key as keyof typeof tileProperties]
       const type = key as number
-      console.log(this.currentBackgroundAvgColor)
       const color = blendColors(
         this.currentBackgroundAvgColor,
-        0xFF00000,
-        constantProperties.redness,
+        0x000000,
+        constantProperties.darkness,
       )
       this.currentTileProperties[type] = {
         ...constantProperties,
@@ -160,8 +167,7 @@ export class TerrainManager {
     })
   }
 
-  // can take either the actual tile or just the tile.type value
-  getTileData(tile: TerrainTile ) {
+  getTileData(tile: TerrainTile) {
     return this.currentTileProperties[tile.type]
   }
 
@@ -181,12 +187,49 @@ export class TerrainManager {
     )
   }
 
-  clearTileOutlines(x: number, y: number): void {
-    const key = `${x},${y}`
-    const existingOutline = this.outlineSegments.get(key)
-    if (existingOutline) {
-      existingOutline.destroy()
-      this.outlineSegments.delete(key)
+  private createLine(
+    worldX: number,
+    worldY: number,
+    tileSize: number,
+    outlineColor: number,
+    side: 'top' | 'right' | 'bottom' | 'left',
+  ): OutlineLine {
+    let startX = worldX
+    let startY = worldY
+    let endX = worldX
+    let endY = worldY
+
+    switch (side) {
+      case 'top':
+        endX = worldX + tileSize
+        break
+      case 'right':
+        startX = worldX + tileSize
+        endX = worldX + tileSize
+        endY = worldY + tileSize
+        break
+      case 'bottom':
+        startY = worldY + tileSize
+        endX = worldX + tileSize
+        endY = worldY + tileSize
+        break
+      case 'left':
+        endY = worldY + tileSize
+        break
+    }
+
+    const lineObject = this.scene.add
+      .line(0, 0, startX, startY, endX, endY, outlineColor, 0.8)
+      .setOrigin(0, 0)
+      .setLineWidth(this.map.tileWidth * 3, this.map.tileWidth * 3)
+
+    // Create the geometric line with absolute coordinates
+    const lineGeom = new Phaser.Geom.Line(startX, startY, endX, endY)
+
+    return {
+      lineObject,
+      lineGeom,
+      originalColor: outlineColor,
     }
   }
 
@@ -195,43 +238,52 @@ export class TerrainManager {
     const y = tile.y
     const key = `${x},${y}`
 
+    // First clear any existing outlines for this tile
+    this.clearTileOutlines(x, y)
+
     const tileData = this.getTileData(tile)
     const outlineColor = blendColors(tileData.color, 0x000000, 0.9)
     const tileSize = this.map.tileWidth
     const worldX = tile.pixelX
     const worldY = tile.pixelY
 
-    const gfx = this.scene.addGraphics()
-    gfx.setAlpha(0.8)
-    gfx.lineStyle(4, outlineColor, 0.5)
+    // Create an array to hold line info for this tile
+    const lines: OutlineLine[] = []
 
-    // For each side, check if a neighboring tile is missing. If so, draw an outline segment.
+    // For each side, check if a neighboring tile is missing. If so, create a line
     if (!this.isSolidTileAt(x, y - 1)) {
-      gfx.lineBetween(worldX, worldY, worldX + tileSize, worldY)
+      lines.push(this.createLine(worldX, worldY, tileSize, outlineColor, 'top'))
     }
     if (!this.isSolidTileAt(x + 1, y)) {
-      gfx.lineBetween(
-        worldX + tileSize,
-        worldY,
-        worldX + tileSize,
-        worldY + tileSize,
+      lines.push(
+        this.createLine(worldX, worldY, tileSize, outlineColor, 'right'),
       )
     }
     if (!this.isSolidTileAt(x, y + 1)) {
-      gfx.lineBetween(
-        worldX,
-        worldY + tileSize,
-        worldX + tileSize,
-        worldY + tileSize,
+      lines.push(
+        this.createLine(worldX, worldY, tileSize, outlineColor, 'bottom'),
       )
     }
     if (!this.isSolidTileAt(x - 1, y)) {
-      gfx.lineBetween(worldX, worldY, worldX, worldY + tileSize)
+      lines.push(
+        this.createLine(worldX, worldY, tileSize, outlineColor, 'left'),
+      )
     }
 
-    // Store the Graphics object so we can remove/replace it later
-    this.outlineSegments.set(key, gfx)
-    this.scene.viewMgr.mainLayer.add(gfx)
+    // Store the line objects so we can remove/replace them later
+    this.tileLineAssociations.set(key, lines)
+
+    // Add all line objects to the main layer
+    lines.forEach(line => this.scene.viewMgr.mainLayer.add(line.lineObject))
+  }
+
+  clearTileOutlines(x: number, y: number): void {
+    const key = `${x},${y}`
+    const lines = this.tileLineAssociations.get(key)
+    if (lines) {
+      lines.forEach(line => line.lineObject.destroy())
+      this.tileLineAssociations.delete(key)
+    }
   }
 
   public drawTerrainOutlines(affectedTiles?: { x: number; y: number }[]): void {
@@ -373,71 +425,6 @@ export class TerrainManager {
     context.restore()
   }
 
-  populateTerrain() {
-    // Calculate the player's starting tile coordinates
-    const playerStartTileX = Math.floor(
-      this.scene.player.mechContainer.x / ct.tileSize,
-    )
-    const playerStartTileY = Math.floor(
-      this.scene.player.mechContainer.y / ct.tileSize,
-    )
-
-    // Increase to make terrain denser, decrease for sparser terrain
-    const fillProbability = ct.terrainDefaultFillProbability
-    // Increasing iterations: Can smooth out the terrain and potentially make it more filled in or homogeneous.
-    // Decreasing iterations: May result in more random, rugged, or fragmented terrain patterns.
-    const iterations = ct.terrainDefaultIterations
-    // Generate a temporary grid for the initial state, including margins
-    let tempGrid: boolean[][] = []
-
-    for (let x = 0; x < this.map.width; x++) {
-      tempGrid[x] = []
-      for (let y = 0; y < this.map.height; y++) {
-        // Calculate the distance from the player's starting position
-        const dx = x - playerStartTileX
-        const dy = y - playerStartTileY
-        const distanceSquared = dx * dx + dy * dy
-
-        if (distanceSquared <= this.playerSafeRadius * this.playerSafeRadius) {
-          // Within the safe radius, set tile to empty
-          tempGrid[x][y] = false
-        } else {
-          const isSolid = Math.random() < fillProbability
-          tempGrid[x][y] = isSolid
-        }
-      }
-    }
-
-    // Apply the cellular automata rules
-    for (let i = 0; i < iterations; i++) {
-      tempGrid = this.runAutomataStep(tempGrid)
-    }
-
-    // Apply the generated terrain, excluding margins
-    for (let x = this.marginLeft; x < this.map.width - this.marginRight; x++) {
-      for (
-        let y = this.marginTop;
-        y < this.map.height - this.marginBottom;
-        y++
-      ) {
-        if (tempGrid[x][y]) {
-          // Set all initial solid tiles to a default type (e.g., 1)
-          this.setAutotileAt(x, y, 1)
-        } else {
-          this.terrainLayer.removeTileAt(x, y)
-        }
-      }
-    }
-
-    // Assign terrain types to each clump after cellular automata
-    this.assignTerrainTypesToClumps()
-
-    // Apply autotiling to update tile graphics
-    this.applyAutotiling()
-
-    this.drawTerrainOutlines()
-  }
-
   assignTerrainTypesToClumps() {
     const visited = new Set<string>()
     const terrainTypes = [1, 2, 3] // Available terrain types
@@ -448,9 +435,6 @@ export class TerrainManager {
       2: 1.0,
       3: 1.0,
     }
-
-    // Collect all clumps
-    const allClumps: TerrainTile[][] = []
 
     for (let x = 0; x < this.map.width; x++) {
       for (let y = 0; y < this.map.height; y++) {
@@ -501,13 +485,13 @@ export class TerrainManager {
           }
 
           // Store the clump for later processing
-          allClumps.push(clumpTiles)
+          this.clumps.push(clumpTiles)
         }
       }
     }
 
     // Now, assign terrain types to clumps based on their sizes and weights
-    for (const clumpTiles of allClumps) {
+    for (const clumpTiles of this.clumps) {
       const clumpSize = clumpTiles.length
 
       // Compute weighted probabilities for each terrain type
@@ -657,16 +641,7 @@ export class TerrainManager {
         const ny = y + dy
 
         // Skip neighbors outside the map boundaries or within margins
-        if (
-          nx < 0 ||
-          nx >= this.map.width ||
-          ny < 0 ||
-          ny >= this.map.height ||
-          nx < this.marginLeft ||
-          nx >= this.map.width - this.marginRight ||
-          ny < this.marginTop ||
-          ny >= this.map.height - this.marginBottom
-        ) {
+        if (nx < 0 || nx >= this.map.width || ny < 0 || ny >= this.map.height) {
           // Optionally, treat out-of-bounds or margin tiles as solid to favor enclosed shapes
           count++
         } else if (this.isSolidTileAt(nx, ny)) {
@@ -973,11 +948,11 @@ export class TerrainManager {
     this.scene.viewMgr.mainLayer.add(tilesetImage)
   }
 
-  isATerrainTile(obj: any): boolean {
+  public isATerrainTile(obj: any): boolean {
     return obj instanceof Phaser.Tilemaps.Tile
   }
 
-  isPointInPolygon(
+  private isPointInPolygon(
     point: { x: number; y: number },
     polygon: { x: number; y: number }[],
   ): boolean {
@@ -1061,5 +1036,88 @@ export class TerrainManager {
       this.tilesetColumns * this.tilesetRows - 1,
     )
     this.setupColliders()
+  }
+
+  public updateOutlineLighting(rayDensity: number = 20): void {
+    const player = this.scene.player
+    const playerX = player.mechContainer.x
+    const playerY = player.mechContainer.y
+    const playerRotation = player.mechContainer.rotation
+    const playerDirection = playerRotation - Math.PI / 2 // Adjust to get forward direction
+
+    // Get cone properties from flashlight
+    const coneAngle = (ct.flashlightAngleDegrees * Math.PI) / 180
+    const coneRadius = ct.flashlightRadius
+
+    // Store currently hit lines for this frame
+    const currentlyLitLines: Set<Phaser.GameObjects.Line> = new Set()
+
+    // Cast rays within the cone
+    for (let i = 0; i < rayDensity; i++) {
+      // Calculate ray angle within the cone
+      const angleOffset = (i / (rayDensity - 1) - 0.5) * coneAngle
+      const rayAngle = playerDirection + angleOffset
+
+      // Calculate ray endpoint
+      const rayEndX = playerX + Math.cos(rayAngle) * coneRadius
+      const rayEndY = playerY + Math.sin(rayAngle) * coneRadius
+
+      // Create ray geometry
+      const ray = new Phaser.Geom.Line(playerX, playerY, rayEndX, rayEndY)
+
+      // Check intersections with tile outlines
+      this.tileLineAssociations.forEach(lines => {
+        lines.forEach(untypedline => {
+          const line = untypedline as OutlineLine
+          // Use the stored geometry line directly
+          if (Phaser.Geom.Intersects.LineToLine(ray, line.lineGeom)) {
+            // Add to the currently lit lines
+            currentlyLitLines.add(line.lineObject)
+
+            // If not already lit, update color
+            if (!this.litLines.has(line.lineObject)) {
+              // Make a lighter version of the original color
+              const lighterColor = blendColors(
+                line.originalColor,
+                0xffffff,
+                0.5,
+              )
+              line.lineObject.setStrokeStyle(
+                line.lineObject.lineWidth,
+                lighterColor,
+                line.lineObject.strokeAlpha,
+              )
+            }
+          }
+        })
+      })
+    }
+
+    // Revert color of lines that are no longer lit
+    this.litLines.forEach(lineObject => {
+      if (!currentlyLitLines.has(lineObject)) {
+        // Find the line data
+        let lineData: OutlineLine | undefined
+
+        this.tileLineAssociations.forEach(lines => {
+          const found = lines.find(l => (l as OutlineLine).lineObject === lineObject)
+          if (found) {
+            lineData = found as OutlineLine
+          }
+        })
+
+        if (lineData) {
+          // Restore original color
+          lineObject.setStrokeStyle(
+            lineObject.lineWidth,
+            lineData.originalColor,
+            lineObject.strokeAlpha,
+          )
+        }
+      }
+    })
+
+    // Update the set of lit lines
+    this.litLines = currentlyLitLines
   }
 }

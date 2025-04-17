@@ -384,8 +384,8 @@ export class ProjectileManager {
         collisionbody!.y,
       )
       this.projectileSpark(
-        (projectile.x + collisionbody!.x) / 2,
-        (projectile.y + collisionbody!.y) / 2,
+        0.25 * projectile.x + 0.75 * collisionbody!.x,
+        0.25 * projectile.y + 0.75 * collisionbody!.y,
         projectile,
         directionRadians,
       )
@@ -461,8 +461,8 @@ export class ProjectileManager {
       enemy.y,
     )
     this.projectileSpark(
-      (projectile.x + enemy.x) / 2,
-      (projectile.y + enemy.y) / 2,
+      0.25 * projectile.x + 0.75 * enemy.x,
+      0.25 * projectile.y + 0.75 * enemy.y,
       projectile,
       directionRadians,
       enemyData,

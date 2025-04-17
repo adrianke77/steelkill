@@ -432,13 +432,13 @@ export class Game extends Scene {
       },
     )
 
-    // if (this.frameCounter % ct.shadowUpdateRate === 0) {
-    //   this.mapMgr.updateShadows(
-    //     this.player.mechContainer.x,
-    //     this.player.mechContainer.y,
-    //     this.player.mechContainer.rotation,
-    //   ) 
-    // }
+    if (this.frameCounter % ct.shadowUpdateRate === 0) {
+      this.mapMgr.updateShadows(
+        this.player.mechContainer.x,
+        this.player.mechContainer.y,
+        this.player.mechContainer.rotation,
+      ) 
+    }
 
     this.minimapMgr.drawMinimap()
   }

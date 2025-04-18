@@ -11,23 +11,34 @@ import {
 import { blendColors } from '../utils'
 
 export function loadRenderingAssets(scene: Game) {
-  scene.load.spritesheet('boostflame', 'boostflame.png', {
-    frameWidth: 107,
-    frameHeight: 48,
-  })
-  scene.load.spritesheet('blood', 'greyblood.png', {
-    frameWidth: 50,
-    frameHeight: 50,
-  })
-  scene.load.spritesheet('explosion', 'explosion.png', {
-    frameWidth: 100,
-    frameHeight: 96,
-  })
-  scene.load.spritesheet('muzzleflash', 'muzzleflash.png', {
-    frameWidth: 165,
-    frameHeight: 165,
-  })
-  scene.load.image('dust', 'smalldust.png')
+  // Only load spritesheets if not already loaded
+  if (!scene.textures.exists('boostflame')) {
+    scene.load.spritesheet('boostflame', 'boostflame.png', {
+      frameWidth: 107,
+      frameHeight: 48,
+    })
+  }
+  if (!scene.textures.exists('blood')) {
+    scene.load.spritesheet('blood', 'greyblood.png', {
+      frameWidth: 50,
+      frameHeight: 50,
+    })
+  }
+  if (!scene.textures.exists('explosion')) {
+    scene.load.spritesheet('explosion', 'explosion.png', {
+      frameWidth: 100,
+      frameHeight: 96,
+    })
+  }
+  if (!scene.textures.exists('muzzleflash')) {
+    scene.load.spritesheet('muzzleflash', 'muzzleflash.png', {
+      frameWidth: 165,
+      frameHeight: 165,
+    })
+  }
+  if (!scene.textures.exists('dust')) {
+    scene.load.image('dust', 'smalldust.png')
+  }
 }
 
 export const baseProjectileSparkConfig = {
@@ -63,86 +74,97 @@ export const secondaryEnemyDeathSprayConfig = {
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export function createEmittersAndAnimations(scene: Game) {
-  const graphics = scene.add.graphics()
-  graphics.fillStyle(0xffffff, 1)
-  graphics.fillCircle(0, 0, 20)
-  graphics.generateTexture('whiteParticle', 1, 1)
-  graphics.destroy()
+  if (!scene.textures.exists('whiteParticle')) {
+    const graphics = scene.add.graphics()
+    graphics.fillStyle(0xffffff, 1)
+    graphics.fillCircle(0, 0, 20)
+    graphics.generateTexture('whiteParticle', 1, 1)
+    graphics.destroy()
+  }
 
-  scene.projectileSparkEmitter = scene.addParticles(
-    0,
-    0,
-    'whiteParticle',
-    baseProjectileSparkConfig,
-  )
-  scene.projectileSparkEmitter.setDepth(ct.depths.projectileSpark)
-  scene.projectileSparkEmitter.setPipeline('Light2D')
+  if (!scene.projectileSparkEmitter) {
+    scene.projectileSparkEmitter = scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      baseProjectileSparkConfig,
+    )
+    scene.projectileSparkEmitter.setDepth(ct.depths.projectileSpark)
+    scene.projectileSparkEmitter.setPipeline('Light2D')
+  }
 
-  scene.enemyDeathSprayEmitter = scene.addParticles(
-    0,
-    0,
-    'whiteParticle',
-    baseDeathSprayConfig,
-  )
-  scene.enemyDeathSprayEmitter.setDepth(ct.depths.bloodSpray)
-  scene.enemyDeathSprayEmitter.setPipeline('Light2D')
+  if (!scene.enemyDeathSprayEmitter) {
+    scene.enemyDeathSprayEmitter = scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      baseDeathSprayConfig,
+    )
+    scene.enemyDeathSprayEmitter.setDepth(ct.depths.bloodSpray)
+    scene.enemyDeathSprayEmitter.setPipeline('Light2D')
+  }
 
-  scene.secondaryEnemyDeathSprayEmitter = scene.addParticles(
-    0,
-    0,
-    'whiteParticle',
-    baseDeathSprayConfig,
-  )
-  scene.secondaryEnemyDeathSprayEmitter.setDepth(ct.depths.bloodSpray)
-  scene.secondaryEnemyDeathSprayEmitter.setPipeline('Light2D')
+  if (!scene.secondaryEnemyDeathSprayEmitter) {
+    scene.secondaryEnemyDeathSprayEmitter = scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      baseDeathSprayConfig,
+    )
+    scene.secondaryEnemyDeathSprayEmitter.setDepth(ct.depths.bloodSpray)
+    scene.secondaryEnemyDeathSprayEmitter.setPipeline('Light2D')
+  }
 
-  scene.anims.create({
-    key: 'whiteant8',
-    frames: scene.anims.generateFrameNumbers('whiteant8', { start: 0, end: 7 }),
-    frameRate: 20,
-    repeat: -1,
-  })
+  if (!scene.anims.exists('boostflame')) {
+    scene.anims.create({
+      key: 'boostflame',
+      frames: scene.anims.generateFrameNumbers('boostflame', {
+        start: 0,
+        end: 30,
+      }),
+      frameRate: 24,
+      repeat: -1,
+    })
+  }
 
-  scene.anims.create({
-    key: 'boostflame',
-    frames: scene.anims.generateFrameNumbers('boostflame', {
-      start: 0,
-      end: 30,
-    }),
-    frameRate: 24,
-    repeat: -1,
-  })
+  if (!scene.anims.exists('explosion')) {
+    scene.anims.create({
+      key: 'explosion',
+      frames: scene.anims.generateFrameNumbers('explosion', {
+        start: 0,
+        end: 35,
+      }),
+      frameRate: 75,
+      repeat: 0,
+    })
+  }
 
-  scene.anims.create({
-    key: 'explosion',
-    frames: scene.anims.generateFrameNumbers('explosion', {
-      start: 0,
-      end: 35,
-    }),
-    frameRate: 75,
-    repeat: 0,
-  })
+  if (!scene.anims.exists('blood')) {
+    scene.anims.create({
+      key: 'blood',
+      frames: scene.anims.generateFrameNumbers('blood', { start: 0, end: 8 }),
+      frameRate: 500,
+      repeat: -1,
+    })
+  }
 
-  scene.anims.create({
-    key: 'blood',
-    frames: scene.anims.generateFrameNumbers('blood', { start: 0, end: 8 }),
-    frameRate: 500,
-    repeat: -1,
-  })
+  if (!scene.anims.exists('muzzleflash')) {
+    scene.anims.create({
+      key: 'muzzleflash',
+      frames: scene.anims.generateFrameNumbers('muzzleflash', {
+        start: 0,
+        end: 27,
+      }),
+      frameRate: 100,
+      repeat: -1,
+    })
+  }
 
-  scene.anims.create({
-    key: 'muzzleflash',
-    frames: scene.anims.generateFrameNumbers('muzzleflash', {
-      start: 0,
-      end: 27,
-    }),
-    frameRate: 100,
-    repeat: -1,
-  })
-
-  scene.bloodFrameNames = scene.anims
-    .get('blood')
-    .frames.map(frame => frame.frame.name)
+  if (!scene.bloodFrameNames || scene.bloodFrameNames.length === 0) {
+    scene.bloodFrameNames = scene.anims
+      .get('blood')
+      .frames.map(frame => frame.frame.name)
+  }
 }
 
 export function drawDecal(scene: Game, image: Phaser.GameObjects.Image) {
@@ -478,9 +500,11 @@ export function enemyDeathSpray(
       max: enemyData.corpseSize * 1.0,
     }
     scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
-    scene.enemyDeathSprayEmitter.setParticleTint(
-      blendColors(enemyData.color, 0x000000, 0.2),
-    )
+    if (enemyData.color) {
+      scene.enemyDeathSprayEmitter.setParticleTint(
+        blendColors(enemyData.color, 0x000000, 0.2),
+      )
+    }
     scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
   }
 
@@ -493,9 +517,11 @@ export function enemyDeathSpray(
   scene.secondaryEnemyDeathSprayEmitter.setConfig(
     secondaryEnemyDeathSprayConfig,
   )
-  scene.secondaryEnemyDeathSprayEmitter.setParticleTint(
-    blendColors(enemyData.color, 0x000000, 0.2),
-  )
+  if (enemyData.color) {
+    scene.secondaryEnemyDeathSprayEmitter.setParticleTint(
+      blendColors(enemyData.color, 0x000000, 0.2),
+    )
+  }
   scene.secondaryEnemyDeathSprayEmitter.emitParticleAt(
     x,
     y,

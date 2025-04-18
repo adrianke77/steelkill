@@ -11,37 +11,44 @@ import {
   generateUniqueId,
   getSoundPan,
   getSoundDistanceScale,
-  increaseColorIntensity,
+  loadVerticalSpritesheet,
 } from '../utils'
 
 const baseEnemyHitTerrainSparkConfig = {
   lifespan: 500,
-  speed: { min: 0, max: 100},
+  speed: { min: 0, max: 100 },
   scale: { start: 6, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export const loadEnemyAssets = (scene: Game) => {
-  scene.load.spritesheet('whiteant8', 'whiteant8.png', {
-    frameWidth: 202,
-    frameHeight: 247,
-  })
   for (const enemyName of Object.keys(ct.enemyData)) {
     const enemyData = ct.enemyData[enemyName]
-    if (enemyData.randomSound) {
+    if (
+      enemyData.randomSound &&
+      !scene.cache.audio.has(enemyData.randomSound)
+    ) {
       scene.load.audio(
         enemyData.randomSound,
         `audio/${enemyData.randomSound}.mp3`,
       )
     }
-    if (enemyData.deathSound) {
+    if (enemyData.deathSound && !scene.cache.audio.has(enemyData.deathSound)) {
       scene.load.audio(
         enemyData.deathSound,
         `audio/${enemyData.deathSound}.mp3`,
       )
     }
-    scene.load.audio('terrainHit', 'audio/dig.mp3')
+    if (
+      enemyData.walkAnimation &&
+      !scene.textures.exists(enemyData.walkAnimation)
+    ) {
+      loadVerticalSpritesheet(scene, enemyData.walkAnimation)
+    }
+    if (!scene.cache.audio.has('terrainHit')) {
+      scene.load.audio('terrainHit', 'audio/dig.mp3')
+    }
   }
 }
 
@@ -69,17 +76,19 @@ export class EnemyManager {
       this.enemies,
       x,
       y,
-      enemyData.spriteSheetKey,
+      enemyData.walkAnimation,
     )
     enemy.health = enemyData.health
     enemy.armor = enemyData.armor
-    enemy.displayHeight = enemyData.displaySize
-    enemy.displayWidth = enemyData.displaySize
+    enemy.displayHeight = enemyData.displayHeight
+    enemy.displayWidth = enemyData.displayWidth
     enemy.setSize(enemyData.collisionSize * 2)
-    const enemyColor = this.scene.viewMgr.infraredIsOn
-      ? increaseColorIntensity(enemyData.color)
-      : enemyData.color
-    enemy.setTint(enemyColor)
+    if (enemyData.color) {
+      const enemyColor = this.scene.viewMgr.infraredIsOn
+        ? 0xFFFFFF
+        : enemyData.color
+      enemy.setTint(enemyColor)
+    }
     enemy.setDepth(ct.depths.enemy)
     enemy.play(enemyData.walkAnimation)
     enemy.setPipeline('Light2D')
@@ -213,12 +222,11 @@ export class EnemyManager {
 
     enemy.rotation = angle + Math.PI / 2
 
-    // Movement logic remains unchanged
     switch (direction) {
       case 'charge':
         enemy.setVelocity(
-          speed * 3 * Math.cos(angle),
-          speed * 3 * Math.sin(angle),
+          speed * 2 * Math.cos(angle),
+          speed * 2 * Math.sin(angle),
         )
         break
       case 'stop':
@@ -249,6 +257,18 @@ export class EnemyManager {
         break
       }
     }
+    const isMoving = enemy.body!.velocity.x !== 0 || enemy.body!.velocity.y !== 0
+    const isPlaying = enemy.anims.isPlaying
+
+    if (isMoving) {
+      if (!isPlaying) {
+        enemy.play(enemyData.walkAnimation)
+      }
+    } else {
+      if (isPlaying) {
+        enemy.anims.stop()
+      }
+    }
   }
 
   enemyHitTerrainSpark(
@@ -259,13 +279,13 @@ export class EnemyManager {
     particles: number,
   ) {
     const config = baseEnemyHitTerrainSparkConfig
-      const degDirection = Phaser.Math.RadToDeg(radDirection)
-      // reverse angle so sparks are towards the projectile source
-      const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
-      config.angle = {
-        min: reversedDirection - 30,
-        max: reversedDirection + 30,
-      }
+    const degDirection = Phaser.Math.RadToDeg(radDirection)
+    // reverse angle so sparks are towards the projectile source
+    const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
+    config.angle = {
+      min: reversedDirection - 30,
+      max: reversedDirection + 30,
+    }
     this.scene.projectileSparkEmitter.setConfig(baseEnemyHitTerrainSparkConfig)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)
     this.scene.projectileSparkEmitter.emitParticleAt(
@@ -357,9 +377,9 @@ export class EnemyManager {
   // only for ants now, need to refactor for other enemies
   getRandomDirection(): string {
     const randomValue = Math.random()
-    if (randomValue < 0.4) return 'stop'
-    if (randomValue < 0.6) return 'charge'
-    if (randomValue < 0.8) return 'angled-left'
+    if (randomValue < 0.7) return 'stop'
+    if (randomValue < 0.8) return 'charge'
+    if (randomValue < 0.9) return 'angled-left'
     if (randomValue < 1) return 'angled-right'
     return 'back'
   }
@@ -450,8 +470,10 @@ export class EnemyManager {
   switchEnemiesToInfraredColors(): void {
     this.enemies.children.iterate(enemy => {
       const enemySprite = enemy as EnemySprite
-      const color = increaseColorIntensity(enemySprite.enemyData.color)
-      enemySprite.setTint(color)
+      if (enemySprite.enemyData.color) {
+        const color = 0xFFFFFF
+        enemySprite.setTint(color)
+      }
       return true
     })
   }

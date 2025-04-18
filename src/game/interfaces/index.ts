@@ -98,14 +98,14 @@ export interface EnemyData {
   speed: number
   health: number
   armor: number
-  displaySize: number
+  displayHeight: number
+  displayWidth: number
   collisionSize: number
   bloodColor: number
-  color: number
+  color?: number
   walkAnimation: string
   corpseImage: string
   corpseSize: number
-  spriteSheetKey: string
   directionTimerMax: number
   directionTimerMin: number
   randomSound?: string

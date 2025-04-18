@@ -235,12 +235,12 @@
                         {
                          "name":"fillProbability",
                          "type":"string",
-                         "value":"0.45"
+                         "value":"0.43"
                         }, 
                         {
                          "name":"iterations",
                          "type":"string",
-                         "value":"10"
+                         "value":"20"
                         }],
                  "rotation":0,
                  "type":"",

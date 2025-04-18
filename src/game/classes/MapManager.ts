@@ -14,7 +14,7 @@ const treeGids = [1, 9]
 
 const treeRubble = {
   1: {
-    fallen: ['fallentree1', 'fallentree2', 'fallentree3'],
+    fallen: ['fallentreedark1', 'fallentreedark2', 'fallentreedark3'],
     bits: ['treebits1', 'treebits2', 'treebits3'],
   },
   9: {

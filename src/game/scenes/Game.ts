@@ -438,6 +438,11 @@ export class Game extends Scene {
         this.player.mechContainer.y,
         this.player.mechContainer.rotation,
       ) 
+      this.enemyMgr.updateEnemyShadows(
+        this.player.mechContainer.x,
+        this.player.mechContainer.y,
+        this.player.mechContainer.rotation,
+      )
     }
 
     this.minimapMgr.drawMinimap()

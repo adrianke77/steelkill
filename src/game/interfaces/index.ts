@@ -141,6 +141,7 @@ export interface EnemySprite extends Phaser.Physics.Arcade.Sprite {
   previousPosition?: { x: number; y: number }
   positionTimestamp?: number
   hasFiredOnStuck?: boolean
+  shadow?: Phaser.GameObjects.Sprite
 }
 
 export interface Projectile extends Phaser.Physics.Arcade.Sprite {

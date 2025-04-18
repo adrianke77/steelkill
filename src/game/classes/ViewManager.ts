@@ -245,7 +245,6 @@ export class ViewManager {
         return true
       })
       this.scene.enemyMgr.switchEnemiesToInfraredColors()
-      this.scene.terrainMgr.terrainLayer.setAlpha(1)
     } else {
       // turn on infrared
       this.mainCam.resetPostPipeline()
@@ -267,7 +266,6 @@ export class ViewManager {
         this.resetBuildingToOriginalColors(sprite)
         return true
       })
-      this.scene.terrainMgr.terrainLayer.setAlpha(0.2)
     }
   }
 }

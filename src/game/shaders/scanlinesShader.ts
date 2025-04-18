@@ -12,8 +12,8 @@ void main() {
     vec4 color = texture2D(uMainSampler, uv);
 
     // Adjust the frequency and amplitude of the scanline effect
-    float frequency = 800.0;  // Adjust this value to change the frequency of the scanlines
-    float amplitude = 0.003;   // Adjust this value to change the intensity of the scanlines
+    float frequency = 600.0;  // Adjust this value to change the frequency of the scanlines
+    float amplitude = 0.0025;   // Adjust this value to change the intensity of the scanlines
 
     // Add animated scanline effect
     float scanline = sin((uv.y + uTime) * frequency) * amplitude;

@@ -47,6 +47,8 @@ export const baseProjectileSparkConfig = {
   scale: { start: 4, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
+  accelerationX: 0,
+  accelerationY: 0,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export const baseDeathSprayConfig = {
@@ -412,7 +414,11 @@ export function destroyEnemyAndCreateCorpseDecals(
     scene.enemyMgr.untrackRandomSound(enemy)
     enemy.randomSound.destroy()
   }
+  if (enemy.shadow) {
+    enemy.shadow.destroy()
+  }
   enemy.destroy()
+
   createBloodSplat(
     scene,
     enemy.x,
@@ -426,7 +432,13 @@ export function destroyEnemyAndCreateCorpseDecals(
   deadEnemy.displayHeight = enemyData.corpseSize
   deadEnemy.displayWidth = enemyData.corpseSize
   deadEnemy.alpha = 0 // Start with alpha 0 for fade-in effect
-  deadEnemy.setTint(enemyData.color)
+  deadEnemy.setTint(
+    blendColors(
+      enemyData.color ? enemyData.color : enemyData.bloodColor,
+      0x000000,
+      0.5,
+    ),
+  )
   deadEnemy.setPipeline('Light2D')
   deadEnemy.setDepth(ct.depths.initialDeadBody)
 
@@ -539,7 +551,7 @@ export function tweenFadeDecal(
     targets: combinedDecal.image,
     alpha: 0,
     duration: ct.DecalFadeTime,
-    ease: 'Quadratic.In',
+    ease: 'Linear',
     onComplete: () => {
       combinedDecal.image.destroy()
       combinedDecal.texture.destroy()
@@ -580,7 +592,7 @@ export function renderExplosion(
   scorch.rotation = Phaser.Math.FloatBetween(0, Math.PI * 2)
   scorch.displayHeight = displayDiameter + 10
   scorch.displayWidth = displayDiameter + 10
-  scorch.setAlpha(0.6)
+  scorch.setAlpha(0.3)
   scorch.setTint(
     optionals && optionals.scorchTint ? optionals.scorchTint : 0x000000,
   )

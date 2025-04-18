@@ -20,6 +20,8 @@ const baseEnemyHitTerrainSparkConfig = {
   scale: { start: 6, end: 0 },
   rotate: { start: 0, end: 360 },
   emitting: false,
+  accelerationX: 0,
+  accelerationY: 0,
 } as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
 
 export const loadEnemyAssets = (scene: Game) => {
@@ -100,6 +102,20 @@ export class EnemyManager {
       enemy.lastWeaponFireTime = enemyData.weapons.map(() => 0)
       enemy.tracerTracking = enemyData.weapons.map(() => 0)
     }
+
+    // add shadow
+    const averageSize = (enemy.displayWidth + enemy.displayHeight) / 2
+    const shadow = this.scene.addSprite(
+      enemy.x,
+      enemy.y,
+      this.scene.shadowTextureKey,
+    )
+    shadow.setOrigin(0.5, 0.5)
+    shadow.setDepth(ct.depths.shadows)
+    shadow.setAlpha(ct.flashlightShadowDefaultAlpha)
+    shadow.displayWidth = averageSize
+    shadow.displayHeight = averageSize
+    enemy.shadow = shadow // Attach shadow to enemy sprite
 
     this.resetDirectionTimer(enemy)
   }
@@ -278,15 +294,17 @@ export class EnemyManager {
     radDirection: number,
     particles: number,
   ) {
-    const config = baseEnemyHitTerrainSparkConfig
+    if (!this.scene.projectileSparkEmitter) {
+      return
+    }
+    const config = JSON.parse(JSON.stringify(baseEnemyHitTerrainSparkConfig))
     const degDirection = Phaser.Math.RadToDeg(radDirection)
-    // reverse angle so sparks are towards the projectile source
     const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
     config.angle = {
       min: reversedDirection - 30,
       max: reversedDirection + 30,
     }
-    this.scene.projectileSparkEmitter.setConfig(baseEnemyHitTerrainSparkConfig)
+    this.scene.projectileSparkEmitter.setConfig(config)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)
     this.scene.projectileSparkEmitter.emitParticleAt(
       x,
@@ -488,5 +506,77 @@ export class EnemyManager {
 
   isAnEnemy(obj: any): boolean {
     return 'enemyData' in obj
+  }
+
+  updateEnemyShadows(playerX: number, playerY: number, playerRotation: number): void {
+    const playerFacingDirection = playerRotation - Math.PI / 2
+    const maxShadowDistance = ct.flashlightRadius * 1.1
+  
+    this.enemies.children.iterate(enemyObj => {
+      const enemy = enemyObj as EnemySprite
+      if (enemy.shadow) {
+        const dx = enemy.x - playerX
+        const dy = enemy.y - playerY
+        const distanceToPlayer = Math.sqrt(dx * dx + dy * dy)
+        const angleToShadow = Math.atan2(dy, dx)
+  
+        const angleDifference = Phaser.Math.Angle.Wrap(
+          angleToShadow - playerFacingDirection,
+        )
+  
+        // Calculate the alpha based on the angle difference and distance
+        const coneAngle = (ct.flashlightAngleDegrees * Math.PI) / 180
+        const extendedConeAngle = coneAngle * 1.2
+        let alpha = 0
+        // lighter shadows for enemies as they are usually shorter
+        const defaultAlpha = ct.flashlightShadowDefaultAlpha /2
+  
+        if (distanceToPlayer <= maxShadowDistance) {
+          if (Math.abs(angleDifference) <= coneAngle / 2) {
+            // Fully inside the cone
+            if (distanceToPlayer <= ct.flashlightRadius) {
+              alpha = defaultAlpha
+            } else {
+              // Decrease alpha based on distance beyond flashlightRadius
+              const distanceFactor =
+                (maxShadowDistance - distanceToPlayer) /
+                (maxShadowDistance - ct.flashlightRadius)
+              alpha = defaultAlpha * distanceFactor
+            }
+          } else if (Math.abs(angleDifference) <= extendedConeAngle / 2) {
+            // Calculate alpha for the area between the cone and the extended cone
+            const normalizedDifference =
+              (Math.abs(angleDifference) - coneAngle / 2) /
+              (extendedConeAngle / 2 - coneAngle / 2)
+            alpha = defaultAlpha - normalizedDifference
+  
+            // Further decrease alpha based on distance beyond flashlightRadius
+            if (distanceToPlayer > ct.flashlightRadius) {
+              const distanceFactor =
+                (maxShadowDistance - distanceToPlayer) /
+                (maxShadowDistance - ct.flashlightRadius)
+              alpha *= distanceFactor
+            }
+          }
+        }
+  
+        enemy.shadow.setAlpha(alpha)
+  
+        const spriteAverageSize = (enemy.displayWidth + enemy.displayHeight) / 2
+  
+        // Position shadow slightly offset from the object's centre
+        const shadowOffset = spriteAverageSize / 2
+        enemy.shadow.x = enemy.x + Math.cos(angleToShadow) * shadowOffset
+        enemy.shadow.y = enemy.y + Math.sin(angleToShadow) * shadowOffset
+  
+        const shadowWidth = spriteAverageSize
+        const shadowHeight = spriteAverageSize * 3
+        enemy.shadow.setDisplaySize(shadowWidth, shadowHeight)
+  
+        // Rotate shadow to point away from player
+        enemy.shadow.setRotation(angleToShadow + Math.PI / 2)
+      }
+      return true
+    })
   }
 }

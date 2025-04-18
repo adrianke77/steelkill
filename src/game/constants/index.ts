@@ -44,6 +44,7 @@ export const Constants = {
   mapScaling: 1,
   terrainDefaultFillProbability: 0.45,
   terrainDefaultIterations: 7,
+  terrainAlpha:0.8,
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,

@@ -140,9 +140,9 @@ export class TerrainManager {
 
     this.terrainLayer = this.map.createBlankLayer('Terrain', tileset)!
     this.scene.viewMgr.mainLayer.add(this.terrainLayer)
-
+    this.terrainLayer.setPipeline('Light2D')
     this.terrainLayer.setDepth(ct.depths.terrain)
-    this.terrainLayer.setAlpha(0.6)
+    this.terrainLayer.setAlpha(ct.terrainAlpha)
   }
 
   setBackgroundAverageColorAndTerrainTileColors() {
@@ -219,9 +219,10 @@ export class TerrainManager {
     }
 
     const lineObject = this.scene.add
-      .line(0, 0, startX, startY, endX, endY, outlineColor, 0.8)
+      .line(0, 0, startX, startY, endX, endY, outlineColor, ct.terrainAlpha)
       .setOrigin(0, 0)
       .setLineWidth(this.map.tileWidth * 3, this.map.tileWidth * 3)
+      .setPipeline('Light2D')
 
     // Create the geometric line with absolute coordinates
     const lineGeom = new Phaser.Geom.Line(startX, startY, endX, endY)
@@ -242,7 +243,7 @@ export class TerrainManager {
     this.clearTileOutlines(x, y)
 
     const tileData = this.getTileData(tile)
-    const outlineColor = blendColors(tileData.color, 0x000000, 0.9)
+    const outlineColor = blendColors(tileData.color, 0x000000, 0.8)
     const tileSize = this.map.tileWidth
     const worldX = tile.pixelX
     const worldY = tile.pixelY

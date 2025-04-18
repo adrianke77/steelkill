@@ -429,8 +429,8 @@ export class ProjectileManager {
         0,
         0,
         1,
-        3000,
-        200,
+        1000,
+        100,
         tileData.color,
       )
       if (target.health <= 0) {

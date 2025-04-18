@@ -6,6 +6,7 @@ import {
   EnemyWeaponSpec,
   SoundTracker,
   TerrainTile,
+  MapObject,
 } from '../interfaces'
 import {
   generateUniqueId,
@@ -87,7 +88,7 @@ export class EnemyManager {
     enemy.setSize(enemyData.collisionSize * 2)
     if (enemyData.color) {
       const enemyColor = this.scene.viewMgr.infraredIsOn
-        ? 0xFFFFFF
+        ? 0xffffff
         : enemyData.color
       enemy.setTint(enemyColor)
     }
@@ -126,7 +127,6 @@ export class EnemyManager {
     const [playerX, playerY] = this.scene.player.getPlayerCoords()
     const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
     const direction = enemy.direction
-
     const time = this.scene.game.loop.time
     const distanceToPlayer = Phaser.Math.Distance.Between(
       enemy.x,
@@ -135,109 +135,244 @@ export class EnemyManager {
       playerY,
     )
 
-    // Proceed only if the enemy has weapons
     if (enemyData.terrainBreaker || hasWeapons) {
-      // Initialize properties if they don't exist
-      if (!enemy.previousPosition) {
-        enemy.previousPosition = { x: enemy.x, y: enemy.y }
-        enemy.positionTimestamp = time
-        enemy.hasFiredOnStuck = false
-      }
-
-      // Stuck behind terrain and attempting to break it
-      if (time - enemy.positionTimestamp! >= Math.random() * 1000 + 1000) {
-        // Calculate distance from previous position
-        const distanceFromPreviousPosition = Phaser.Math.Distance.Between(
-          enemy.x,
-          enemy.y,
-          enemy.previousPosition.x,
-          enemy.previousPosition.y,
-        )
-
-        // Check if enemy is within 40 pixels of its old position
-        if (distanceFromPreviousPosition <= 40 && !enemy.hasFiredOnStuck) {
-          if (hasWeapons) {
-            //fire first weapon
-            const weapon = enemyData.weapons![0]
-            this.enemyWeaponFire(enemy, weapon, 0)
-          } else {
-            // 1) Find the terrain tile directly in front of the enemy, up to two body lengths
-            const maxDistance = 2 * enemy.displayHeight
-            const stepSize = this.scene.terrainMgr.map.tileWidth / 2
-            let tileFound = false
-            let tile: TerrainTile | null = null
-
-            for (
-              let distance = stepSize;
-              distance <= maxDistance;
-              distance += stepSize
-            ) {
-              const dx = Math.cos(angle) * distance
-              const dy = Math.sin(angle) * distance
-              const targetX = enemy.x + dx
-              const targetY = enemy.y + dy
-              // Get the tile at the target position
-              tile = this.scene.terrainMgr.terrainLayer.getTileAtWorldXY(
-                targetX,
-                targetY,
-              ) as TerrainTile
-              if (tile) {
-                tileFound = true
-                break
-              }
-            }
-
-            if (tileFound && tile) {
-              tile.health -= 500
-              const tilePixelX = tile.x * ct.tileSize
-              const tilePixely = tile.y * ct.tileSize
-
-              const directionRadians = Phaser.Math.Angle.Between(
-                enemy.x,
-                enemy.y,
-                tilePixelX,
-                tilePixely,
-              )
-              this.enemyHitTerrainSpark(
-                (tilePixelX + enemy.x) / 2,
-                (tilePixely + enemy.y) / 2,
-                0xffffff,
-                directionRadians,
-                10,
-              )
-              this.playHitTerrainSound()
-              if (tile.health <= 0) {
-                this.scene.terrainMgr.destroyTile(tile)
-              }
-            }
-          }
-
-          enemy.hasFiredOnStuck = true // Prevent multiple firings
-        } else if (distanceFromPreviousPosition > 40) {
-          // Reset the fired flag if the enemy moved beyond 'stuck' range
-          enemy.hasFiredOnStuck = false
-        }
-
-        // Update previous position and timestamp
-        enemy.previousPosition = { x: enemy.x, y: enemy.y }
-        enemy.positionTimestamp = time
-      }
-
+      this.handleStuckOrTerrainBreaker(
+        enemy,
+        angle,
+        time,
+        hasWeapons,
+        enemyData,
+      )
       if (hasWeapons) {
-        enemyData.weapons!.forEach((weapon, index) => {
-          if (
-            distanceToPlayer < weapon.maxRange! &&
-            time - enemy.lastWeaponFireTime![index] > weapon.fireDelay
-          ) {
-            this.enemyWeaponFire(enemy, weapon, index)
-            enemy.lastWeaponFireTime![index] = time
-          }
-        })
+        this.handleEnemyWeaponFire(enemy, enemyData, distanceToPlayer, time)
       }
     }
 
     enemy.rotation = angle + Math.PI / 2
+    this.setEnemyVelocityByDirection(enemy, direction, angle, speed)
+    this.handleEnemyAnimation(enemy, enemyData)
+  }
 
+  private breakObstacleInFront(enemy: EnemySprite, angle: number): void {
+    const maxDistance = 2 * enemy.displayHeight
+    const stepSize = this.scene.terrainMgr.map.tileWidth / 2
+
+    let nearestObstacle: {
+      type: 'tile' | 'mapObject'
+      distance: number
+      tile?: TerrainTile
+      mapObject?: MapObject
+      hitX: number
+      hitY: number
+    } | null = null
+
+    for (
+      let distance = stepSize;
+      distance <= maxDistance;
+      distance += stepSize
+    ) {
+      const dx = Math.cos(angle) * distance
+      const dy = Math.sin(angle) * distance
+      const targetX = enemy.x + dx
+      const targetY = enemy.y + dy
+
+      // Check for terrain tile
+      const tile = this.scene.terrainMgr.terrainLayer.getTileAtWorldXY(
+        targetX,
+        targetY,
+      ) as TerrainTile | null
+
+      // Check for map object (use bounding box or circle collision)
+      let foundMapObject: MapObject | undefined
+      let foundMapObjectDist = Infinity
+      for (const mapObject of this.scene.mapMgr.mapObjects) {
+        // Skip map objects with no health
+        if (mapObject.health <= 0) continue
+
+        const objX = mapObject.centreX
+        const objY = mapObject.centreY
+        const avgSize =
+          (mapObject.sprite.displayWidth + mapObject.sprite.displayHeight) / 2
+        const radius = avgSize / 2
+        const distToObj = Phaser.Math.Distance.Between(
+          targetX,
+          targetY,
+          objX,
+          objY,
+        )
+        if (distToObj <= radius) {
+          foundMapObject = mapObject
+          foundMapObjectDist = distToObj
+          break // Only need the first one found at this step
+        }
+      }
+
+      // If both found, pick the closer one
+      if (tile && foundMapObject) {
+        const tileCenterX = tile.getCenterX()
+        const tileCenterY = tile.getCenterY()
+        const distToTile = Phaser.Math.Distance.Between(
+          targetX,
+          targetY,
+          tileCenterX,
+          tileCenterY,
+        )
+        if (distToTile <= foundMapObjectDist) {
+          nearestObstacle = {
+            type: 'tile',
+            distance,
+            tile,
+            hitX: tileCenterX,
+            hitY: tileCenterY,
+          }
+        } else {
+          nearestObstacle = {
+            type: 'mapObject',
+            distance,
+            mapObject: foundMapObject,
+            hitX: foundMapObject.centreX,
+            hitY: foundMapObject.centreY,
+          }
+        }
+        break
+      } else if (tile) {
+        const tileCenterX = tile.getCenterX()
+        const tileCenterY = tile.getCenterY()
+        nearestObstacle = {
+          type: 'tile',
+          distance,
+          tile,
+          hitX: tileCenterX,
+          hitY: tileCenterY,
+        }
+        break
+      } else if (foundMapObject) {
+        nearestObstacle = {
+          type: 'mapObject',
+          distance,
+          mapObject: foundMapObject,
+          hitX: foundMapObject.centreX,
+          hitY: foundMapObject.centreY,
+        }
+        break
+      }
+      // else: nothing found at this step, continue
+    }
+
+    if (nearestObstacle) {
+      if (nearestObstacle.type === 'tile' && nearestObstacle.tile) {
+        // Damage terrain tile
+        nearestObstacle.tile.health -= 500
+        const tilePixelX = nearestObstacle.tile.x * ct.tileSize
+        const tilePixely = nearestObstacle.tile.y * ct.tileSize
+        const directionRadians = Phaser.Math.Angle.Between(
+          enemy.x,
+          enemy.y,
+          tilePixelX,
+          tilePixely,
+        )
+        this.enemyHitTerrainSpark(
+          (tilePixelX + enemy.x) / 2,
+          (tilePixely + enemy.y) / 2,
+          0xffffff,
+          directionRadians,
+          10,
+        )
+        this.playHitTerrainSound()
+        if (nearestObstacle.tile.health <= 0) {
+          this.scene.terrainMgr.destroyTile(nearestObstacle.tile)
+        }
+      } else if (
+        nearestObstacle.type === 'mapObject' &&
+        nearestObstacle.mapObject
+      ) {
+        // Damage map object
+        nearestObstacle.mapObject.health -= 500
+        const directionRadians = Phaser.Math.Angle.Between(
+          enemy.x,
+          enemy.y,
+          nearestObstacle.hitX,
+          nearestObstacle.hitY,
+        )
+        this.enemyHitTerrainSpark(
+          (nearestObstacle.hitX + enemy.x) / 2,
+          (nearestObstacle.hitY + enemy.y) / 2,
+          0xffffff,
+          directionRadians,
+          10,
+        )
+        this.playHitTerrainSound()
+        if (nearestObstacle.mapObject.health <= 0) {
+          this.scene.mapMgr.destroyMapObject(
+            nearestObstacle.mapObject,
+            directionRadians,
+          )
+        }
+      }
+    }
+  }
+
+  private handleStuckOrTerrainBreaker(
+    enemy: EnemySprite,
+    angle: number,
+    time: number,
+    hasWeapons: boolean | undefined,
+    enemyData: EnemyData,
+  ): void {
+    if (!enemy.previousPosition) {
+      enemy.previousPosition = { x: enemy.x, y: enemy.y }
+      enemy.positionTimestamp = time
+      enemy.hasFiredOnStuck = false
+    }
+
+    if (time - enemy.positionTimestamp! >= Math.random() * 1000 + 1000) {
+      const distanceFromPreviousPosition = Phaser.Math.Distance.Between(
+        enemy.x,
+        enemy.y,
+        enemy.previousPosition.x,
+        enemy.previousPosition.y,
+      )
+
+      if (distanceFromPreviousPosition <= 40 && !enemy.hasFiredOnStuck) {
+        if (hasWeapons) {
+          const weapon = enemyData.weapons![0]
+          this.enemyWeaponFire(enemy, weapon, 0)
+        } else {
+          this.breakObstacleInFront(enemy, angle)
+        }
+        enemy.hasFiredOnStuck = true
+      } else if (distanceFromPreviousPosition > 40) {
+        enemy.hasFiredOnStuck = false
+      }
+
+      enemy.previousPosition = { x: enemy.x, y: enemy.y }
+      enemy.positionTimestamp = time
+    }
+  }
+
+  private handleEnemyWeaponFire(
+    enemy: EnemySprite,
+    enemyData: EnemyData,
+    distanceToPlayer: number,
+    time: number,
+  ): void {
+    enemyData.weapons!.forEach((weapon, index) => {
+      if (
+        distanceToPlayer < weapon.maxRange! &&
+        time - enemy.lastWeaponFireTime![index] > weapon.fireDelay
+      ) {
+        this.enemyWeaponFire(enemy, weapon, index)
+        enemy.lastWeaponFireTime![index] = time
+      }
+    })
+  }
+
+  private setEnemyVelocityByDirection(
+    enemy: EnemySprite,
+    direction: string,
+    angle: number,
+    speed: number,
+  ): void {
     switch (direction) {
       case 'charge':
         enemy.setVelocity(
@@ -273,7 +408,11 @@ export class EnemyManager {
         break
       }
     }
-    const isMoving = enemy.body!.velocity.x !== 0 || enemy.body!.velocity.y !== 0
+  }
+
+  private handleEnemyAnimation(enemy: EnemySprite, enemyData: EnemyData): void {
+    const isMoving =
+      enemy.body!.velocity.x !== 0 || enemy.body!.velocity.y !== 0
     const isPlaying = enemy.anims.isPlaying
 
     if (isMoving) {
@@ -297,12 +436,16 @@ export class EnemyManager {
     if (!this.scene.projectileSparkEmitter) {
       return
     }
-    const config = JSON.parse(JSON.stringify(baseEnemyHitTerrainSparkConfig))
     const degDirection = Phaser.Math.RadToDeg(radDirection)
     const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
-    config.angle = {
-      min: reversedDirection - 30,
-      max: reversedDirection + 30,
+    const config = {
+      ...baseEnemyHitTerrainSparkConfig,
+      angle: {
+        min: reversedDirection - 30,
+        max: reversedDirection + 30,
+      },
+      accelerationX: baseEnemyHitTerrainSparkConfig.accelerationX ?? 0,
+      accelerationY: baseEnemyHitTerrainSparkConfig.accelerationY ?? 0,
     }
     this.scene.projectileSparkEmitter.setConfig(config)
     this.scene.projectileSparkEmitter.setParticleTint(particleTint)
@@ -395,10 +538,10 @@ export class EnemyManager {
   // only for ants now, need to refactor for other enemies
   getRandomDirection(): string {
     const randomValue = Math.random()
-    if (randomValue < 0.7) return 'stop'
-    if (randomValue < 0.8) return 'charge'
-    if (randomValue < 0.9) return 'angled-left'
-    if (randomValue < 1) return 'angled-right'
+    if (randomValue < 0.6) return 'stop'
+    if (randomValue < 0.7) return 'charge'
+    if (randomValue < 0.8) return 'angled-left'
+    if (randomValue < 0.9) return 'angled-right'
     return 'back'
   }
 
@@ -489,7 +632,7 @@ export class EnemyManager {
     this.enemies.children.iterate(enemy => {
       const enemySprite = enemy as EnemySprite
       if (enemySprite.enemyData.color) {
-        const color = 0xFFFFFF
+        const color = 0xffffff
         enemySprite.setTint(color)
       }
       return true
@@ -508,10 +651,14 @@ export class EnemyManager {
     return 'enemyData' in obj
   }
 
-  updateEnemyShadows(playerX: number, playerY: number, playerRotation: number): void {
+  updateEnemyShadows(
+    playerX: number,
+    playerY: number,
+    playerRotation: number,
+  ): void {
     const playerFacingDirection = playerRotation - Math.PI / 2
     const maxShadowDistance = ct.flashlightRadius * 1.1
-  
+
     this.enemies.children.iterate(enemyObj => {
       const enemy = enemyObj as EnemySprite
       if (enemy.shadow) {
@@ -519,18 +666,18 @@ export class EnemyManager {
         const dy = enemy.y - playerY
         const distanceToPlayer = Math.sqrt(dx * dx + dy * dy)
         const angleToShadow = Math.atan2(dy, dx)
-  
+
         const angleDifference = Phaser.Math.Angle.Wrap(
           angleToShadow - playerFacingDirection,
         )
-  
+
         // Calculate the alpha based on the angle difference and distance
         const coneAngle = (ct.flashlightAngleDegrees * Math.PI) / 180
         const extendedConeAngle = coneAngle * 1.2
         let alpha = 0
-        // lighter shadows for enemies as they are usually shorter
-        const defaultAlpha = ct.flashlightShadowDefaultAlpha /2
-  
+
+        const defaultAlpha = ct.flashlightEnemyShadowDefaultAlpha
+
         if (distanceToPlayer <= maxShadowDistance) {
           if (Math.abs(angleDifference) <= coneAngle / 2) {
             // Fully inside the cone
@@ -549,7 +696,7 @@ export class EnemyManager {
               (Math.abs(angleDifference) - coneAngle / 2) /
               (extendedConeAngle / 2 - coneAngle / 2)
             alpha = defaultAlpha - normalizedDifference
-  
+
             // Further decrease alpha based on distance beyond flashlightRadius
             if (distanceToPlayer > ct.flashlightRadius) {
               const distanceFactor =
@@ -559,20 +706,20 @@ export class EnemyManager {
             }
           }
         }
-  
+
         enemy.shadow.setAlpha(alpha)
-  
+
         const spriteAverageSize = (enemy.displayWidth + enemy.displayHeight) / 2
-  
+
         // Position shadow slightly offset from the object's centre
         const shadowOffset = spriteAverageSize / 2
         enemy.shadow.x = enemy.x + Math.cos(angleToShadow) * shadowOffset
         enemy.shadow.y = enemy.y + Math.sin(angleToShadow) * shadowOffset
-  
+
         const shadowWidth = spriteAverageSize
         const shadowHeight = spriteAverageSize * 3
         enemy.shadow.setDisplaySize(shadowWidth, shadowHeight)
-  
+
         // Rotate shadow to point away from player
         enemy.shadow.setRotation(angleToShadow + Math.PI / 2)
       }

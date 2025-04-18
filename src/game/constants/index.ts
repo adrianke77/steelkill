@@ -53,6 +53,7 @@ export const Constants = {
   playerStartingY: 1900,
   flashlightAngleDegrees: 60,
   flashlightShadowDefaultAlpha: 0.8,
+  flashlightEnemyShadowDefaultAlpha:0.3,
   flashlightRadius: 1000,
   shadowTextureDarkness: 0.09,
   // how often to update the shadows, lower is more often

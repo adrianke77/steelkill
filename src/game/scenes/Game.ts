@@ -41,10 +41,10 @@ export class Game extends Scene {
   lastEnemySpawnTimes: { [key: string]: number }
   bloodFrameNames: string[]
   sceneName: string
-  decals: Phaser.GameObjects.Group
   projectileSparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter
   enemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
   secondaryEnemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  dustCloudPool: Phaser.GameObjects.Group
   combinedDecals: {
     texture: Phaser.GameObjects.RenderTexture
     image: Phaser.GameObjects.Image
@@ -65,7 +65,6 @@ export class Game extends Scene {
     this.sound.stopAll()
 
     // Destroy all game objects
-    this.decals.clear(true, true)
     this.combinedDecals.forEach(decal => {
       decal.texture.destroy()
       decal.image.destroy()
@@ -134,11 +133,12 @@ export class Game extends Scene {
   async create() {
     document.body.style.cursor = "url('./assets/crosshair.svg') 16 16, auto"
 
-    this.decals = this.add.group({
+    this.combinedDecals = []
+    this.dustCloudPool = this.add.group({
       classType: Phaser.GameObjects.Image,
+      maxSize: 100, // adjust as needed
       runChildUpdate: false,
     })
-    this.combinedDecals = []
 
     this.playRandomCombatMusic()
 
@@ -188,7 +188,10 @@ export class Game extends Scene {
       }
     })
 
-    this.physics.add.collider(this.enemyMgr.enemies, this.enemyMgr.enemies)
+    this.physics.add.collider(
+      this.enemyMgr.enemies,
+      this.enemyMgr.enemies
+    )
 
     this.physics.add.collider(
       this.player.mechContainer,
@@ -437,7 +440,7 @@ export class Game extends Scene {
         this.player.mechContainer.x,
         this.player.mechContainer.y,
         this.player.mechContainer.rotation,
-      ) 
+      )
       this.enemyMgr.updateEnemyShadows(
         this.player.mechContainer.x,
         this.player.mechContainer.y,

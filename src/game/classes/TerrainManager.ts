@@ -243,7 +243,7 @@ export class TerrainManager {
     this.clearTileOutlines(x, y)
 
     const tileData = this.getTileData(tile)
-    const outlineColor = blendColors(tileData.color, 0x000000, 0.8)
+    const outlineColor = blendColors(tileData.color, 0x000000, 0.7)
     const tileSize = this.map.tileWidth
     const worldX = tile.pixelX
     const worldY = tile.pixelY

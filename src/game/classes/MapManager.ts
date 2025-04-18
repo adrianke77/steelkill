@@ -758,7 +758,9 @@ export class MapManager {
         duration: 3000,
         onComplete: () => {
           mapObject.sprite.destroy()
-          mapObject.shadow!.destroy()
+          if (mapObject.shadow) {
+            mapObject.shadow.destroy()
+          }
         },
       })
     }
@@ -925,8 +927,8 @@ export class MapManager {
           0,
           0,
           1,
-          5000,
-          objectSize * 0.5,
+          1500,
+          objectSize,
           undefined,
         )
 
@@ -948,8 +950,8 @@ export class MapManager {
             0,
             0,
             1,
-            5000,
-            objectSize * 1,
+            3000,
+            objectSize * 1.5,
             undefined,
           )
         })

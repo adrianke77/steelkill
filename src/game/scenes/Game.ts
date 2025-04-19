@@ -317,8 +317,9 @@ export class Game extends Scene {
     this.enemyMgr.enemies.children.iterate(
       (enemy: Phaser.GameObjects.GameObject): boolean => {
         const enemySprite = enemy as EnemySprite
-        const enemyData = enemySprite.enemyData
-        this.enemyMgr.chasePlayer(enemySprite, enemyData.speed)
+        if (enemySprite.enemyAI) {
+          enemySprite.enemyAI.update(enemySprite, this, time)
+        } 
         return true
       },
     )

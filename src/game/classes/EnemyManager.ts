@@ -1,5 +1,6 @@
 import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
+import { EnemyAIRegistry } from '../AI/EnemyAIRegistry'
 import {
   EnemyData,
   EnemySprite,
@@ -102,6 +103,10 @@ export class EnemyManager {
     enemy.lastHitTime = 0
     enemy.lastScreamTime = 0
 
+    // Assign AI instance
+    const aiType = enemyData.aiType || 'ant'
+    enemy.enemyAI = EnemyAIRegistry[aiType]
+
     if (enemyData.weapons && enemyData.weapons.length > 0) {
       enemy.lastWeaponFireTime = enemyData.weapons.map(() => 0)
       enemy.tracerTracking = enemyData.weapons.map(() => 0)
@@ -121,39 +126,6 @@ export class EnemyManager {
     shadow.displayHeight = averageSize
     enemy.shadow = shadow // Attach shadow to enemy sprite
 
-    this.resetDirectionTimer(enemy)
-  }
-
-  chasePlayer(enemy: EnemySprite, speed: number): void {
-    const enemyData = enemy.enemyData as EnemyData
-    const hasWeapons = enemyData.weapons && enemyData.weapons.length > 0
-    const [playerX, playerY] = this.scene.player.getPlayerCoords()
-    const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
-    const direction = enemy.direction
-    const time = this.scene.game.loop.time
-    const distanceToPlayer = Phaser.Math.Distance.Between(
-      enemy.x,
-      enemy.y,
-      playerX,
-      playerY,
-    )
-
-    if (enemyData.terrainBreaker || hasWeapons) {
-      this.handleStuckOrTerrainBreaker(
-        enemy,
-        angle,
-        time,
-        hasWeapons,
-        enemyData,
-      )
-      if (hasWeapons) {
-        this.handleEnemyWeaponFire(enemy, enemyData, distanceToPlayer, time)
-      }
-    }
-
-    enemy.rotation = angle + Math.PI / 2
-    this.setEnemyVelocityByDirection(enemy, direction, angle, speed)
-    this.handleEnemyAnimation(enemy, enemyData)
   }
 
   private breakObstacleInFront(enemy: EnemySprite, angle: number): void {
@@ -315,7 +287,7 @@ export class EnemyManager {
     }
   }
 
-  private handleStuckOrTerrainBreaker(
+  handleStuckOrTerrainBreaker(
     enemy: EnemySprite,
     angle: number,
     time: number,
@@ -353,7 +325,7 @@ export class EnemyManager {
     }
   }
 
-  private handleEnemyWeaponFire(
+  handleEnemyWeaponFire(
     enemy: EnemySprite,
     enemyData: EnemyData,
     distanceToPlayer: number,
@@ -370,50 +342,7 @@ export class EnemyManager {
     })
   }
 
-  private setEnemyVelocityByDirection(
-    enemy: EnemySprite,
-    direction: string,
-    angle: number,
-    speed: number,
-  ): void {
-    switch (direction) {
-      case 'charge':
-        enemy.setVelocity(
-          speed * 2 * Math.cos(angle),
-          speed * 2 * Math.sin(angle),
-        )
-        break
-      case 'stop':
-        enemy.setVelocity(0, 0)
-        break
-      case 'angled-left': {
-        const leftAngle = angle - Math.PI / 4
-        enemy.setVelocity(
-          speed * Math.cos(leftAngle),
-          speed * Math.sin(leftAngle),
-        )
-        break
-      }
-      case 'angled-right': {
-        const rightAngle = angle + Math.PI / 4
-        enemy.setVelocity(
-          speed * Math.cos(rightAngle),
-          speed * Math.sin(rightAngle),
-        )
-        break
-      }
-      case 'back': {
-        const backAngle = angle + Math.PI
-        enemy.setVelocity(
-          speed * Math.cos(backAngle),
-          speed * Math.sin(backAngle),
-        )
-        break
-      }
-    }
-  }
-
-  private handleEnemyAnimation(enemy: EnemySprite, enemyData: EnemyData): void {
+  handleEnemyAnimation(enemy: EnemySprite, enemyData: EnemyData): void {
     const isMoving =
       enemy.body!.velocity.x !== 0 || enemy.body!.velocity.y !== 0
     const isPlaying = enemy.anims.isPlaying
@@ -500,46 +429,6 @@ export class EnemyManager {
         hasTracer,
       )
     }
-  }
-
-  resetDirectionTimer(enemy: EnemySprite): void {
-    const enemyData = enemy.enemyData as EnemyData
-    const directionTimer = Phaser.Math.Between(
-      enemyData.directionTimerMin,
-      enemyData.directionTimerMax,
-    )
-    const direction = this.getRandomDirection()
-    const [playerX, playerY] = this.scene.player.getPlayerCoords()
-    const distance = Phaser.Math.Distance.Between(
-      playerX,
-      playerY,
-      enemy.x,
-      enemy.y,
-    )
-    if (
-      !!enemy.enemyData.randomSound &&
-      distance < ct.maxEnemySoundDistance &&
-      Phaser.Math.FloatBetween(0, 1) < enemy.enemyData.randomSoundChance!
-    ) {
-      this.attemptEnemySound(enemy)
-    }
-    enemy.direction = direction
-    this.scene.time.delayedCall(
-      directionTimer,
-      this.resetDirectionTimer,
-      [enemy],
-      this,
-    )
-  }
-
-  // only for ants now, need to refactor for other enemies
-  getRandomDirection(): string {
-    const randomValue = Math.random()
-    if (randomValue < 0.6) return 'stop'
-    if (randomValue < 0.7) return 'charge'
-    if (randomValue < 0.8) return 'angled-left'
-    if (randomValue < 0.9) return 'angled-right'
-    return 'back'
   }
 
   playEnemyHitPlayerSound(enemyData: EnemyData): void {

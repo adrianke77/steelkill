@@ -27,7 +27,8 @@ export const enemies = {
     hitSound: 'anthit',
     hitSoundVolume: 1,
     tooSmallToBleedWhenHit: true,
-    terrainBreaker: true
+    terrainBreaker: true,
+    aiType: 'ant',
   },
   fireant: {
     spawnPeriod: 1000,
@@ -55,5 +56,6 @@ export const enemies = {
     hitSound: 'anthit',
     tooSmallToBleedWhenHit: false,
     weapons: [enemyWeapons.enemyPlasmaSpit],
+    aiType: 'ant',
   },
 } as EnemyDataMap

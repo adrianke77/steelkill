@@ -122,6 +122,7 @@ export interface EnemyData {
   tooSmallToBleedWhenHit?: boolean
   weapons?: EnemyWeaponSpec[]
   terrainBreaker?: boolean
+  aiType?: string // e.g. 'ant', 'sniperBot'
 }
 
 export interface EnemyDataMap {
@@ -144,7 +145,7 @@ export interface EnemySprite extends Phaser.Physics.Arcade.Sprite {
   positionTimestamp?: number
   hasFiredOnStuck?: boolean
   shadow?: Phaser.GameObjects.Sprite
-}
+  enemyAI?: EnemyAI}
 
 export interface Projectile extends Phaser.Physics.Arcade.Sprite {
   damage: number
@@ -226,4 +227,7 @@ export interface OutlineLine {
   lineObject: Phaser.GameObjects.Line;
   lineGeom: Phaser.Geom.Line;
   originalColor: number;
+}
+export interface EnemyAI {
+  update(enemy: EnemySprite, scene: Phaser.Scene, time: number): void
 }

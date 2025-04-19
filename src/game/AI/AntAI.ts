@@ -5,6 +5,10 @@ import { Constants as ct } from '../constants'
 // Extend EnemySprite for ant-specific state
 export interface AntEnemySprite extends EnemySprite {
   antDirectionTimer?: Phaser.Time.TimerEvent | null
+  targetRotation?: number
+  rotationLerpStartTime?: number
+  rotationLerpDuration?: number
+  startRotation?: number
 }
 
 export class AntAI implements EnemyAI {
@@ -43,11 +47,22 @@ export class AntAI implements EnemyAI {
     this.setEnemyVelocityByDirection(enemy, direction, angle, enemyData.speed)
     scene.enemyMgr.handleEnemyAnimation(enemy, enemyData)
 
-    // Rotate towards movement direction instead of always facing player
-    const vx = enemy.body?.velocity.x ?? 0
-    const vy = enemy.body?.velocity.y ?? 0
-    if (vx !== 0 || vy !== 0) {
-      enemy.rotation = Math.atan2(vy, vx) + Math.PI / 2
+    // --- Smoothly rotate towards targetRotation ---
+    if (enemy.targetRotation !== undefined && enemy.rotationLerpStartTime !== undefined && enemy.rotationLerpDuration !== undefined) {
+      const elapsed = time - enemy.rotationLerpStartTime
+      const t = Math.min(elapsed / enemy.rotationLerpDuration, 1)
+      // Use Phaser.Math.Angle.RotateTo for shortest path
+      enemy.rotation = Phaser.Math.Angle.RotateTo(
+        enemy.startRotation ?? enemy.rotation,
+        enemy.targetRotation,
+        Math.abs(Phaser.Math.Angle.Wrap(enemy.targetRotation - (enemy.startRotation ?? enemy.rotation))) * t
+      )
+      if (t >= 1) {
+        enemy.rotation = enemy.targetRotation
+        enemy.rotationLerpStartTime = undefined
+        enemy.rotationLerpDuration = undefined
+        enemy.startRotation = undefined
+      }
     }
   }
 
@@ -74,7 +89,36 @@ export class AntAI implements EnemyAI {
     }
     enemy.direction = direction
 
-    // Save the timer so we don't set multiple
+    // Calculate the new velocity for the chosen direction
+    let moveAngle = 0
+    switch (direction) {
+      case 'charge':
+        moveAngle = Math.atan2(playerY - enemy.y, playerX - enemy.x)
+        break
+      case 'angled-left':
+        moveAngle = Math.atan2(playerY - enemy.y, playerX - enemy.x) - Math.PI / 4
+        break
+      case 'angled-right':
+        moveAngle = Math.atan2(playerY - enemy.y, playerX - enemy.x) + Math.PI / 4
+        break
+      case 'back':
+        moveAngle = Math.atan2(playerY - enemy.y, playerX - enemy.x) + Math.PI
+        break
+      case 'stop':
+      default:
+        // Keep current rotation
+        moveAngle = enemy.rotation - Math.PI / 2
+        break
+    }
+    // Target rotation is direction of movement (+ Math.PI/2 for sprite alignment)
+    const targetRotation = moveAngle + Math.PI / 2
+
+    // Start lerping from current rotation to targetRotation
+    enemy.startRotation = enemy.rotation
+    enemy.targetRotation = targetRotation
+    enemy.rotationLerpStartTime = scene.time.now
+    enemy.rotationLerpDuration = 200 // ms
+
     enemy.antDirectionTimer = scene.time.delayedCall(
       directionTimer,
       () => {

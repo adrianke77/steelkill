@@ -1,4 +1,4 @@
-import { EnemyAI, EnemySprite, EnemyData } from '../interfaces'
+import { EnemyAI, EnemySprite, EnemyData, EnemyWeaponSpec } from '../interfaces'
 import { Game } from '../scenes/Game'
 import { Constants as ct } from '../constants'
 
@@ -117,7 +117,7 @@ export class AntAI implements EnemyAI {
     enemy.startRotation = enemy.rotation
     enemy.targetRotation = targetRotation
     enemy.rotationLerpStartTime = scene.time.now
-    enemy.rotationLerpDuration = 200 // ms
+    enemy.rotationLerpDuration = 300 // ms
 
     enemy.antDirectionTimer = scene.time.delayedCall(
       directionTimer,
@@ -181,4 +181,34 @@ export class AntAI implements EnemyAI {
     if (randomValue < 0.9) return 'angled-right'
     return 'back'
   }
-}
+
+  beforeFireWeapon(
+    enemy: AntEnemySprite,
+    scene: Game,
+    _weapon: EnemyWeaponSpec,
+    _index: number,
+    fireCallback: () => void
+  ): boolean {
+    // Calculate angle to player
+    const [playerX, playerY] = scene.player.getPlayerCoords()
+    const angleToPlayer = Math.atan2(playerY - enemy.y, playerX - enemy.x)
+    const targetRotation = angleToPlayer + Math.PI / 2
+
+    enemy.startRotation = enemy.rotation
+    enemy.targetRotation = targetRotation
+    enemy.rotationLerpStartTime = scene.time.now
+    enemy.rotationLerpDuration = 300
+
+    // Schedule the fire after 300ms
+    scene.time.delayedCall(300, () => {
+      // Snap to final rotation
+      enemy.rotation = targetRotation
+      enemy.rotationLerpStartTime = undefined
+      enemy.rotationLerpDuration = undefined
+      enemy.startRotation = undefined
+      fireCallback()
+    })
+
+    // Return true to indicate AntAI handled the firing
+    return true
+  }}

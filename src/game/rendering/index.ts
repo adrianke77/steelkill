@@ -283,9 +283,9 @@ export function createDustCloud(
   x: number,
   y: number,
   opacity: number,
-  duration?: number,
-  size?: number,
-  tint?: number,
+  duration: number = 1000,
+  size: number = 100,
+  tint: number = 0x888888,
 ): void {
   const DUST_CLOUD_PROXIMITY_CHECK_FACTOR = 0.2
   // Check if a dust cloud nearby already exists with the same tint and has opacity > 0.5
@@ -296,7 +296,7 @@ export function createDustCloud(
       existingCloud.tint === tint &&
       existingCloud.tweenAlpha > 0.5 &&
       Phaser.Math.Distance.Between(x, y, existingCloud.x, existingCloud.y) <
-        DUST_CLOUD_PROXIMITY_CHECK_FACTOR * (size ? size : 100)
+        DUST_CLOUD_PROXIMITY_CHECK_FACTOR * size
     ) {
       return // Skip creation
     }
@@ -355,7 +355,7 @@ export function createDustCloud(
       },
       tweenAlpha: { value: 0, ease: 'Linear' },
     },
-    duration: duration || 1000,
+    duration,
     onUpdate: (_tween, target: DustCloud) => {
       dustCloud.setAlpha(target.tweenAlpha * target.infraredControlledAlpha)
     },

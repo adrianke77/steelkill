@@ -228,6 +228,14 @@ export interface OutlineLine {
   lineGeom: Phaser.Geom.Line;
   originalColor: number;
 }
+
 export interface EnemyAI {
   update(enemy: EnemySprite, scene: Phaser.Scene, time: number): void
+  beforeFireWeapon?(
+    enemy: EnemySprite,
+    scene: Phaser.Scene,
+    weapon: EnemyWeaponSpec,
+    index: number,
+    fireCallback: () => void
+  ): boolean | void
 }

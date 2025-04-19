@@ -125,7 +125,6 @@ export class EnemyManager {
     shadow.displayWidth = averageSize
     shadow.displayHeight = averageSize
     enemy.shadow = shadow // Attach shadow to enemy sprite
-
   }
 
   private breakObstacleInFront(enemy: EnemySprite, angle: number): void {
@@ -383,6 +382,26 @@ export class EnemyManager {
   }
 
   enemyWeaponFire(enemy: EnemySprite, weapon: EnemyWeaponSpec, index: number) {
+    // If the AI wants to handle weapon firing (e.g. for ants), let it
+    if (enemy.enemyAI && typeof enemy.enemyAI.beforeFireWeapon === 'function') {
+      const handled = enemy.enemyAI.beforeFireWeapon(
+        enemy,
+        this.scene,
+        weapon,
+        index,
+        () => this._actuallyFireWeapon(enemy, weapon, index),
+      )
+      if (handled) return
+    }
+    // else directly fire weapon
+    this._actuallyFireWeapon(enemy, weapon, index)
+  }
+
+  private _actuallyFireWeapon(
+    enemy: EnemySprite,
+    weapon: EnemyWeaponSpec,
+    index: number,
+  ) {
     const projectileMgr = this.scene.projectileMgr
 
     // Handle tracers

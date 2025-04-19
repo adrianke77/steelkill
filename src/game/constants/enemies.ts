@@ -4,11 +4,11 @@ import { enemyWeapons } from './weapons'
 export const enemies = {
   ant: {
     spawnPeriod: 100,
-    speed: 100,
+    speed: 150,
     health: 60,
     armor: 5,
     displayHeight: 40,
-    displayWidth: 25,
+    displayWidth: 30,
     collisionSize: 35,
     bloodColor: 0x004000,
     color: 0x002060,
@@ -31,11 +31,11 @@ export const enemies = {
   },
   fireant: {
     spawnPeriod: 1000,
-    speed: 75,
+    speed: 100,
     health: 300,
     armor: 10,
     displayHeight: 70,
-    displayWidth: 40,
+    displayWidth: 45,
     collisionSize: 50,
     bloodColor: 0x004000,
     color: 0x400000,

@@ -71,16 +71,14 @@ function App() {
               Combat Demo
             </div>
             <div
-              className="hudFont flexCenter"
+              className=" flexCenter"
               style={{
                 fontSize: '0.7rem',
-                fontStyle: 'italic',
                 marginBottom: '5rem',
               }}
             >
               <b>
-                a dead monster floats on flames and kills strange horrors with
-                steel and fire
+                the mech is made of dead flesh and blood. kill strange horrors with steel and fire.
               </b>
             </div>
             <div

@@ -28,12 +28,12 @@ const rubbleImages = ['rubble1', 'rubble2', 'rubble3', 'rubble4', 'rubble5']
 const scatteredRubbleImages = ['scatteredRubble1', 'scatteredRubble2']
 
 const buildingCollapseSounds: [string, number][] = [
-  ['buildingcollapse1', 1],
-  ['buildingcollapse2', 1],
-  ['buildingcollapse3', 1],
-  ['buildingcollapse4', 1],
-  ['buildingcollapse5', 1],
-  ['buildingcollapse6', 1],
+  ['buildingcollapse1', 2],
+  ['buildingcollapse2', 2],
+  ['buildingcollapse3', 2],
+  ['buildingcollapse4', 2],
+  ['buildingcollapse5', 2],
+  ['buildingcollapse6', 2],
 ]
 
 const treeCollapseSounds: [string, number][] = [
@@ -924,8 +924,6 @@ export class MapManager {
           this.scene,
           x + offsetX,
           y + offsetY,
-          0,
-          0,
           1,
           1500,
           objectSize,
@@ -947,8 +945,6 @@ export class MapManager {
             this.scene,
             impactX,
             impactY,
-            0,
-            0,
             1,
             3000,
             objectSize * 1.5,
@@ -988,8 +984,6 @@ export class MapManager {
           this.scene,
           x + offsetX,
           y + offsetY,
-          0,
-          0,
           1,
           6000,
           objectSize * 1.5,

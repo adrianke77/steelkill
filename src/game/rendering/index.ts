@@ -9,6 +9,7 @@ import {
   DustCloud,
 } from '../interfaces'
 import { blendColors } from '../utils'
+import { createBaseEnemyHitTerrainSparkConfig } from '../classes/EnemyManager'
 
 export function loadRenderingAssets(scene: Game) {
   // Only load spritesheets if not already loaded
@@ -41,39 +42,45 @@ export function loadRenderingAssets(scene: Game) {
   }
 }
 
-export const baseProjectileSparkConfig = {
-  lifespan: 150,
-  speed: { min: 0, max: 300 },
-  scale: { start: 4, end: 0 },
-  rotate: { start: 0, end: 360 },
-  emitting: false,
-  accelerationX: 0,
-  accelerationY: 0,
-} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
+export function createBaseProjectileSparkConfig(): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+  return {
+    lifespan: 150,
+    speed: { min: 0, max: 300 },
+    scale: { start: 4, end: 0 },
+    rotate: { start: 0, end: 360 },
+    emitting: false,
+    accelerationX: 0,
+    accelerationY: 0,
+  }
+}
 
-export const baseDeathSprayConfig = {
-  lifespan: 1000,
-  scale: { start: 5, end: 0 },
-  rotate: { start: 0, end: 360 },
-  alpha: { start: 1, end: 0.2 },
-  accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
-    -particle.velocityX, // Decelerate X
-  accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
-    -particle.velocityY, // Decelerate Y
-  emitting: false,
-} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
+export function createBaseDeathSprayConfig(): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+  return {
+    lifespan: 1000,
+    scale: { start: 5, end: 0 },
+    rotate: { start: 0, end: 360 },
+    alpha: { start: 1, end: 0.2 },
+    accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
+      -particle.velocityX, // Decelerate X
+    accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
+      -particle.velocityY, // Decelerate Y
+    emitting: false,
+  }
+}
 
-export const secondaryEnemyDeathSprayConfig = {
-  lifespan: 1000,
-  scale: { start: 0.3, end: 0 },
-  rotate: { start: 0, end: 360 },
-  alpha: { start: 1, end: 0.2 },
-  accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
-    -particle.velocityX, // Decelerate X
-  accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
-    -particle.velocityY, // Decelerate Y
-  emitting: false,
-} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
+export function createSecondaryEnemyDeathSprayConfig(): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+  return {
+    lifespan: 1000,
+    scale: { start: 0.3, end: 0 },
+    rotate: { start: 0, end: 360 },
+    alpha: { start: 1, end: 0.2 },
+    accelerationX: (particle: Phaser.GameObjects.Particles.Particle) =>
+      -particle.velocityX, // Decelerate X
+    accelerationY: (particle: Phaser.GameObjects.Particles.Particle) =>
+      -particle.velocityY, // Decelerate Y
+    emitting: false,
+  }
+}
 
 export function createEmittersAndAnimations(scene: Game) {
   if (!scene.textures.exists('whiteParticle')) {
@@ -89,32 +96,43 @@ export function createEmittersAndAnimations(scene: Game) {
       0,
       0,
       'whiteParticle',
-      baseProjectileSparkConfig,
+      createBaseProjectileSparkConfig(),
     )
     scene.projectileSparkEmitter.setDepth(ct.depths.projectileSpark)
     scene.projectileSparkEmitter.setPipeline('Light2D')
   }
 
-  if (!scene.enemyDeathSprayEmitter) {
-    scene.enemyDeathSprayEmitter = scene.addParticles(
+  if (!scene.enemySparkEmitter) {
+    scene.enemySparkEmitter = scene.addParticles(
       0,
       0,
       'whiteParticle',
-      baseDeathSprayConfig,
+      createBaseEnemyHitTerrainSparkConfig(),
     )
-    scene.enemyDeathSprayEmitter.setDepth(ct.depths.bloodSpray)
-    scene.enemyDeathSprayEmitter.setPipeline('Light2D')
+    scene.enemySparkEmitter.setDepth(ct.depths.projectileSpark)
+    scene.enemySparkEmitter.setPipeline('Light2D')
   }
 
-  if (!scene.secondaryEnemyDeathSprayEmitter) {
-    scene.secondaryEnemyDeathSprayEmitter = scene.addParticles(
+  if (!scene.enemyDeathSprayEmitter!) {
+    scene.enemyDeathSprayEmitter! = scene.addParticles(
       0,
       0,
       'whiteParticle',
-      baseDeathSprayConfig,
+      createBaseDeathSprayConfig(),
     )
-    scene.secondaryEnemyDeathSprayEmitter.setDepth(ct.depths.bloodSpray)
-    scene.secondaryEnemyDeathSprayEmitter.setPipeline('Light2D')
+    scene.enemyDeathSprayEmitter!.setDepth(ct.depths.bloodSpray)
+    scene.enemyDeathSprayEmitter!.setPipeline('Light2D')
+  }
+
+  if (!scene.secondaryEnemyDeathSprayEmitter!) {
+    scene.secondaryEnemyDeathSprayEmitter! = scene.addParticles(
+      0,
+      0,
+      'whiteParticle',
+      createSecondaryEnemyDeathSprayConfig(),
+    )
+    scene.secondaryEnemyDeathSprayEmitter!.setDepth(ct.depths.bloodSpray)
+    scene.secondaryEnemyDeathSprayEmitter!.setPipeline('Light2D')
   }
 
   if (!scene.anims.exists('boostflame')) {
@@ -264,15 +282,12 @@ export function createDustCloud(
   scene: Game,
   x: number,
   y: number,
-  directionX: number,
-  directionY: number,
   opacity: number,
   duration?: number,
   size?: number,
   tint?: number,
 ): void {
-  const DUST_CLOUD_PROXIMITY_CHECK_FACTOR = 0.8
-
+  const DUST_CLOUD_PROXIMITY_CHECK_FACTOR = 0.2
   // Check if a dust cloud nearby already exists with the same tint and has opacity > 0.5
   for (const child of scene.viewMgr.dustClouds.getChildren()) {
     const existingCloud = child as DustCloud
@@ -481,6 +496,7 @@ export function enemyDeathSpray(
   enemyData: EnemyData,
   radDirection?: number,
 ): void {
+  const baseDeathSprayConfig = createBaseDeathSprayConfig()
   // Always do one pass emitting 360° spray
   baseDeathSprayConfig.angle = {
     min: 0,
@@ -490,11 +506,11 @@ export function enemyDeathSpray(
     min: enemyData.corpseSize * 0.2,
     max: enemyData.corpseSize * 1.0,
   }
-  scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
-  scene.enemyDeathSprayEmitter.setParticleTint(
+  scene.enemyDeathSprayEmitter!.setConfig(baseDeathSprayConfig)
+  scene.enemyDeathSprayEmitter!.setParticleTint(
     blendColors(enemyData.bloodColor, 0x000000, 0.6),
   )
-  scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
+  scene.enemyDeathSprayEmitter!.emitParticleAt(x, y, enemyData.corpseSize / 2)
 
   // If we have a particular direction, emit extra particles more densely weighted around that angle
   if (radDirection !== undefined) {
@@ -509,11 +525,11 @@ export function enemyDeathSpray(
       min: enemyData.corpseSize * 0.3,
       max: enemyData.corpseSize * 1.2,
     }
-    scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
-    scene.enemyDeathSprayEmitter.setParticleTint(
+    scene.enemyDeathSprayEmitter!.setConfig(baseDeathSprayConfig)
+    scene.enemyDeathSprayEmitter!.setParticleTint(
       blendColors(enemyData.bloodColor, 0x000000, 0.6),
     )
-    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
+    scene.enemyDeathSprayEmitter!.emitParticleAt(x, y, enemyData.corpseSize / 2)
 
     // Emit additional corpse fragments in a slightly wider range around radDirection
     baseDeathSprayConfig.angle = {
@@ -524,30 +540,31 @@ export function enemyDeathSpray(
       min: enemyData.corpseSize * 0.2,
       max: enemyData.corpseSize * 1.0,
     }
-    scene.enemyDeathSprayEmitter.setConfig(baseDeathSprayConfig)
+    scene.enemyDeathSprayEmitter!.setConfig(baseDeathSprayConfig)
     if (enemyData.color) {
-      scene.enemyDeathSprayEmitter.setParticleTint(
+      scene.enemyDeathSprayEmitter!.setParticleTint(
         blendColors(enemyData.color, 0x000000, 0.2),
       )
     }
-    scene.enemyDeathSprayEmitter.emitParticleAt(x, y, enemyData.corpseSize / 2)
+    scene.enemyDeathSprayEmitter!.emitParticleAt(x, y, enemyData.corpseSize / 2)
   }
 
   // Also fire the secondary emitter for additional fragments/debris in all directions
+  const secondaryEnemyDeathSprayConfig = createSecondaryEnemyDeathSprayConfig()
   secondaryEnemyDeathSprayConfig.angle = { min: 0, max: 360 }
   secondaryEnemyDeathSprayConfig.speed = {
     min: enemyData.corpseSize * 0.1,
     max: enemyData.corpseSize * 0.8,
   }
-  scene.secondaryEnemyDeathSprayEmitter.setConfig(
+  scene.secondaryEnemyDeathSprayEmitter!.setConfig(
     secondaryEnemyDeathSprayConfig,
   )
   if (enemyData.color) {
-    scene.secondaryEnemyDeathSprayEmitter.setParticleTint(
+    scene.secondaryEnemyDeathSprayEmitter!.setParticleTint(
       blendColors(enemyData.color, 0x000000, 0.2),
     )
   }
-  scene.secondaryEnemyDeathSprayEmitter.emitParticleAt(
+  scene.secondaryEnemyDeathSprayEmitter!.emitParticleAt(
     x,
     y,
     enemyData.corpseSize,
@@ -620,7 +637,7 @@ export function renderExplosion(
     damage / 60,
     diameter * 3,
   )
-  createDustCloud(scene, x, y, 0, 0, 0.3, 1500, diameter * 1.4, undefined)
+  createDustCloud(scene, x, y, 0.3, 1500, diameter * 1.4, undefined)
 
   if (optionals && optionals.explodeAfterGlowDuration) {
     createLightFlash(
@@ -642,8 +659,6 @@ export function addCloudAtPlayermech(scene: Game, opacity: number): void {
     scene,
     currentPosX + scene.player.playerMech.displayWidth / 2,
     currentPosY + scene.player.playerMech.displayHeight / 2,
-    scene.player.mechContainer.body!.velocity.x,
-    scene.player.mechContainer.body!.velocity.y,
     opacity,
     2000,
     150,

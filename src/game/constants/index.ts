@@ -44,7 +44,7 @@ export const Constants = {
   mapScaling: 1,
   terrainDefaultFillProbability: 0.45,
   terrainDefaultIterations: 7,
-  terrainAlpha:0.8,
+  terrainAlpha:0.9,
   decalsPerCombinedDecal: 5000,
   DecalFadeTime: 30000,
   musicVolume: 1.5,
@@ -56,7 +56,7 @@ export const Constants = {
   flashlightEnemyShadowDefaultAlpha:0.3,
   flashlightRadius: 1000,
   shadowTextureDarkness: 0.09,
-  // how often to update the shadows, lower is more often
+  // how often to update shadow angles, lower is more often
   shadowUpdateRate: 7,
   mechStepPeriod: 500,
   mechStepSoundVol: 3,

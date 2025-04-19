@@ -25,6 +25,8 @@ export interface WeaponSpec {
   explodeDamage?: number
   explodeSound?: string
   explodeSoundVol?: number
+  explodeDetuneMin?:number
+  explodeDetuneMax?:number
   explodeColor?: number
   explodeAfterGlowDuration?: number
   explodeAfterGlowTint?: number

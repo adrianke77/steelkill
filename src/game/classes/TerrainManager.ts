@@ -221,7 +221,7 @@ export class TerrainManager {
     const lineObject = this.scene.add
       .line(0, 0, startX, startY, endX, endY, outlineColor, ct.terrainAlpha)
       .setOrigin(0, 0)
-      .setLineWidth(this.map.tileWidth * 3, this.map.tileWidth * 3)
+      .setLineWidth(this.map.tileWidth * 2, this.map.tileWidth * 2)
       .setPipeline('Light2D')
 
     // Create the geometric line with absolute coordinates
@@ -243,7 +243,7 @@ export class TerrainManager {
     this.clearTileOutlines(x, y)
 
     const tileData = this.getTileData(tile)
-    const outlineColor = blendColors(tileData.color, 0x000000, 0.7)
+    const outlineColor = blendColors(tileData.color, 0x000000, 0.05)
     const tileSize = this.map.tileWidth
     const worldX = tile.pixelX
     const worldY = tile.pixelY
@@ -750,17 +750,7 @@ export class TerrainManager {
     const tileData = this.getTileData(tile)
 
     // Create an effect at the tile's position
-    createDustCloud(
-      this.scene,
-      worldX,
-      worldY,
-      0,
-      0,
-      0.8,
-      7000,
-      250,
-      tileData.color,
-    )
+    createDustCloud(this.scene, worldX, worldY, 1, 5000, 250, tileData.color)
   }
 
   computeTileIndex(x: number, y: number, tileType: number): number {
@@ -1101,7 +1091,9 @@ export class TerrainManager {
         let lineData: OutlineLine | undefined
 
         this.tileLineAssociations.forEach(lines => {
-          const found = lines.find(l => (l as OutlineLine).lineObject === lineObject)
+          const found = lines.find(
+            l => (l as OutlineLine).lineObject === lineObject,
+          )
           if (found) {
             lineData = found as OutlineLine
           }

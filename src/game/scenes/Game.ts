@@ -41,9 +41,10 @@ export class Game extends Scene {
   lastEnemySpawnTimes: { [key: string]: number }
   bloodFrameNames: string[]
   sceneName: string
-  projectileSparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter
-  enemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
-  secondaryEnemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter
+  projectileSparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null
+  enemySparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null
+  enemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null
+  secondaryEnemyDeathSprayEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null
   dustCloudPool: Phaser.GameObjects.Group
   combinedDecals: {
     texture: Phaser.GameObjects.RenderTexture
@@ -87,6 +88,27 @@ export class Game extends Scene {
     this.mapMgr?.collisionShapesGroup?.clear(true, true)
     this.projectileMgr?.projectiles?.clear(true, true)
     this.enemyMgr?.enemies?.clear(true, true)
+
+    // Destroy all emitters if they exist
+    if (this.projectileSparkEmitter) {
+      this.projectileSparkEmitter.destroy();
+      this.projectileSparkEmitter = null;
+    }
+    if (this.enemySparkEmitter) {
+      this.enemySparkEmitter.destroy();
+      this.enemySparkEmitter = null;
+    }
+    if (this.enemyDeathSprayEmitter) {
+      this.enemyDeathSprayEmitter.destroy();
+      this.enemyDeathSprayEmitter = null;
+    }
+    if (this.secondaryEnemyDeathSprayEmitter) {
+      this.secondaryEnemyDeathSprayEmitter.destroy();
+      this.secondaryEnemyDeathSprayEmitter = null;
+    }
+    if (this.dustCloudPool) {
+      this.dustCloudPool.clear(true, true)
+    }
 
     // Clear timers and tweens
     this.time.removeAllEvents()

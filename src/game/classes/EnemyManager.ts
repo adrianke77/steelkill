@@ -15,15 +15,18 @@ import {
   loadVerticalSpritesheet,
 } from '../utils'
 
-const baseEnemyHitTerrainSparkConfig = {
-  lifespan: 500,
-  speed: { min: 0, max: 100 },
-  scale: { start: 6, end: 0 },
-  rotate: { start: 0, end: 360 },
-  emitting: false,
-  accelerationX: 0,
-  accelerationY: 0,
-} as Phaser.Types.GameObjects.Particles.ParticleEmitterConfig
+export function createBaseEnemyHitTerrainSparkConfig(): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+  return {
+    lifespan: 500,
+    speed: { min: 0, max: 100 },
+    scale: { start: 6, end: 0 },
+    rotate: { start: 0, end: 360 },
+    emitting: false,
+    accelerationX: 0,
+    accelerationY: 0,
+    // angle can be set by the caller as needed
+  }
+}
 
 export const loadEnemyAssets = (scene: Game) => {
   for (const enemyName of Object.keys(ct.enemyData)) {
@@ -433,23 +436,17 @@ export class EnemyManager {
     radDirection: number,
     particles: number,
   ) {
-    if (!this.scene.projectileSparkEmitter) {
-      return
-    }
     const degDirection = Phaser.Math.RadToDeg(radDirection)
     const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
-    const config = {
-      ...baseEnemyHitTerrainSparkConfig,
-      angle: {
-        min: reversedDirection - 30,
-        max: reversedDirection + 30,
-      },
-      accelerationX: baseEnemyHitTerrainSparkConfig.accelerationX ?? 0,
-      accelerationY: baseEnemyHitTerrainSparkConfig.accelerationY ?? 0,
+    const config = createBaseEnemyHitTerrainSparkConfig()
+    config.angle = {
+      min: reversedDirection - 30,
+      max: reversedDirection + 30,
     }
-    this.scene.projectileSparkEmitter.setConfig(config)
-    this.scene.projectileSparkEmitter.setParticleTint(particleTint)
-    this.scene.projectileSparkEmitter.emitParticleAt(
+    if (!config) return
+    this.scene.enemySparkEmitter!.setConfig(config)
+    this.scene.enemySparkEmitter!.setParticleTint(particleTint)
+    this.scene.enemySparkEmitter!.emitParticleAt(
       x,
       y,
       particles ? 5 : particles,

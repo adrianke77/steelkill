@@ -20,7 +20,7 @@ import {
   destroyEnemyAndCreateCorpseDecals,
   renderExplosion,
   playMuzzleFlare,
-  baseProjectileSparkConfig,
+  createBaseProjectileSparkConfig,
   createDustCloud,
 } from '../rendering'
 import { generateUniqueId, getSoundPan } from '../utils'
@@ -426,11 +426,9 @@ export class ProjectileManager {
         this.scene,
         (projectile.x + tileX) / 2,
         (projectile.y + tileY) / 2,
-        0,
-        0,
         1,
-        1000,
-        100,
+        2000,
+        150,
         tileData.color,
       )
       if (target.health <= 0) {
@@ -732,22 +730,28 @@ export class ProjectileManager {
     projectile?: Projectile,
     lifespan?: number,
   ): void {
-    const config = baseProjectileSparkConfig
+
+    let angleConfig
     if (radDirection) {
       const degDirection = Phaser.Math.RadToDeg(radDirection)
-      // reverse angle so sparks are towards the projectile source
+      // reverse angle so sparks are towpweaoprds the projectile source
       const reversedDirection = Phaser.Math.Wrap(degDirection + 180, 0, 360)
-      config.angle = {
+      angleConfig = {
         min: reversedDirection - 30,
         max: reversedDirection + 30,
       }
     } else {
-      config.angle = { min: 0, max: 360 }
+      angleConfig = { min: 0, max: 360 }
     }
-    config.lifespan = lifespan || 150
-    this.scene.projectileSparkEmitter.setConfig(config)
-    this.scene.projectileSparkEmitter.setParticleTint(particleTint)
-    this.scene.projectileSparkEmitter.emitParticleAt(x, y, particles || 5)
+    const config = {
+      ...createBaseProjectileSparkConfig(),
+      angle: angleConfig,
+      lifespan: lifespan || 150,
+    }
+
+    this.scene.projectileSparkEmitter!.setConfig(config)
+    this.scene.projectileSparkEmitter!.setParticleTint(particleTint)
+    this.scene.projectileSparkEmitter!.emitParticleAt(x, y, particles || 5)
     if (projectile && projectile?.hasTracer) {
       const weapon = projectile.weapon
       createLightFlash(
@@ -916,7 +920,10 @@ export class ProjectileManager {
     )
 
     // Randomize the pitch by setting a random detune value
-    const detune = Phaser.Math.Between(-400, 400)
+    const detune = Phaser.Math.Between(
+      weapon.explodeDetuneMin || -200,
+      weapon.explodeDetuneMax || 200,
+    )
     soundInstance.play({ detune, pan })
 
     soundInstance.once('complete', () => {
